@@ -1,10 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, font
+from tkinter import ttk, messagebox
 import threading
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 from ..device_info import USBDevice
-from ..usb_scanner import scan_usb_devices
+from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
 from .device_detail import DeviceDetailPanel
 
@@ -17,8 +17,10 @@ class MainWindow:
         self.root.minsize(600, 400)
 
         self.devices: list[USBDevice] = []
+        self.old_devices: list[USBDevice] = []
         self.auto_refresh = False
         self.refresh_interval = 3000
+        self.is_first_scan = True
 
         self._setup_styles()
         self._setup_ui()
@@ -113,13 +115,35 @@ class MainWindow:
         except Exception as e:
             self.root.after(0, lambda: self._update_status(f"扫描失败: {str(e)}"))
 
-    def _update_device_list(self, devices: list[USBDevice]):
+    def _update_device_list(self, devices: List[USBDevice]):
+        if not self.is_first_scan and self.old_devices:
+            added, removed = compare_devices(self.old_devices, devices)
+            self._show_change_notification(added, removed)
+        else:
+            self.is_first_scan = False
+
+        self.old_devices = self.devices.copy()
         self.devices = devices
         self.device_list.update_devices(devices)
         count = len(devices)
         timestamp = datetime.now().strftime("%H:%M:%S")
         self._update_status(f"共 {count} 个 USB 设备 | 最后刷新: {timestamp}")
         self.device_detail.set_device(None)
+
+    def _show_change_notification(self, added: List[USBDevice], removed: List[USBDevice]):
+        messages = []
+        if added:
+            for device in added:
+                messages.append(f"➕ 新增: {device.get_display_name()} ({device.get_vid_pid_string()})")
+        if removed:
+            for device in removed:
+                messages.append(f"➖ 移除: {device.get_display_name()} ({device.get_vid_pid_string()})")
+
+        if messages:
+            notification = "\n".join(messages)
+            self.status_label.config(foreground="blue")
+            self._update_status(notification)
+            self.root.after(3000, lambda: self.status_label.config(foreground="black"))
 
     def _update_status(self, message: str):
         self.status_label.config(text=message)

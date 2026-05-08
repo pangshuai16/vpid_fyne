@@ -134,3 +134,20 @@ def _deduplicate_devices(devices: List[USBDevice]) -> List[USBDevice]:
             seen.add(key)
             unique.append(device)
     return unique
+
+
+def compare_devices(old_devices: List[USBDevice], new_devices: List[USBDevice]) -> tuple:
+    old_keys = {(d.vid, d.pid, d.serial) for d in old_devices}
+    new_keys = {(d.vid, d.pid, d.serial) for d in new_devices}
+
+    added_keys = new_keys - old_keys
+    removed_keys = old_keys - new_keys
+
+    added_devices = [d for d in new_devices if (d.vid, d.pid, d.serial) in added_keys]
+    removed_devices = [d for d in old_devices if (d.vid, d.pid, d.serial) in removed_keys]
+
+    return added_devices, removed_devices
+
+
+def get_device_key(device: USBDevice) -> str:
+    return f"{device.vid}:{device.pid}:{device.serial}"
