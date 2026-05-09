@@ -29,15 +29,23 @@ python main.py
 
 ## 打包为 exe
 
+### 使用 PyInstaller 打包
+
 ```bash
 pip install pyinstaller
-pyinstaller build_spec.py --onefile
+pyinstaller vpid_viewer.spec
 ```
+
+### 使用 GitHub Action 自动发布
+
+查看 [RELEASE.md](RELEASE.md) 了解如何使用 GitHub Action 自动编译和发布可执行文件。
 
 ## 项目结构
 
 ```
 vpid_py/
+├── .github/workflows/
+│   └── build-release.yml    # GitHub Action 自动发布配置
 ├── src/
 │   ├── __init__.py
 │   ├── usb_scanner.py      # USB 设备扫描核心模块
@@ -47,8 +55,10 @@ vpid_py/
 │       ├── main_window.py  # 主窗口
 │       ├── device_list.py  # 设备列表组件
 │       └── device_detail.py# 设备详情组件
-├── requirements.txt
-├── build_spec.py
+├── requirements.txt        # 依赖包
+├── vpid_viewer.spec       # PyInstaller 打包配置
+├── RELEASE.md             # 发布指南
+├── README.md
 └── main.py
 ```
 
