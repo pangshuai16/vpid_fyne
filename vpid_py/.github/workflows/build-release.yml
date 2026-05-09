@@ -14,16 +14,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python 3.8 for XP compatibility
+    - name: Set up Python 3.5 (XP compatible)
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.5'
         architecture: 'x86'
 
     - name: Install dependencies
       run: |
         cd vpid_py
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip==20.3.4
         pip install -r requirements.txt
         pip install pyinstaller==3.6
 
