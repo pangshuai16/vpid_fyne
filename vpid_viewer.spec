@@ -8,7 +8,7 @@ hiddenimports = ['wmi', 'winreg']
 
 a = Analysis(
     ['main.py'],
-    pathex=[os.path.dirname(os.path.abspath(__file__))],
+    pathex=[],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
