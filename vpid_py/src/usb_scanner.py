@@ -1,18 +1,17 @@
 import re
 import winreg
-from typing import List, Optional
 from .device_info import USBDevice
 
 
-def extract_vid_pid(device_id: str) -> tuple:
+def extract_vid_pid(device_id):
     vid_match = re.search(r'VID_([0-9A-Fa-f]{4})', device_id)
     pid_match = re.search(r'PID_([0-9A-Fa-f]{4})', device_id)
-    vid = f"0x{vid_match.group(1)}" if vid_match else ""
-    pid = f"0x{pid_match.group(1)}" if pid_match else ""
+    vid = "0x{0}".format(vid_match.group(1)) if vid_match else ""
+    pid = "0x{0}".format(pid_match.group(1)) if pid_match else ""
     return vid, pid
 
 
-def scan_usb_devices() -> List[USBDevice]:
+def scan_usb_devices():
     devices = []
     devices_wmi = _scan_via_wmi()
     if devices_wmi:
@@ -24,7 +23,7 @@ def scan_usb_devices() -> List[USBDevice]:
     return _deduplicate_devices(devices)
 
 
-def _scan_via_wmi() -> List[USBDevice]:
+def _scan_via_wmi():
     try:
         import wmi
         c = wmi.WMI()
@@ -54,7 +53,7 @@ def _scan_via_wmi() -> List[USBDevice]:
         return []
 
 
-def _scan_via_registry() -> List[USBDevice]:
+def _scan_via_registry():
     devices = []
     try:
         base_path = r"SYSTEM\CurrentControlSet\Enum\USB"
@@ -63,13 +62,13 @@ def _scan_via_registry() -> List[USBDevice]:
             while True:
                 try:
                     vid_key_name = winreg.EnumKey(base_key, i)
-                    vid_path = f"{base_path}\\{vid_key_name}"
+                    vid_path = "{0}\\{1}".format(base_path, vid_key_name)
                     with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, vid_path) as vid_key:
                         j = 0
                         while True:
                             try:
                                 pid_key_name = winreg.EnumKey(vid_key, j)
-                                pid_path = f"{vid_path}\\{pid_key_name}"
+                                pid_path = "{0}\\{1}".format(vid_path, pid_key_name)
                                 device = _parse_registry_device(pid_path, vid_key_name, pid_key_name)
                                 if device:
                                     devices.append(device)
@@ -84,10 +83,10 @@ def _scan_via_registry() -> List[USBDevice]:
     return devices
 
 
-def _parse_registry_device(path: str, vid: str, pid: str) -> Optional[USBDevice]:
+def _parse_registry_device(path, vid, pid):
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
-            device_id = f"USB\\VID_{vid}&PID_{pid}"
+            device_id = "USB\\VID_{0}&PID_{1}".format(vid, pid)
             name = _get_registry_value(key, "FriendlyName") or _get_registry_value(key, "DeviceDesc") or "USB Device"
             manufacturer = _get_registry_value(key, "Mfg") or ""
             serial = _get_registry_value(key, "SerialNumber") or ""
@@ -96,12 +95,12 @@ def _parse_registry_device(path: str, vid: str, pid: str) -> Optional[USBDevice]
             status = "Unknown"
             try:
                 error_code = int(_get_registry_value(key, "ConfigManagerErrorCode") or "0")
-                status = "Connected" if error_code == 0 else f"Error ({error_code})"
+                status = "Connected" if error_code == 0 else "Error ({0})".format(error_code)
             except:
                 pass
             return USBDevice(
-                vid=f"0x{vid}",
-                pid=f"0x{pid}",
+                vid="0x{0}".format(vid),
+                pid="0x{0}".format(pid),
                 serial=serial,
                 name=name,
                 manufacturer=manufacturer,
@@ -115,7 +114,7 @@ def _parse_registry_device(path: str, vid: str, pid: str) -> Optional[USBDevice]
         return None
 
 
-def _get_registry_value(key, value_name: str) -> Optional[str]:
+def _get_registry_value(key, value_name):
     try:
         value, _ = winreg.QueryValueEx(key, value_name)
         if isinstance(value, (list, tuple)):
@@ -125,7 +124,7 @@ def _get_registry_value(key, value_name: str) -> Optional[str]:
         return None
 
 
-def _deduplicate_devices(devices: List[USBDevice]) -> List[USBDevice]:
+def _deduplicate_devices(devices):
     seen = set()
     unique = []
     for device in devices:
@@ -136,7 +135,7 @@ def _deduplicate_devices(devices: List[USBDevice]) -> List[USBDevice]:
     return unique
 
 
-def compare_devices(old_devices: List[USBDevice], new_devices: List[USBDevice]) -> tuple:
+def compare_devices(old_devices, new_devices):
     old_keys = {(d.vid, d.pid, d.serial) for d in old_devices}
     new_keys = {(d.vid, d.pid, d.serial) for d in new_devices}
 
@@ -149,5 +148,5 @@ def compare_devices(old_devices: List[USBDevice], new_devices: List[USBDevice]) 
     return added_devices, removed_devices
 
 
-def get_device_key(device: USBDevice) -> str:
-    return f"{device.vid}:{device.pid}:{device.serial}"
+def get_device_key(device):
+    return "{0}:{1}:{2}".format(device.vid, device.pid, device.serial)

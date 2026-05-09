@@ -1,13 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Optional, Callable
 from ..device_info import USBDevice
 
 
 class DeviceDetailPanel(ttk.Frame):
     def __init__(self, parent):
-        super().__init__(parent)
-        self.current_device: Optional[USBDevice] = None
+        super(DeviceDetailPanel, self).__init__(parent)
+        self.current_device = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -33,14 +32,14 @@ class DeviceDetailPanel(ttk.Frame):
             row = ttk.Frame(self.info_frame)
             row.pack(fill="x", pady=2)
 
-            label = ttk.Label(row, text=f"{label_text}:", width=16, anchor="w")
+            label = ttk.Label(row, text="{0}:".format(label_text), width=16, anchor="w")
             label.pack(side="left")
 
             value_label = ttk.Label(row, text="N/A", anchor="w", style="Value.TLabel")
             value_label.pack(side="left", fill="x", expand=True)
             self.labels[field] = value_label
 
-    def set_device(self, device: Optional[USBDevice]):
+    def set_device(self, device):
         self.current_device = device
         if device:
             self.labels["name"].config(text=device.name or "N/A")
@@ -55,5 +54,5 @@ class DeviceDetailPanel(ttk.Frame):
             for label in self.labels.values():
                 label.config(text="N/A")
 
-    def get_current_device(self) -> Optional[USBDevice]:
+    def get_current_device(self):
         return self.current_device

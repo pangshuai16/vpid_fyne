@@ -2,22 +2,21 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 from datetime import datetime
-from typing import Callable, Optional, List
 from ..device_info import USBDevice
 from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
 from .device_detail import DeviceDetailPanel
 
 
-class MainWindow:
+class MainWindow(object):
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("USB VID/PID 查看器 v1.0.0")
         self.root.geometry("800x500")
         self.root.minsize(600, 400)
 
-        self.devices: list[USBDevice] = []
-        self.old_devices: list[USBDevice] = []
+        self.devices = []
+        self.old_devices = []
         self.auto_refresh = False
         self.refresh_interval = 3000
         self.is_first_scan = True
@@ -106,38 +105,40 @@ class MainWindow:
 
     def _initial_scan(self):
         self._update_status("正在扫描 USB 设备...")
-        threading.Thread(target=self._scan_devices, daemon=True).start()
+        t = threading.Thread(target=self._scan_devices)
+        t.daemon = True
+        t.start()
 
     def _scan_devices(self):
         try:
             devices = scan_usb_devices()
             self.root.after(0, lambda: self._update_device_list(devices))
         except Exception as e:
-            self.root.after(0, lambda: self._update_status(f"扫描失败: {str(e)}"))
+            self.root.after(0, lambda: self._update_status("扫描失败: {0}".format(str(e))))
 
-    def _update_device_list(self, devices: List[USBDevice]):
+    def _update_device_list(self, devices):
         if not self.is_first_scan and self.old_devices:
             added, removed = compare_devices(self.old_devices, devices)
             self._show_change_notification(added, removed)
         else:
             self.is_first_scan = False
 
-        self.old_devices = self.devices.copy()
+        self.old_devices = self.devices[:]
         self.devices = devices
         self.device_list.update_devices(devices)
         count = len(devices)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self._update_status(f"共 {count} 个 USB 设备 | 最后刷新: {timestamp}")
+        self._update_status("共 {0} 个 USB 设备 | 最后刷新: {1}".format(count, timestamp))
         self.device_detail.set_device(None)
 
-    def _show_change_notification(self, added: List[USBDevice], removed: List[USBDevice]):
+    def _show_change_notification(self, added, removed):
         messages = []
         if added:
             for device in added:
-                messages.append(f"➕ 新增: {device.get_display_name()} ({device.get_vid_pid_string()})")
+                messages.append("➕ 新增: {0} ({1})".format(device.get_display_name(), device.get_vid_pid_string()))
         if removed:
             for device in removed:
-                messages.append(f"➖ 移除: {device.get_display_name()} ({device.get_vid_pid_string()})")
+                messages.append("➖ 移除: {0} ({1})".format(device.get_display_name(), device.get_vid_pid_string()))
 
         if messages:
             notification = "\n".join(messages)
@@ -145,16 +146,18 @@ class MainWindow:
             self._update_status(notification)
             self.root.after(3000, lambda: self.status_label.config(foreground="black"))
 
-    def _update_status(self, message: str):
+    def _update_status(self, message):
         self.status_label.config(text=message)
 
-    def _on_device_select(self, device: USBDevice):
+    def _on_device_select(self, device):
         self.device_detail.set_device(device)
 
     def _on_refresh(self):
         self.refresh_btn.config(state="disabled")
         self._update_status("正在扫描 USB 设备...")
-        threading.Thread(target=self._scan_devices, daemon=True).start()
+        t = threading.Thread(target=self._scan_devices)
+        t.daemon = True
+        t.start()
         self.root.after(100, lambda: self.refresh_btn.config(state="normal"))
 
     def _on_copy(self):
@@ -166,13 +169,13 @@ class MainWindow:
         else:
             messagebox.showinfo("提示", "请先选择一个设备")
 
-    def _copy_field(self, field: str):
+    def _copy_field(self, field):
         device = self.device_detail.get_current_device()
         if device:
             value = getattr(device, field, "") or "N/A"
             self.root.clipboard_clear()
             self.root.clipboard_write(value)
-            self._update_status(f"已复制 {field}: {value}")
+            self._update_status("已复制 {0}: {1}".format(field, value))
 
     def _toggle_auto_refresh(self):
         self.auto_refresh = self.auto_refresh_var.get()

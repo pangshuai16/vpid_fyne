@@ -8,12 +8,12 @@
 - 显示设备 VID/PID/序列号/设备名等信息
 - 支持设备拔插实时刷新
 - 支持复制设备信息到剪贴板
-- 跨版本兼容设计
+- 设备变化对比（新增/移除）
 
 ## 系统要求
 
-- Windows XP SP3 或更高版本
-- Python 3.5+ (建议使用 XP 兼容补丁版)
+- **运行时**: Windows XP SP3 或更高版本
+- **开发时**: Python 3.5-3.8 (XP 兼容补丁版)
 
 ## 安装依赖
 
@@ -29,10 +29,16 @@ python main.py
 
 ## 打包为 exe
 
-### 使用 PyInstaller 打包
+### 使用 PyInstaller 打包 (XP 兼容)
+
+要创建真正在 Windows XP 上运行的可执行文件，需要：
+
+1. 使用 Python 3.5 或 XP 兼容的 Python 3.8 补丁版
+2. 使用 PyInstaller 3.6 或更低版本
+3. 使用 32 位 Python
 
 ```bash
-pip install pyinstaller
+pip install pyinstaller==3.6
 pyinstaller vpid_viewer.spec
 ```
 
@@ -69,4 +75,14 @@ vpid_py/
 - 使用纯 Python 内置模块 (`winreg`, `wmi`)
 - 不依赖 Windows Vista+ 新增 API
 - 使用 Tkinter 标准 GUI 框架
+- 避免使用 Python 3.6+ 新增语法
+- 使用旧版字符串格式化而非 f-strings
+- 不使用 typing 注解
 - 打包为单文件 exe 便于分发
+
+## XP 兼容 Python 版本
+
+推荐 XP 兼容的 Python 版本：
+
+- Python 3.5 (最后官方支持 XP 的版本)
+- Python 3.8 社区补丁版

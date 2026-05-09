@@ -1,14 +1,13 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional, Callable, List
 from ..device_info import USBDevice
 
 
 class DeviceListPanel(ttk.Frame):
-    def __init__(self, parent, on_select_callback: Optional[Callable] = None):
-        super().__init__(parent)
+    def __init__(self, parent, on_select_callback=None):
+        super(DeviceListPanel, self).__init__(parent)
         self.on_select_callback = on_select_callback
-        self.devices: List[USBDevice] = []
+        self.devices = []
         self._setup_ui()
 
     def _setup_ui(self):
@@ -55,7 +54,7 @@ class DeviceListPanel(ttk.Frame):
             if 0 <= index < len(self.devices):
                 self.on_select_callback(self.devices[index])
 
-    def update_devices(self, devices: List[USBDevice]):
+    def update_devices(self, devices):
         self.devices = devices
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -65,7 +64,7 @@ class DeviceListPanel(ttk.Frame):
             manufacturer = device.manufacturer or "N/A"
             self.tree.insert("", "end", iid=str(len(self.tree.get_children())), values=(vid_pid, manufacturer), text=display_name)
 
-    def get_selected_device(self) -> Optional[USBDevice]:
+    def get_selected_device(self):
         selection = self.tree.selection()
         if selection:
             index = self.tree.index(selection[0])
