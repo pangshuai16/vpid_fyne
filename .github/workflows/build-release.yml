@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+env:
+  PYTHON_VERSION: '3.8'
+  PYINSTALLER_VERSION: '5.13.2'
+
 jobs:
   build:
     runs-on: windows-latest
@@ -17,25 +21,48 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python 3.5 (XP compatible)
-      uses: actions/setup-python@v4
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.5'
+        python-version: ${{ env.PYTHON_VERSION }}
         architecture: 'x86'
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip==20.3.4
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pyinstaller==3.6
+        pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+
+    - name: Extract version from tag
+      id: extract_version
+      run: |
+        $version = "${{ github.ref }}" -replace "refs/tags/v", ""
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        echo "Extracted version: $version"
 
     - name: Build executable with PyInstaller
       run: |
-        pyinstaller vpid_viewer.spec
+        pyinstaller vpid_viewer.spec --clean --noconfirm
+        if (Test-Path dist/vpid_viewer.exe) {
+            Write-Host "Build successful: dist/vpid_viewer.exe"
+            Get-Item dist/vpid_viewer.exe | Select-Object Name, Length, LastWriteTime
+        } else {
+            Write-Error "Build failed: exe not found in dist/"
+            exit 1
+        }
 
-    - name: Create release
-      uses: softprops/action-gh-release@v1
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vpid_viewer-v${{ steps.extract_version.outputs.VERSION }}-win32
+        path: dist/vpid_viewer.exe
+        retention-days: 30
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: |
-          dist/vpid_viewer.exe
+        tag_name: ${{ github.ref_name }}
+        name: "v${{ steps.extract_version.outputs.VERSION }}"
+        files: dist/vpid_viewer.exe
+        generate_release_notes: true

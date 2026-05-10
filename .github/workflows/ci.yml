@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.8'
+        architecture: 'x86'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Check Python syntax
+      run: |
+        python -m py_compile main.py
+        python -m py_compile src/__init__.py
+        python -m py_compile src/device_info.py
+        python -m py_compile src/usb_scanner.py
+        python -m py_compile src/gui/__init__.py
+        python -m py_compile src/gui/main_window.py
+        python -m py_compile src/gui/device_list.py
+        python -m py_compile src/gui/device_detail.py
+
+    - name: Verify imports
+      run: |
+        python -c "from src.device_info import USBDevice; print('device_info OK')"
+        python -c "from src.usb_scanner import scan_usb_devices, compare_devices; print('usb_scanner OK')"
+        python -c "from src.gui.main_window import MainWindow; print('main_window OK')"
+        python -c "from src.gui.device_list import DeviceListPanel; print('device_list OK')"
+        python -c "from src.gui.device_detail import DeviceDetailPanel; print('device_detail OK')"
+
+  build-test:
+    runs-on: windows-latest
+    needs: lint
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.8'
+        architecture: 'x86'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller==5.13.2
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller vpid_viewer.spec --clean --noconfirm
+
+    - name: Verify build output
+      run: |
+        if (Test-Path dist/vpid_viewer.exe) {
+            Write-Host "Build successful"
+            Get-Item dist/vpid_viewer.exe | Select-Object Name, Length, LastWriteTime
+        } else {
+            Write-Error "Build failed: exe not found"
+            exit 1
+        }
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vpid_viewer-ci-build
+        path: dist/vpid_viewer.exe
+        retention-days: 7
