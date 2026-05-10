@@ -10,22 +10,23 @@ def get_base_path():
 
 sys.path.insert(0, get_base_path())
 
-from src.gui.main_window import MainWindow
-
 
 def main():
     try:
+        from src.gui.main_window import MainWindow
         app = MainWindow()
         app.run()
     except Exception as e:
         import traceback
         import tkinter as tk
         from tkinter import messagebox
-        root = tk.Tk()
-        root.withdraw()
+        if tk._default_root is None:
+            root = tk.Tk()
+            root.withdraw()
         error_msg = "{0}\n\n{1}".format(str(e), traceback.format_exc())
         messagebox.showerror("Fatal Error", error_msg)
-        root.destroy()
+        if tk._default_root:
+            tk._default_root.destroy()
 
 
 if __name__ == "__main__":
