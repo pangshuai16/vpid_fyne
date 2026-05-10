@@ -9,10 +9,6 @@ on:
 permissions:
   contents: write
 
-env:
-  PYTHON_VERSION: '3.8'
-  PYINSTALLER_VERSION: '5.13.2'
-
 jobs:
   build:
     runs-on: windows-latest
@@ -21,26 +17,48 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        architecture: 'x86'
+    - name: Install Python 3.5.4 (XP compatible)
+      shell: powershell
+      run: |
+        $url = "https://www.python.org/ftp/python/3.5.4/python-3.5.4.exe"
+        $installer = "$env:TEMP\python-3.5.4.exe"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Write-Host "Downloading Python 3.5.4 x86..."
+        Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
+        Write-Host "Installing Python 3.5.4..."
+        Start-Process -FilePath $installer -ArgumentList '/quiet InstallAllUsers=0 TargetDir=C:\Python35 Include_pip=1 Include_launcher=0' -Wait -NoNewWindow
+        if (Test-Path "C:\Python35\python.exe") {
+            Write-Host "Python 3.5.4 installed successfully"
+            & "C:\Python35\python.exe" --version
+        } else {
+            Write-Error "Python 3.5.4 installation failed"
+            exit 1
+        }
+
+    - name: Add Python 3.5 to PATH
+      shell: powershell
+      run: |
+        "C:\Python35" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        "C:\Python35\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Upgrade pip
+      run: python -m pip install --upgrade pip==20.3.4
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
+        python -m pip install -r requirements.txt
+        python -m pip install pyinstaller==3.6
 
     - name: Extract version from tag
       id: extract_version
+      shell: pwsh
       run: |
         $version = "${{ github.ref }}" -replace "refs/tags/v", ""
         echo "VERSION=$version" >> $env:GITHUB_OUTPUT
         echo "Extracted version: $version"
 
     - name: Build executable with PyInstaller
+      shell: pwsh
       run: |
         pyinstaller vpid_viewer.spec --clean --noconfirm
         if (Test-Path dist/vpid_viewer.exe) {
@@ -54,7 +72,7 @@ jobs:
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: vpid_viewer-v${{ steps.extract_version.outputs.VERSION }}-win32
+        name: vpid_viewer-v${{ steps.extract_version.outputs.VERSION }}-xp-win32
         path: dist/vpid_viewer.exe
         retention-days: 30
 
@@ -63,6 +81,6 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         tag_name: ${{ github.ref_name }}
-        name: "v${{ steps.extract_version.outputs.VERSION }}"
+        name: "v${{ steps.extract_version.outputs.VERSION }} (XP Compatible)"
         files: dist/vpid_viewer.exe
         generate_release_notes: true
