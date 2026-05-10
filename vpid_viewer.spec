@@ -4,7 +4,18 @@ import os
 block_cipher = None
 
 datas = []
-hiddenimports = ['wmi', 'winreg']
+hiddenimports = [
+    'wmi',
+    'winreg',
+    'win32com',
+    'win32com.client',
+    'pythoncom',
+    'pywintypes',
+    'win32timezone',
+    'win32api',
+    'win32con',
+    'win32process',
+]
 
 a = Analysis(
     ['main.py'],
