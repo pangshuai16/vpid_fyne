@@ -44,6 +44,9 @@ class DeviceListPanel(ttk.Frame):
         self.tree.column("vid_pid", width=140)
         self.tree.column("manufacturer", width=120)
 
+        self.tree.tag_configure("added", background="#90EE90", foreground="#006400")
+        self.tree.tag_configure("removed", background="#FFB6C1", foreground="#8B0000")
+
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
     def _on_select(self, event):
@@ -54,15 +57,30 @@ class DeviceListPanel(ttk.Frame):
             if 0 <= index < len(self.devices):
                 self.on_select_callback(self.devices[index])
 
-    def update_devices(self, devices):
+    def update_devices(self, devices, added_devices=None, removed_devices=None):
         self.devices = devices
+        added_keys = set((d.vid, d.pid, d.serial) for d in (added_devices or []))
+        removed_keys = set((d.vid, d.pid, d.serial) for d in (removed_devices or []))
+
         for item in self.tree.get_children():
             self.tree.delete(item)
+
         for device in devices:
             display_name = device.get_display_name()
             vid_pid = device.get_vid_pid_string()
             manufacturer = device.manufacturer or "N/A"
-            self.tree.insert("", "end", iid=str(len(self.tree.get_children())), values=(vid_pid, manufacturer), text=display_name)
+            device_key = (device.vid, device.pid, device.serial)
+
+            tags = []
+            if device_key in added_keys:
+                tags = ["added"]
+                display_name = "🆕 " + display_name
+            elif device_key in removed_keys:
+                tags = ["removed"]
+                display_name = "❌ " + display_name
+
+            item_id = str(len(self.tree.get_children()))
+            self.tree.insert("", "end", iid=item_id, values=(vid_pid, manufacturer), text=display_name, tags=tags)
 
     def get_selected_device(self):
         selection = self.tree.selection()

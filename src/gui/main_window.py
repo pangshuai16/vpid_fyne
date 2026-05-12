@@ -117,6 +117,9 @@ class MainWindow(object):
             self.root.after(0, lambda: self._update_status("扫描失败: {0}".format(str(e))))
 
     def _update_device_list(self, devices):
+        added = []
+        removed = []
+
         if not self.is_first_scan and self.old_devices:
             added, removed = compare_devices(self.old_devices, devices)
             self._show_change_notification(added, removed)
@@ -125,23 +128,26 @@ class MainWindow(object):
 
         self.old_devices = self.devices[:]
         self.devices = devices
-        self.device_list.update_devices(devices)
+        self.device_list.update_devices(devices, added, removed)
         count = len(devices)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self._update_status("共 {0} 个 USB 设备 | 最后刷新: {1}".format(count, timestamp))
+        change_info = ""
+        if added:
+            change_info += " (+{0})".format(len(added))
+        if removed:
+            change_info += " (-{0})".format(len(removed))
+        self._update_status("共 {0} 个 USB 设备{1} | 最后刷新: {2}".format(count, change_info, timestamp))
         self.device_detail.set_device(None)
 
     def _show_change_notification(self, added, removed):
         messages = []
         if added:
-            for device in added:
-                messages.append("➕ 新增: {0} ({1})".format(device.get_display_name(), device.get_vid_pid_string()))
+            messages.append("🆕 新增 {0} 个设备".format(len(added)))
         if removed:
-            for device in removed:
-                messages.append("➖ 移除: {0} ({1})".format(device.get_display_name(), device.get_vid_pid_string()))
+            messages.append("❌ 移除 {0} 个设备".format(len(removed)))
 
         if messages:
-            notification = "\n".join(messages)
+            notification = " | ".join(messages)
             self.status_label.config(foreground="blue")
             self._update_status(notification)
             self.root.after(3000, lambda: self.status_label.config(foreground="black"))
