@@ -18,10 +18,10 @@
 
 | 组件 | 选型 | 版本要求 | XP 兼容性 |
 |-----|------|---------|-----------|
-| **语言** | Python | 3.5-3.8 (补丁版) | ✅ 需 XP 补丁 |
+| **语言** | Python | 3.8.20 (社区补丁版) | ✅ XP 兼容 |
 | **GUI框架** | Tkinter | Python 标准库 | ✅ 原生支持 |
 | **USB读取** | WMI / winreg | 内置模块 | ✅ XP 可用 |
-| **打包工具** | PyInstaller | 4.x+ | ✅ |
+| **打包工具** | PyInstaller | 4.10 | ✅ |
 
 ---
 
@@ -103,8 +103,8 @@ class USBDevice:
 ## 五、XP 兼容性保证
 
 ### 5.1 Python 运行时
-- 使用社区 XP 补丁版 Python 3.5/3.8
-- 参考项目: https://github.com/nalexandru/python-xp-patch
+- 使用社区 XP 补丁版 Python 3.8.20 (来自 PythonVista 项目)
+- 参考项目: https://github.com/adang1345/PythonVista
 
 ### 5.2 第三方库限制
 - **禁止使用**: NumPy, Pandas, Requests (HTTP/2+ 不支持 XP)

@@ -17,37 +17,37 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Python 3.5.4 (XP compatible)
+    - name: Install Python 3.8.20 (XP compatible, community patch)
       shell: powershell
       run: |
-        $url = "https://www.python.org/ftp/python/3.5.4/python-3.5.4.exe"
-        $installer = "$env:TEMP\python-3.5.4.exe"
+        $url = "https://raw.githubusercontent.com/adang1345/PythonVista/master/3.8.20/python-3.8.20-full.exe"
+        $installer = "$env:TEMP\python-3.8.20-full.exe"
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Write-Host "Downloading Python 3.5.4 x86..."
+        Write-Host "Downloading Python 3.8.20 x86 (community XP patch)..."
         Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
-        Write-Host "Installing Python 3.5.4..."
-        Start-Process -FilePath $installer -ArgumentList '/quiet InstallAllUsers=0 TargetDir=C:\Python35 Include_pip=1 Include_launcher=0' -Wait -NoNewWindow
-        if (Test-Path "C:\Python35\python.exe") {
-            Write-Host "Python 3.5.4 installed successfully"
-            & "C:\Python35\python.exe" --version
+        Write-Host "Installing Python 3.8.20..."
+        Start-Process -FilePath $installer -ArgumentList '/quiet InstallAllUsers=0 TargetDir=C:\Python38 Include_pip=1 Include_launcher=0' -Wait -NoNewWindow
+        if (Test-Path "C:\Python38\python.exe") {
+            Write-Host "Python 3.8.20 installed successfully"
+            & "C:\Python38\python.exe" --version
         } else {
-            Write-Error "Python 3.5.4 installation failed"
+            Write-Error "Python 3.8.20 installation failed"
             exit 1
         }
 
-    - name: Add Python 3.5 to PATH
+    - name: Add Python 3.8 to PATH
       shell: powershell
       run: |
-        "C:\Python35" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        "C:\Python35\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        "C:\Python38" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        "C:\Python38\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Upgrade pip
-      run: python -m pip install --upgrade pip==20.3.4
+      run: python -m pip install --upgrade pip
 
     - name: Install dependencies
       run: |
         python -m pip install -r requirements.txt
-        python -m pip install pyinstaller==3.6
+        python -m pip install pyinstaller==4.10
 
     - name: Extract version from tag
       id: extract_version

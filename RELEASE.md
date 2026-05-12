@@ -54,20 +54,19 @@ git push origin v1.0.0
 工作流执行步骤：
 
 1. 检出代码
-2. 设置 Python 3.5 x86 环境 (XP 兼容)
+2. 设置社区补丁版 Python 3.8.20 x86 环境 (XP 兼容)
 3. 安装依赖
 4. 使用 PyInstaller 编译可执行文件
 5. 自动创建 GitHub Release 并上传 exe
 
 ## 关于 Windows XP 兼容性
 
-项目配置为使用 Python 3.5，这是最后一个官方支持 Windows XP 的 Python 版本。
+项目配置为使用社区补丁版 Python 3.8.20（来自 PythonVista 项目），支持 Windows XP 兼容性。
 
 ## XP 兼容性检查清单
 
-- [x] 使用 Python 3.5
+- [x] 使用社区补丁版 Python 3.8.20
 - [x] 使用 32 位 Python
-- [x] 使用 PyInstaller 3.6
-- [x] 避免使用 Python 3.6+ 语法
+- [x] 使用 PyInstaller 4.10
 - [x] 避免使用 Vista+ API
 - [ ] 在真实 XP 环境中测试
