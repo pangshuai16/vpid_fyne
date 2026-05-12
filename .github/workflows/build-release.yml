@@ -4,13 +4,12 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
@@ -49,6 +48,25 @@ jobs:
         python -m pip install -r requirements.txt
         python -m pip install pyinstaller==4.10
 
+    - name: Check Python syntax
+      run: |
+        python -m py_compile main.py
+        python -m py_compile src/__init__.py
+        python -m py_compile src/device_info.py
+        python -m py_compile src/usb_scanner.py
+        python -m py_compile src/gui/__init__.py
+        python -m py_compile src/gui/main_window.py
+        python -m py_compile src/gui/device_list.py
+        python -m py_compile src/gui/device_detail.py
+
+    - name: Verify imports
+      run: |
+        python -c "from src.device_info import USBDevice; print('device_info OK')"
+        python -c "from src.usb_scanner import scan_usb_devices, compare_devices; print('usb_scanner OK')"
+        python -c "from src.gui.main_window import MainWindow; print('main_window OK')"
+        python -c "from src.gui.device_list import DeviceListPanel; print('device_list OK')"
+        python -c "from src.gui.device_detail import DeviceDetailPanel; print('device_detail OK')"
+
     - name: Extract version from tag
       id: extract_version
       shell: pwsh
@@ -69,16 +87,8 @@ jobs:
             exit 1
         }
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: vpid_viewer-v${{ steps.extract_version.outputs.VERSION }}-xp-win32
-        path: dist/vpid_viewer.exe
-        retention-days: 30
-
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/')
       with:
         tag_name: ${{ github.ref_name }}
         name: "v${{ steps.extract_version.outputs.VERSION }} (XP Compatible)"
