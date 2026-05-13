@@ -3,11 +3,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 from datetime import datetime
-from typing import Optional, List, Callable
+from typing import Optional, List
 from ..device_info import USBDevice
 from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
-from .device_detail import DeviceDetailPanel
+from .device_detail import DeviceChangePanel
 from ..constants import (
     APPLE_WHITE,
     APPLE_LIGHT_GRAY,
@@ -65,7 +65,6 @@ class MainWindow:
                         font=("-apple-system", "SF Pro Text", 13),
                         padding=(8, 0))
 
-        # Apple 风格按钮
         style.configure("Apple.TButton",
                         background=APPLE_BLUE,
                         foreground="white",
@@ -203,8 +202,8 @@ class MainWindow:
         separator = ttk.Separator(paned, orient="vertical")
         paned.add(separator, weight=0)
 
-        self.device_detail = DeviceDetailPanel(paned)
-        paned.add(self.device_detail, weight=4)
+        self.device_change = DeviceChangePanel(paned, on_select_callback=self._on_change_select)
+        paned.add(self.device_change, weight=4)
 
         status_frame = ttk.Frame(self.root, style="Header.TFrame")
         status_frame.pack(side="bottom", fill="x")
@@ -279,24 +278,27 @@ class MainWindow:
         t.start()
 
     def _scan_devices(self):
-        """执行设备扫描"""
+        """执行设备扫描（在后台线程中运行）"""
         try:
             devices = scan_usb_devices()
-            self.root.after(0, lambda: self._update_device_list(devices))
+            self.root.after(0, lambda d=devices: self._update_device_list(d))
         except Exception as e:
             self.root.after(0, lambda: self._update_status("扫描失败: {0}".format(str(e))))
 
     def _update_device_list(self, devices: List[USBDevice]):
         """更新设备列表显示"""
+        prev_count = len(self.devices)
         self.devices = devices
 
         if not self.baseline_devices:
-            self.baseline_devices = devices[:]
+            self.baseline_devices = list(devices)
             self._update_baseline_status()
 
         added, removed = compare_devices(self.baseline_devices, devices)
 
-        self.device_list.update_devices(devices, added, removed)
+        self.device_list.update_devices(devices)
+        self.device_change.update_changes(added, removed)
+
         count = len(devices)
         timestamp = datetime.now().strftime("%H:%M:%S")
         change_info = ""
@@ -306,8 +308,7 @@ class MainWindow:
             change_info += " (-{0})".format(len(removed))
 
         self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change_info))
-        self._update_status("最后刷新: {0}".format(timestamp))
-        self.device_detail.set_device(None)
+        self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(timestamp, prev_count, count))
 
         if added or removed:
             self._show_change_notification(added, removed)
@@ -317,9 +318,10 @@ class MainWindow:
         if not self.devices:
             messagebox.showinfo("提示", "当前没有设备列表，请先刷新")
             return
-        self.baseline_devices = self.devices[:]
+        self.baseline_devices = list(self.devices)
         self._update_baseline_status()
-        self.device_list.update_devices(self.devices, [], [])
+        self.device_list.update_devices(self.devices)
+        self.device_change.update_changes([], [])
         self._update_status("已将当前设备列表设为基准")
         self.device_count_label.config(text="{0} 个设备已连接".format(len(self.devices)))
 
@@ -350,8 +352,37 @@ class MainWindow:
         self.status_label.config(text=message)
 
     def _on_device_select(self, device: Optional[USBDevice]):
-        """设备选择回调"""
-        self.device_detail.set_device(device)
+        """左侧全部设备列表选择回调"""
+        if device:
+            self.device_change.clear_selection()
+            info = "{0} | VID: {1} | PID: {2} | 序列号: {3}".format(
+                device.get_display_name(),
+                device.vid or "N/A",
+                device.pid or "N/A",
+                device.serial or "N/A"
+            )
+            self._update_status(info)
+
+    def _on_change_select(self, device: Optional[USBDevice]):
+        """右侧变化设备列表选择回调"""
+        if device:
+            self.device_list.clear_selection()
+            change_type = "新增" if device in self.device_change.added_devices else "移除"
+            info = "[{4}] {0} | VID: {1} | PID: {2} | 序列号: {3}".format(
+                device.get_display_name(),
+                device.vid or "N/A",
+                device.pid or "N/A",
+                device.serial or "N/A",
+                change_type
+            )
+            self._update_status(info)
+
+    def _get_selected_device(self) -> Optional[USBDevice]:
+        """获取当前选中的设备（从任意列表）"""
+        device = self.device_list.get_selected_device()
+        if device:
+            return device
+        return self.device_change.get_selected_device()
 
     def _on_refresh(self):
         """刷新按钮点击处理"""
@@ -364,17 +395,17 @@ class MainWindow:
 
     def _on_copy(self):
         """复制按钮点击处理"""
-        device = self.device_detail.get_current_device()
+        device = self._get_selected_device()
         if device:
             self.root.clipboard_clear()
             self.root.clipboard_append(device.to_clipboard_text())
-            self._update_status("已复制到剪贴板")
+            self._update_status("已复制到剪贴板: {0}".format(device.get_display_name()))
         else:
             messagebox.showinfo("提示", "请先选择一个设备")
 
     def _copy_field(self, field: str):
         """复制特定字段"""
-        device = self.device_detail.get_current_device()
+        device = self._get_selected_device()
         if device:
             value = getattr(device, field, "") or "N/A"
             self.root.clipboard_clear()
@@ -434,12 +465,14 @@ class MainWindow:
 【自动刷新】
 勾选"自动刷新"选项，每3秒自动更新设备列表
 
-【设备详情】
-点击设备列表中的设备，查看详细信息
+【设备变化】
+左侧显示全部设备列表
+右侧上方显示相对基准新增的设备（绿色）
+右侧下方显示相对基准移除的设备（红色）
 
-【新增/移除设备】
-新增设备显示在绿色区域，移除设备显示在红色区域
+【基准比对】
 比对基于基准列表，点击"设为基准"可重置基准
+首次启动自动设置基准
 """
         messagebox.showinfo("使用帮助", help_text)
 

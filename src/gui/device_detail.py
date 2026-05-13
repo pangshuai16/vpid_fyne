@@ -1,7 +1,7 @@
-"""设备详情面板组件"""
+"""设备变化面板组件 - 显示新增和移除的设备"""
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional
+from typing import Optional, List, Callable
 from ..device_info import USBDevice
 from ..constants import (
     APPLE_WHITE,
@@ -9,18 +9,21 @@ from ..constants import (
     APPLE_BLUE,
     APPLE_TEXT,
     APPLE_SECONDARY_TEXT,
-    APPLE_BORDER,
-    APPLE_GREEN,
-    APPLE_RED
+    APPLE_SUCCESS_BG,
+    APPLE_SUCCESS_TEXT,
+    APPLE_ERROR_BG,
+    APPLE_ERROR_TEXT
 )
 
 
-class DeviceDetailPanel(ttk.Frame):
-    """显示 USB 设备详细信息的面板"""
+class DeviceChangePanel(ttk.Frame):
+    """显示新增和移除 USB 设备的面板"""
 
-    def __init__(self, parent):
-        super(DeviceDetailPanel, self).__init__(parent)
-        self.current_device: Optional[USBDevice] = None
+    def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
+        super(DeviceChangePanel, self).__init__(parent)
+        self.on_select_callback = on_select_callback
+        self.added_devices: List[USBDevice] = []
+        self.removed_devices: List[USBDevice] = []
         self._setup_ui()
 
     def _setup_ui(self):
@@ -28,130 +31,178 @@ class DeviceDetailPanel(ttk.Frame):
         container = tk.Frame(self, bg=APPLE_WHITE)
         container.pack(fill="both", expand=True)
 
-        header_frame = tk.Frame(container, bg=APPLE_LIGHT_GRAY, padx=16, pady=12)
-        header_frame.pack(fill="x")
+        added_section = tk.Frame(container, bg=APPLE_WHITE)
+        added_section.pack(fill="both", expand=True, pady=(0, 4))
 
-        title_label = tk.Label(
-            header_frame,
-            text="设备详情",
+        added_header = tk.Frame(added_section, bg=APPLE_SUCCESS_BG, padx=16, pady=10)
+        added_header.pack(fill="x")
+
+        tk.Label(
+            added_header,
+            text="➕ 新增设备",
             font=("-apple-system", "SF Pro Display", 13, "bold"),
-            bg=APPLE_LIGHT_GRAY,
-            fg=APPLE_TEXT
+            bg=APPLE_SUCCESS_BG,
+            fg=APPLE_SUCCESS_TEXT
+        ).pack(side="left")
+
+        self.added_count_label = tk.Label(
+            added_header,
+            text="0 个",
+            font=("-apple-system", "SF Pro Text", 12),
+            bg=APPLE_SUCCESS_BG,
+            fg=APPLE_SUCCESS_TEXT
         )
-        title_label.pack(side="left")
+        self.added_count_label.pack(side="right")
 
-        self.icon_label = tk.Label(
-            header_frame,
-            text="⌥",
-            font=("-apple-system", "SF Pro Display", 22),
-            bg=APPLE_LIGHT_GRAY,
-            fg=APPLE_SECONDARY_TEXT
+        added_list_frame = tk.Frame(added_section, bg=APPLE_WHITE, padx=12, pady=8)
+        added_list_frame.pack(fill="both", expand=True)
+
+        self.added_tree = self._create_treeview(added_list_frame)
+        self.added_tree.tag_configure(
+            "item",
+            background=APPLE_SUCCESS_BG,
+            foreground=APPLE_SUCCESS_TEXT,
+            font=("-apple-system", "SF Pro Text", 13)
         )
-        self.icon_label.pack(side="right")
 
-        info_container = tk.Frame(container, bg=APPLE_WHITE, padx=16, pady=12)
-        info_container.pack(fill="both", expand=True)
+        separator = tk.Frame(container, bg=APPLE_LIGHT_GRAY, height=1)
+        separator.pack(fill="x", padx=12, pady=4)
 
-        # 字段定义 (标签, 属性名)
-        self.labels = {}
-        fields = [
-            ("名称", "name"),
-            ("供应商 ID", "vid"),
-            ("产品 ID", "pid"),
-            ("序列号", "serial"),
-            ("制造商", "manufacturer"),
-            ("位置", "location"),
-            ("驱动程序", "driver"),
-            ("状态", "status"),
-        ]
+        removed_section = tk.Frame(container, bg=APPLE_WHITE)
+        removed_section.pack(fill="both", expand=True, pady=(4, 0))
 
-        for i, (label_text, field) in enumerate(fields):
-            row = tk.Frame(info_container, bg=APPLE_WHITE)
-            row.pack(fill="x", pady=8)
+        removed_header = tk.Frame(removed_section, bg=APPLE_ERROR_BG, padx=16, pady=10)
+        removed_header.pack(fill="x")
 
-            label = tk.Label(
-                row,
-                text=label_text,
-                font=("-apple-system", "SF Pro Text", 12),
-                bg=APPLE_WHITE,
-                fg=APPLE_SECONDARY_TEXT,
-                width=13,
-                anchor="w"
+        tk.Label(
+            removed_header,
+            text="➖ 移除设备",
+            font=("-apple-system", "SF Pro Display", 13, "bold"),
+            bg=APPLE_ERROR_BG,
+            fg=APPLE_ERROR_TEXT
+        ).pack(side="left")
+
+        self.removed_count_label = tk.Label(
+            removed_header,
+            text="0 个",
+            font=("-apple-system", "SF Pro Text", 12),
+            bg=APPLE_ERROR_BG,
+            fg=APPLE_ERROR_TEXT
+        )
+        self.removed_count_label.pack(side="right")
+
+        removed_list_frame = tk.Frame(removed_section, bg=APPLE_WHITE, padx=12, pady=8)
+        removed_list_frame.pack(fill="both", expand=True)
+
+        self.removed_tree = self._create_treeview(removed_list_frame)
+        self.removed_tree.tag_configure(
+            "item",
+            background=APPLE_ERROR_BG,
+            foreground=APPLE_ERROR_TEXT,
+            font=("-apple-system", "SF Pro Text", 13)
+        )
+
+    def _create_treeview(self, parent):
+        """创建统一风格的 Treeview"""
+        scrollbar = ttk.Scrollbar(parent, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+
+        tree = ttk.Treeview(
+            parent,
+            columns=("vid_pid", "manufacturer"),
+            show="tree headings",
+            yscrollcommand=scrollbar.set,
+            selectmode="browse",
+            height=8
+        )
+        tree.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=tree.yview)
+
+        tree.heading("#0", text="设备名称", anchor="w")
+        tree.heading("vid_pid", text="VID / PID", anchor="w")
+        tree.heading("manufacturer", text="制造商", anchor="w")
+
+        tree.column("#0", width=180, minwidth=120)
+        tree.column("vid_pid", width=130, minwidth=100)
+        tree.column("manufacturer", width=140, minwidth=100)
+
+        tree.tag_configure("normal", font=("-apple-system", "SF Pro Text", 13))
+        tree.tag_configure("selected", background=APPLE_BLUE, foreground="white")
+
+        tree.bind("<<TreeviewSelect>>", lambda e, t=tree: self._on_select(e, t))
+        tree.bind("<Button-1>", lambda e, t=tree: self._on_click(e, t))
+
+        return tree
+
+    def _on_click(self, event, tree):
+        """处理点击空白区域取消选择"""
+        region = tree.identify_region(event.x, event.y)
+        if region == "nothing":
+            tree.selection_remove(tree.selection())
+
+    def _on_select(self, event, tree):
+        """处理设备选择事件"""
+        selection = tree.selection()
+        if selection and self.on_select_callback:
+            item_id = selection[0]
+            index = tree.index(item_id)
+            if tree == self.added_tree and 0 <= index < len(self.added_devices):
+                self.on_select_callback(self.added_devices[index])
+            elif tree == self.removed_tree and 0 <= index < len(self.removed_devices):
+                self.on_select_callback(self.removed_devices[index])
+
+    def update_changes(self, added_devices: List[USBDevice], removed_devices: List[USBDevice]):
+        """更新新增和移除设备列表"""
+        self.added_devices = added_devices
+        self.removed_devices = removed_devices
+
+        self._update_tree(self.added_tree, self.added_devices, "item")
+        self.added_count_label.config(text="{0} 个".format(len(self.added_devices)))
+
+        self._update_tree(self.removed_tree, self.removed_devices, "item")
+        self.removed_count_label.config(text="{0} 个".format(len(self.removed_devices)))
+
+    def _update_tree(self, tree, device_list: List[USBDevice], tag: str):
+        """更新 Treeview 内容"""
+        for item in tree.get_children():
+            tree.delete(item)
+
+        for device in device_list:
+            display_name = device.get_display_name()
+            vid_pid = device.get_vid_pid_string()
+            manufacturer = device.manufacturer or "N/A"
+
+            tree.insert(
+                "",
+                "end",
+                values=(vid_pid, manufacturer),
+                text=display_name,
+                tags=(tag,)
             )
-            label.pack(side="left")
 
-            value_label = tk.Label(
-                row,
-                text="—",
-                font=("-apple-system", "SF Pro Text", 12),
-                bg=APPLE_WHITE,
-                fg=APPLE_TEXT,
-                anchor="w",
-                wraplength=240
-            )
-            value_label.pack(side="left", fill="x", expand=True, padx=(12, 0))
-            self.labels[field] = value_label
-
-            if i < len(fields) - 1:
-                separator = tk.Frame(info_container, bg=APPLE_BORDER, height=1)
-                separator.pack(fill="x", pady=(0, 8))
-
-        button_frame = tk.Frame(container, bg=APPLE_WHITE, padx=16, pady=12)
-        button_frame.pack(fill="x", side="bottom")
-
-        copy_frame = tk.Frame(button_frame, bg=APPLE_LIGHT_GRAY, padx=14, pady=9)
-        copy_frame.pack(side="left", padx=(0, 12))
-
-        self.copy_btn = tk.Label(
-            copy_frame,
-            text="⧉ 复制全部信息",
-            font=("-apple-system", "SF Pro Text", 11, "semibold"),
-            bg=APPLE_LIGHT_GRAY,
-            fg=APPLE_BLUE,
-            cursor="hand2"
-        )
-        self.copy_btn.pack()
-        self.copy_btn.bind("<Button-1>", self._on_copy_click)
-
-    def _on_copy_click(self, event):
-        """复制按钮点击处理"""
-        self._copy_current_device_info()
-
-    def set_device(self, device: Optional[USBDevice]):
-        """设置要显示的设备"""
-        self.current_device = device
-        if device:
-            self.labels["name"].config(text=device.name or "—")
-            self.labels["vid"].config(text=device.vid or "—")
-            self.labels["pid"].config(text=device.pid or "—")
-            self.labels["serial"].config(text=device.serial or "—")
-            self.labels["manufacturer"].config(text=device.manufacturer or "—")
-            self.labels["location"].config(text=device.location or "—")
-            self.labels["driver"].config(text=device.driver or "—")
-            self.labels["status"].config(text=device.status or "—")
-
-            # 设置状态颜色
-            status_text = device.status or ""
-            if status_text == "Connected":
-                self.labels["status"].config(fg=APPLE_GREEN)
-            elif "Error" in status_text:
-                self.labels["status"].config(fg=APPLE_RED)
-            else:
-                self.labels["status"].config(fg=APPLE_TEXT)
-        else:
-            for label in self.labels.values():
-                label.config(text="—", fg=APPLE_TEXT)
-
-    def get_current_device(self) -> Optional[USBDevice]:
+    def get_selected_device(self) -> Optional[USBDevice]:
         """获取当前选中的设备"""
-        return self.current_device
+        for tree, devices in [(self.added_tree, self.added_devices),
+                              (self.removed_tree, self.removed_devices)]:
+            selection = tree.selection()
+            if selection:
+                index = tree.index(selection[0])
+                if 0 <= index < len(devices):
+                    return devices[index]
+        return None
 
-    def _copy_current_device_info(self):
-        """复制当前设备信息到剪贴板"""
-        if self.current_device:
-            text = self.current_device.to_clipboard_text()
-            try:
-                self.master.clipboard_clear()
-                self.master.clipboard_append(text)
-            except:
-                pass
+    def clear_selection(self):
+        """清除所有选择"""
+        for tree in [self.added_tree, self.removed_tree]:
+            for item in tree.selection():
+                tree.selection_remove(item)
+
+    def clear(self):
+        """清空所有显示"""
+        for tree in [self.added_tree, self.removed_tree]:
+            for item in tree.get_children():
+                tree.delete(item)
+        self.added_devices = []
+        self.removed_devices = []
+        self.added_count_label.config(text="0 个")
+        self.removed_count_label.config(text="0 个")
