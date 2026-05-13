@@ -338,7 +338,7 @@ class MainWindow(object):
         self.root.attributes("-fullscreen", not state)
 
     def _show_about(self):
-        about_text = """USB 设备管理器 v1.0.0
+        about_text = """USB 设备管理器 v1.1.0
 
 用于查看和管理系统中 USB 设备的详细信息
 
@@ -348,6 +348,8 @@ class MainWindow(object):
 • 设备序列号追踪
 • 制造商信息查看
 • 自动刷新支持
+• Apple 风格 UI 设计
+• 新增/移除设备高亮显示
 
 © 2024 USB Manager
 """
