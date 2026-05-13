@@ -4,18 +4,11 @@ from tkinter import ttk
 from typing import Optional, List, Callable
 from ..device_info import USBDevice
 from ..constants import (
-    APPLE_WHITE,
-    APPLE_LIGHT_GRAY,
-    APPLE_BLUE,
-    APPLE_TEXT,
-    APPLE_SECONDARY_TEXT,
-    APPLE_SUCCESS_BG,
-    APPLE_SUCCESS_TEXT,
-    APPLE_ERROR_BG,
-    APPLE_ERROR_TEXT,
-    APPLE_VID_COLOR,
-    APPLE_PID_COLOR,
-    MONO_FONT
+    BG, BG_HEADER, PRIMARY, TEXT, TEXT_SECONDARY, TEXT_ON_PRIMARY,
+    SELECT_BG, SELECT_FG, ITEM_HOVER_BG, BORDER,
+    SUCCESS_BG, SUCCESS_TEXT, ERROR_BG, ERROR_TEXT,
+    FONT_SYSTEM, FONT_SYSTEM_BOLD, FONT_SYSTEM_SMALL,
+    VID_COLOR, PID_COLOR,
 )
 
 
@@ -31,78 +24,78 @@ class DeviceChangePanel(ttk.Frame):
 
     def _setup_ui(self):
         """初始化 UI 组件"""
-        container = tk.Frame(self, bg=APPLE_WHITE)
+        container = tk.Frame(self, bg=BG)
         container.pack(fill="both", expand=True)
 
-        added_section = tk.Frame(container, bg=APPLE_WHITE)
+        added_section = tk.Frame(container, bg=BG)
         added_section.pack(fill="both", expand=True, pady=(0, 4))
 
-        added_header = tk.Frame(added_section, bg=APPLE_SUCCESS_BG, padx=16, pady=10)
+        added_header = tk.Frame(added_section, bg=SUCCESS_BG, padx=16, pady=8)
         added_header.pack(fill="x")
 
         tk.Label(
             added_header,
-            text="➕ 新增设备",
-            font=("-apple-system", "SF Pro Display", 13, "bold"),
-            bg=APPLE_SUCCESS_BG,
-            fg=APPLE_SUCCESS_TEXT
+            text="+ 新增设备",
+            font=FONT_SYSTEM_BOLD,
+            bg=SUCCESS_BG,
+            fg=SUCCESS_TEXT
         ).pack(side="left")
 
         self.added_count_label = tk.Label(
             added_header,
             text="0 个",
-            font=("-apple-system", "SF Pro Text", 12),
-            bg=APPLE_SUCCESS_BG,
-            fg=APPLE_SUCCESS_TEXT
+            font=FONT_SYSTEM_SMALL,
+            bg=SUCCESS_BG,
+            fg=SUCCESS_TEXT
         )
         self.added_count_label.pack(side="right")
 
-        added_list_frame = tk.Frame(added_section, bg=APPLE_WHITE, padx=12, pady=8)
+        added_list_frame = tk.Frame(added_section, bg=BG)
         added_list_frame.pack(fill="both", expand=True)
 
         self.added_tree = self._create_treeview(added_list_frame)
         self.added_tree.tag_configure(
             "added",
-            background=APPLE_SUCCESS_BG,
-            foreground=APPLE_SUCCESS_TEXT,
-            font=("-apple-system", "SF Pro Text", 13)
+            background=SUCCESS_BG,
+            foreground=SUCCESS_TEXT,
+            font=FONT_SYSTEM
         )
 
-        separator = tk.Frame(container, bg=APPLE_LIGHT_GRAY, height=1)
-        separator.pack(fill="x", padx=12, pady=4)
+        separator = tk.Frame(container, bg=BORDER, height=1)
+        separator.pack(fill="x", padx=8, pady=4)
 
-        removed_section = tk.Frame(container, bg=APPLE_WHITE)
+        removed_section = tk.Frame(container, bg=BG)
         removed_section.pack(fill="both", expand=True, pady=(4, 0))
 
-        removed_header = tk.Frame(removed_section, bg=APPLE_ERROR_BG, padx=16, pady=10)
+        removed_header = tk.Frame(removed_section, bg=ERROR_BG, padx=16, pady=8)
         removed_header.pack(fill="x")
 
         tk.Label(
             removed_header,
-            text="➖ 移除设备",
-            font=("-apple-system", "SF Pro Display", 13, "bold"),
-            bg=APPLE_ERROR_BG,
-            fg=APPLE_ERROR_TEXT
+            text="- 移除设备",
+            font=FONT_SYSTEM_BOLD,
+            bg=ERROR_BG,
+            fg=ERROR_TEXT
         ).pack(side="left")
 
         self.removed_count_label = tk.Label(
             removed_header,
             text="0 个",
-            font=("-apple-system", "SF Pro Text", 12),
-            bg=APPLE_ERROR_BG,
-            fg=APPLE_ERROR_TEXT
+            font=FONT_SYSTEM_SMALL,
+            bg=ERROR_BG,
+            fg=ERROR_TEXT
         )
         self.removed_count_label.pack(side="right")
 
-        removed_list_frame = tk.Frame(removed_section, bg=APPLE_WHITE, padx=12, pady=8)
+        removed_list_frame = tk.Frame(removed_section, bg=BG)
         removed_list_frame.pack(fill="both", expand=True)
 
         self.removed_tree = self._create_treeview(removed_list_frame)
         self.removed_tree.tag_configure(
             "removed",
-            background=APPLE_ERROR_BG,
-            foreground=APPLE_ERROR_TEXT,
-            font=("-apple-system", "SF Pro Text", 13)
+            background=ERROR_BG,
+            foreground=ERROR_TEXT,
+            font=FONT_SYSTEM
         )
 
     def _create_treeview(self, parent):
@@ -112,27 +105,24 @@ class DeviceChangePanel(ttk.Frame):
 
         tree = ttk.Treeview(
             parent,
-            columns=("name", "vid", "pid"),
-            show="headings",
+            columns=("vid", "pid"),
+            show="tree headings",
             yscrollcommand=scrollbar.set,
             selectmode="browse",
-            height=8
         )
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=tree.yview)
 
-        tree.heading("name", text="设备名称", anchor="w")
-        tree.heading("vid", text="VID", anchor="center")
-        tree.heading("pid", text="PID", anchor="center")
+        tree.heading("#0", text="设备名称", anchor="w")
+        tree.heading("vid", text="VID", anchor="w")
+        tree.heading("pid", text="PID", anchor="w")
 
-        tree.column("name", width=180, minwidth=120, anchor="w")
-        tree.column("vid", width=80, minwidth=60, anchor="center")
-        tree.column("pid", width=80, minwidth=60, anchor="center")
+        tree.column("#0", width=140, minwidth=80, anchor="w", stretch=True)
+        tree.column("vid", width=70, minwidth=50, anchor="w", stretch=True)
+        tree.column("pid", width=70, minwidth=50, anchor="w", stretch=True)
 
-        tree.tag_configure("normal", font=("-apple-system", "SF Pro Text", 13))
-        tree.tag_configure("vid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_VID_COLOR)
-        tree.tag_configure("pid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_PID_COLOR)
-        tree.tag_configure("selected", background=APPLE_BLUE, foreground="white")
+        tree.tag_configure("normal", font=FONT_SYSTEM)
+        tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
 
         tree.bind("<<TreeviewSelect>>", lambda e, t=tree: self._on_select(e, t))
         tree.bind("<Button-1>", lambda e, t=tree: self._on_click(e, t))
@@ -180,7 +170,8 @@ class DeviceChangePanel(ttk.Frame):
             tree.insert(
                 "",
                 "end",
-                values=(name, vid, pid),
+                text=name,
+                values=(vid, pid),
                 tags=(tag,)
             )
 

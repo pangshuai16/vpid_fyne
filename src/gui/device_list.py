@@ -4,14 +4,9 @@ from tkinter import ttk
 from typing import Optional, List, Callable
 from ..device_info import USBDevice
 from ..constants import (
-    APPLE_WHITE,
-    APPLE_LIGHT_GRAY,
-    APPLE_BLUE,
-    APPLE_TEXT,
-    APPLE_SECONDARY_TEXT,
-    APPLE_VID_COLOR,
-    APPLE_PID_COLOR,
-    MONO_FONT
+    BG, BG_HEADER, PRIMARY, TEXT, TEXT_SECONDARY, TEXT_ON_PRIMARY,
+    SELECT_BG, SELECT_FG, ITEM_HOVER_BG, BORDER,
+    FONT_SYSTEM, FONT_SYSTEM_BOLD, FONT_SYSTEM_SMALL,
 )
 
 
@@ -26,30 +21,30 @@ class DeviceListPanel(ttk.Frame):
 
     def _setup_ui(self):
         """初始化 UI 组件"""
-        container = tk.Frame(self, bg=APPLE_WHITE)
+        container = tk.Frame(self, bg=BG)
         container.pack(fill="both", expand=True)
 
-        all_header = tk.Frame(container, bg=APPLE_LIGHT_GRAY, padx=16, pady=12)
+        all_header = tk.Frame(container, bg=BG_HEADER, padx=16, pady=12)
         all_header.pack(fill="x")
 
         tk.Label(
             all_header,
             text="全部设备",
-            font=("-apple-system", "SF Pro Display", 13, "bold"),
-            bg=APPLE_LIGHT_GRAY,
-            fg=APPLE_TEXT
+            font=FONT_SYSTEM_BOLD,
+            bg=BG_HEADER,
+            fg=TEXT
         ).pack(side="left")
 
         self.count_label = tk.Label(
             all_header,
             text="0 个",
-            font=("-apple-system", "SF Pro Text", 12),
-            bg=APPLE_LIGHT_GRAY,
-            fg=APPLE_SECONDARY_TEXT
+            font=FONT_SYSTEM_SMALL,
+            bg=BG_HEADER,
+            fg=TEXT_SECONDARY
         )
         self.count_label.pack(side="right")
 
-        all_list_frame = tk.Frame(container, bg=APPLE_WHITE, padx=12, pady=8)
+        all_list_frame = tk.Frame(container, bg=BG)
         all_list_frame.pack(fill="both", expand=True)
 
         self.all_tree = self._create_treeview(all_list_frame)
@@ -61,29 +56,26 @@ class DeviceListPanel(ttk.Frame):
 
         tree = ttk.Treeview(
             parent,
-            columns=("name", "vid", "pid", "serial"),
-            show="headings",
+            columns=("vid", "pid", "serial"),
+            show="tree headings",
             yscrollcommand=scrollbar.set,
             selectmode="browse",
-            height=20
         )
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=tree.yview)
 
-        tree.heading("name", text="设备名称", anchor="w")
-        tree.heading("vid", text="VID", anchor="center")
-        tree.heading("pid", text="PID", anchor="center")
+        tree.heading("#0", text="设备名称", anchor="w")
+        tree.heading("vid", text="VID", anchor="w")
+        tree.heading("pid", text="PID", anchor="w")
         tree.heading("serial", text="序列号", anchor="w")
 
-        tree.column("name", width=200, minwidth=130, anchor="w")
-        tree.column("vid", width=90, minwidth=70, anchor="center")
-        tree.column("pid", width=90, minwidth=70, anchor="center")
-        tree.column("serial", width=130, minwidth=80, anchor="w")
+        tree.column("#0", width=180, minwidth=100, anchor="w", stretch=True)
+        tree.column("vid", width=80, minwidth=60, anchor="w", stretch=True)
+        tree.column("pid", width=80, minwidth=60, anchor="w", stretch=True)
+        tree.column("serial", width=120, minwidth=60, anchor="w", stretch=True)
 
-        tree.tag_configure("normal", font=("-apple-system", "SF Pro Text", 13))
-        tree.tag_configure("vid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_VID_COLOR)
-        tree.tag_configure("pid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_PID_COLOR)
-        tree.tag_configure("selected", background=APPLE_BLUE, foreground="white")
+        tree.tag_configure("normal", font=FONT_SYSTEM)
+        tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
 
         tree.bind("<<TreeviewSelect>>", lambda e: self._on_select(e))
         tree.bind("<Button-1>", lambda e: self._on_click(e))
@@ -125,7 +117,8 @@ class DeviceListPanel(ttk.Frame):
             tree.insert(
                 "",
                 "end",
-                values=(name, vid, pid, serial),
+                text=name,
+                values=(vid, pid, serial),
                 tags=("normal",)
             )
 
