@@ -11,11 +11,22 @@ def extract_vid_pid(device_id):
     return vid, pid
 
 
+def extract_serial_from_device_id(device_id):
+    """从设备ID中提取序列号"""
+    # 设备ID格式通常为: USB\VID_xxxx&PID_xxxx\SerialNumber
+    parts = str(device_id).split('\\')
+    if len(parts) >= 3:
+        return parts[2]
+    return ""
+
+
 def scan_usb_devices():
     devices = []
+    # 优先使用 WMI 扫描（更准确的实时状态）
     devices_wmi = _scan_via_wmi()
     if devices_wmi:
         devices.extend(devices_wmi)
+    # 只在 WMI 扫描失败时才使用注册表扫描
     if not devices:
         devices_reg = _scan_via_registry()
         if devices_reg:
@@ -35,10 +46,11 @@ def _scan_via_wmi():
                 parts = usb.PNPDeviceID.split('\\')
                 if parts:
                     manufacturer = parts[0]
+            serial = extract_serial_from_device_id(usb.DeviceID or "")
             device = USBDevice(
                 vid=vid,
                 pid=pid,
-                serial=usb.DeviceID or "",
+                serial=serial,
                 name=usb.Name or usb.Caption or "USB Device",
                 manufacturer=manufacturer,
                 location=getattr(usb, 'DeviceLocator', '') or getattr(usb, 'Location', ''),
@@ -70,7 +82,7 @@ def _scan_via_registry():
                                 pid_key_name = winreg.EnumKey(vid_key, j)
                                 pid_path = "{0}\\{1}".format(vid_path, pid_key_name)
                                 device = _parse_registry_device(pid_path, vid_key_name, pid_key_name)
-                                if device:
+                                if device and device.status == "Connected":  # 只添加已连接的设备
                                     devices.append(device)
                                 j += 1
                             except OSError:
@@ -89,7 +101,11 @@ def _parse_registry_device(path, vid, pid):
             device_id = "USB\\VID_{0}&PID_{1}".format(vid, pid)
             name = _get_registry_value(key, "FriendlyName") or _get_registry_value(key, "DeviceDesc") or "USB Device"
             manufacturer = _get_registry_value(key, "Mfg") or ""
-            serial = _get_registry_value(key, "SerialNumber") or ""
+            serial = ""  # 注册表键名本身就是序列号
+            # 获取序列号（路径的最后部分）
+            path_parts = path.split('\\')
+            if len(path_parts) >= 4:
+                serial = path_parts[3]
             driver = _get_registry_value(key, "Driver") or ""
             location = _get_registry_value(key, "LocationInformation") or ""
             status = "Unknown"
