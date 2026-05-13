@@ -86,7 +86,7 @@ class MainWindow:
                         relief="flat",
                         borderwidth=0)
 
-        style.configure("Apple.TCheckbutton",
+        style.configure("Flat.TCheckbutton",
                         background=BG,
                         foreground=TEXT,
                         font=FONT_SYSTEM,
@@ -104,8 +104,8 @@ class MainWindow:
                         foreground=TEXT,
                         fieldbackground="#FFFFFF",
                         font=FONT_SYSTEM,
-                        rowheight=32,
-                        borderwidth=0)
+                        rowheight=26,
+                        borderwidth=1)
 
         style.configure("Treeview.Heading",
                         background=BG_HEADER,
@@ -181,7 +181,7 @@ class MainWindow:
         self.auto_refresh_check = ttk.Checkbutton(
             toolbar,
             text="自动刷新 (3s)",
-            style="Apple.TCheckbutton",
+            style="Flat.TCheckbutton",
             variable=self.auto_refresh_var,
             command=self._toggle_auto_refresh
         )

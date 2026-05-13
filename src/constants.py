@@ -21,12 +21,12 @@ VID_COLOR = "#8764B8"
 PID_COLOR = "#038387"
 MENU_BG = "#FFFFFF"
 
-FONT_SYSTEM = ("Segoe UI", 12)
-FONT_SYSTEM_BOLD = ("Segoe UI", 12, "bold")
-FONT_SYSTEM_SMALL = ("Segoe UI", 11)
-FONT_MONO = ("Consolas", 11, "bold")
-FONT_TITLE = ("Segoe UI", 18, "bold")
-FONT_SUBTITLE = ("Segoe UI", 11)
+FONT_SYSTEM = ("Segoe UI", 10)
+FONT_SYSTEM_BOLD = ("Segoe UI", 10, "bold")
+FONT_SYSTEM_SMALL = ("Segoe UI", 9)
+FONT_MONO = ("Consolas", 9, "bold")
+FONT_TITLE = ("Segoe UI", 14, "bold")
+FONT_SUBTITLE = ("Segoe UI", 9)
 
 AUTO_REFRESH_INTERVAL = 3000
 
