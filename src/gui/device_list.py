@@ -8,7 +8,10 @@ from ..constants import (
     APPLE_LIGHT_GRAY,
     APPLE_BLUE,
     APPLE_TEXT,
-    APPLE_SECONDARY_TEXT
+    APPLE_SECONDARY_TEXT,
+    APPLE_VID_COLOR,
+    APPLE_PID_COLOR,
+    MONO_FONT
 )
 
 
@@ -58,8 +61,8 @@ class DeviceListPanel(ttk.Frame):
 
         tree = ttk.Treeview(
             parent,
-            columns=("vid_pid", "manufacturer", "serial"),
-            show="tree headings",
+            columns=("name", "vid", "pid", "serial"),
+            show="headings",
             yscrollcommand=scrollbar.set,
             selectmode="browse",
             height=20
@@ -67,17 +70,19 @@ class DeviceListPanel(ttk.Frame):
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=tree.yview)
 
-        tree.heading("#0", text="设备名称", anchor="w")
-        tree.heading("vid_pid", text="VID / PID", anchor="w")
-        tree.heading("manufacturer", text="制造商", anchor="w")
+        tree.heading("name", text="设备名称", anchor="w")
+        tree.heading("vid", text="VID", anchor="center")
+        tree.heading("pid", text="PID", anchor="center")
         tree.heading("serial", text="序列号", anchor="w")
 
-        tree.column("#0", width=200, minwidth=130)
-        tree.column("vid_pid", width=140, minwidth=100)
-        tree.column("manufacturer", width=140, minwidth=100)
-        tree.column("serial", width=120, minwidth=80)
+        tree.column("name", width=200, minwidth=130, anchor="w")
+        tree.column("vid", width=90, minwidth=70, anchor="center")
+        tree.column("pid", width=90, minwidth=70, anchor="center")
+        tree.column("serial", width=130, minwidth=80, anchor="w")
 
         tree.tag_configure("normal", font=("-apple-system", "SF Pro Text", 13))
+        tree.tag_configure("vid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_VID_COLOR)
+        tree.tag_configure("pid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_PID_COLOR)
         tree.tag_configure("selected", background=APPLE_BLUE, foreground="white")
 
         tree.bind("<<TreeviewSelect>>", lambda e: self._on_select(e))
@@ -103,26 +108,25 @@ class DeviceListPanel(ttk.Frame):
     def update_devices(self, devices: List[USBDevice]):
         """更新设备列表显示"""
         self.devices = devices
-        self._update_tree(self.all_tree, self.devices, "normal")
+        self._update_tree(self.all_tree, self.devices)
         self.count_label.config(text="{0} 个".format(len(devices)))
 
-    def _update_tree(self, tree, device_list: List[USBDevice], tag: str):
+    def _update_tree(self, tree, device_list: List[USBDevice]):
         """更新 Treeview 内容"""
         for item in tree.get_children():
             tree.delete(item)
 
         for device in device_list:
-            display_name = device.get_display_name()
-            vid_pid = device.get_vid_pid_string()
-            manufacturer = device.manufacturer or "N/A"
-            serial = device.serial or "N/A"
+            name = device.get_display_name()
+            vid = device.vid or "—"
+            pid = device.pid or "—"
+            serial = device.serial or "—"
 
             tree.insert(
                 "",
                 "end",
-                values=(vid_pid, manufacturer, serial),
-                text=display_name,
-                tags=(tag,)
+                values=(name, vid, pid, serial),
+                tags=("normal",)
             )
 
     def get_selected_device(self) -> Optional[USBDevice]:

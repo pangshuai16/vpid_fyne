@@ -12,7 +12,10 @@ from ..constants import (
     APPLE_SUCCESS_BG,
     APPLE_SUCCESS_TEXT,
     APPLE_ERROR_BG,
-    APPLE_ERROR_TEXT
+    APPLE_ERROR_TEXT,
+    APPLE_VID_COLOR,
+    APPLE_PID_COLOR,
+    MONO_FONT
 )
 
 
@@ -59,7 +62,7 @@ class DeviceChangePanel(ttk.Frame):
 
         self.added_tree = self._create_treeview(added_list_frame)
         self.added_tree.tag_configure(
-            "item",
+            "added",
             background=APPLE_SUCCESS_BG,
             foreground=APPLE_SUCCESS_TEXT,
             font=("-apple-system", "SF Pro Text", 13)
@@ -96,7 +99,7 @@ class DeviceChangePanel(ttk.Frame):
 
         self.removed_tree = self._create_treeview(removed_list_frame)
         self.removed_tree.tag_configure(
-            "item",
+            "removed",
             background=APPLE_ERROR_BG,
             foreground=APPLE_ERROR_TEXT,
             font=("-apple-system", "SF Pro Text", 13)
@@ -109,8 +112,8 @@ class DeviceChangePanel(ttk.Frame):
 
         tree = ttk.Treeview(
             parent,
-            columns=("vid_pid", "manufacturer"),
-            show="tree headings",
+            columns=("name", "vid", "pid"),
+            show="headings",
             yscrollcommand=scrollbar.set,
             selectmode="browse",
             height=8
@@ -118,15 +121,17 @@ class DeviceChangePanel(ttk.Frame):
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=tree.yview)
 
-        tree.heading("#0", text="设备名称", anchor="w")
-        tree.heading("vid_pid", text="VID / PID", anchor="w")
-        tree.heading("manufacturer", text="制造商", anchor="w")
+        tree.heading("name", text="设备名称", anchor="w")
+        tree.heading("vid", text="VID", anchor="center")
+        tree.heading("pid", text="PID", anchor="center")
 
-        tree.column("#0", width=180, minwidth=120)
-        tree.column("vid_pid", width=130, minwidth=100)
-        tree.column("manufacturer", width=140, minwidth=100)
+        tree.column("name", width=180, minwidth=120, anchor="w")
+        tree.column("vid", width=80, minwidth=60, anchor="center")
+        tree.column("pid", width=80, minwidth=60, anchor="center")
 
         tree.tag_configure("normal", font=("-apple-system", "SF Pro Text", 13))
+        tree.tag_configure("vid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_VID_COLOR)
+        tree.tag_configure("pid_tag", font=(MONO_FONT, 12, "bold"), foreground=APPLE_PID_COLOR)
         tree.tag_configure("selected", background=APPLE_BLUE, foreground="white")
 
         tree.bind("<<TreeviewSelect>>", lambda e, t=tree: self._on_select(e, t))
@@ -156,10 +161,10 @@ class DeviceChangePanel(ttk.Frame):
         self.added_devices = added_devices
         self.removed_devices = removed_devices
 
-        self._update_tree(self.added_tree, self.added_devices, "item")
+        self._update_tree(self.added_tree, self.added_devices, "added")
         self.added_count_label.config(text="{0} 个".format(len(self.added_devices)))
 
-        self._update_tree(self.removed_tree, self.removed_devices, "item")
+        self._update_tree(self.removed_tree, self.removed_devices, "removed")
         self.removed_count_label.config(text="{0} 个".format(len(self.removed_devices)))
 
     def _update_tree(self, tree, device_list: List[USBDevice], tag: str):
@@ -168,15 +173,14 @@ class DeviceChangePanel(ttk.Frame):
             tree.delete(item)
 
         for device in device_list:
-            display_name = device.get_display_name()
-            vid_pid = device.get_vid_pid_string()
-            manufacturer = device.manufacturer or "N/A"
+            name = device.get_display_name()
+            vid = device.vid or "—"
+            pid = device.pid or "—"
 
             tree.insert(
                 "",
                 "end",
-                values=(vid_pid, manufacturer),
-                text=display_name,
+                values=(name, vid, pid),
                 tags=(tag,)
             )
 
