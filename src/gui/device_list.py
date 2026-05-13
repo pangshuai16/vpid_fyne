@@ -1,115 +1,121 @@
+"""设备列表面板组件"""
 import tkinter as tk
 from tkinter import ttk
+from typing import Optional, List, Callable
 from ..device_info import USBDevice
+from ..constants import (
+    APPLE_WHITE,
+    APPLE_LIGHT_GRAY,
+    APPLE_BLUE,
+    APPLE_TEXT,
+    APPLE_SECONDARY_TEXT,
+    APPLE_SUCCESS_BG,
+    APPLE_SUCCESS_TEXT,
+    APPLE_ERROR_BG,
+    APPLE_ERROR_TEXT
+)
 
 
 class DeviceListPanel(ttk.Frame):
-    def __init__(self, parent, on_select_callback=None):
+    """显示 USB 设备列表的面板"""
+
+    def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
         super(DeviceListPanel, self).__init__(parent)
         self.on_select_callback = on_select_callback
-        self.devices = []
-        self.added_devices = []
-        self.removed_devices = []
+        self.devices: List[USBDevice] = []
+        self.added_devices: List[USBDevice] = []
+        self.removed_devices: List[USBDevice] = []
         self._setup_ui()
 
     def _setup_ui(self):
-        # Apple-inspired color palette
-        bg_color = "#FFFFFF"
-        header_bg = "#F9FAFB"
-        text_color = "#1D1D1F"
-        secondary_text = "#6E6E73"
-        success_bg = "#F2FBF6"
-        success_text = "#1F7F3F"
-        error_bg = "#FEF5F5"
-        error_text = "#C83C3C"
-
-        container = tk.Frame(self, bg=bg_color)
+        """初始化 UI 组件"""
+        container = tk.Frame(self, bg=APPLE_WHITE)
         container.pack(fill="both", expand=True)
 
-        # === All Devices Section ===
-        all_header = tk.Frame(container, bg=header_bg, padx=16, pady=12)
+        # 全部设备区域
+        all_header = tk.Frame(container, bg=APPLE_LIGHT_GRAY, padx=16, pady=12)
         all_header.pack(fill="x")
 
         tk.Label(
             all_header,
             text="全部设备",
             font=("-apple-system", "SF Pro Display", 13, "bold"),
-            bg=header_bg,
-            fg=text_color
+            bg=APPLE_LIGHT_GRAY,
+            fg=APPLE_TEXT
         ).pack(side="left")
 
         self.count_label = tk.Label(
             all_header,
             text="0",
             font=("-apple-system", "SF Pro Text", 12),
-            bg=header_bg,
-            fg=secondary_text
+            bg=APPLE_LIGHT_GRAY,
+            fg=APPLE_SECONDARY_TEXT
         )
         self.count_label.pack(side="right")
 
-        all_list_frame = tk.Frame(container, bg=bg_color, padx=12, pady=8)
+        all_list_frame = tk.Frame(container, bg=APPLE_WHITE, padx=12, pady=8)
         all_list_frame.pack(fill="both", expand=True)
 
         self.all_tree = self._create_treeview(all_list_frame, "all")
 
-        # === Added Devices Section ===
-        added_header = tk.Frame(container, bg=success_bg, padx=16, pady=10)
+        # 新增设备区域
+        added_header = tk.Frame(container, bg=APPLE_SUCCESS_BG, padx=16, pady=10)
         added_header.pack(fill="x", pady=(12, 0))
 
         tk.Label(
             added_header,
             text="➕ 新增设备",
             font=("-apple-system", "SF Pro Display", 12, "bold"),
-            bg=success_bg,
-            fg=success_text
+            bg=APPLE_SUCCESS_BG,
+            fg=APPLE_SUCCESS_TEXT
         ).pack(side="left")
 
         self.added_count_label = tk.Label(
             added_header,
             text="0",
             font=("-apple-system", "SF Pro Text", 11),
-            bg=success_bg,
-            fg=success_text
+            bg=APPLE_SUCCESS_BG,
+            fg=APPLE_SUCCESS_TEXT
         )
         self.added_count_label.pack(side="right")
 
-        added_list_frame = tk.Frame(container, bg=bg_color, padx=12, pady=8)
+        added_list_frame = tk.Frame(container, bg=APPLE_WHITE, padx=12, pady=8)
         added_list_frame.pack(fill="x")
 
         self.added_tree = self._create_treeview(added_list_frame, "added")
-        self.added_tree.tag_configure("item", background=success_bg, foreground=success_text,
+        self.added_tree.tag_configure("item", background=APPLE_SUCCESS_BG, foreground=APPLE_SUCCESS_TEXT,
                                       font=("-apple-system", "SF Pro Text", 13))
 
-        # === Removed Devices Section ===
-        removed_header = tk.Frame(container, bg=error_bg, padx=16, pady=10)
+        # 移除设备区域
+        removed_header = tk.Frame(container, bg=APPLE_ERROR_BG, padx=16, pady=10)
         removed_header.pack(fill="x", pady=(12, 0))
 
         tk.Label(
             removed_header,
             text="➖ 移除设备",
             font=("-apple-system", "SF Pro Display", 12, "bold"),
-            bg=error_bg,
-            fg=error_text
+            bg=APPLE_ERROR_BG,
+            fg=APPLE_ERROR_TEXT
         ).pack(side="left")
 
         self.removed_count_label = tk.Label(
             removed_header,
             text="0",
             font=("-apple-system", "SF Pro Text", 11),
-            bg=error_bg,
-            fg=error_text
+            bg=APPLE_ERROR_BG,
+            fg=APPLE_ERROR_TEXT
         )
         self.removed_count_label.pack(side="right")
 
-        removed_list_frame = tk.Frame(container, bg=bg_color, padx=12, pady=8)
+        removed_list_frame = tk.Frame(container, bg=APPLE_WHITE, padx=12, pady=8)
         removed_list_frame.pack(fill="x")
 
         self.removed_tree = self._create_treeview(removed_list_frame, "removed")
-        self.removed_tree.tag_configure("item", background=error_bg, foreground=error_text,
+        self.removed_tree.tag_configure("item", background=APPLE_ERROR_BG, foreground=APPLE_ERROR_TEXT,
                                         font=("-apple-system", "SF Pro Text", 13))
 
-    def _create_treeview(self, parent, prefix):
-        """Create a unified Treeview with Apple style"""
+    def _create_treeview(self, parent, prefix: str):
+        """创建统一风格的 Treeview"""
         scrollbar = ttk.Scrollbar(parent, orient="vertical")
         scrollbar.pack(side="right", fill="y")
 
@@ -133,7 +139,7 @@ class DeviceListPanel(ttk.Frame):
         tree.column("manufacturer", width=160, minwidth=100)
 
         tree.tag_configure("normal", font=("-apple-system", "SF Pro Text", 13))
-        tree.tag_configure("selected", background="#007AFF", foreground="white")
+        tree.tag_configure("selected", background=APPLE_BLUE, foreground="white")
 
         tree.bind("<<TreeviewSelect>>", lambda e, t=tree: self._on_select(e, t))
         tree.bind("<Button-1>", lambda e, t=tree: self._on_click(e, t))
@@ -141,16 +147,17 @@ class DeviceListPanel(ttk.Frame):
         return tree
 
     def _on_click(self, event, tree):
+        """处理点击空白区域取消选择"""
         region = tree.identify_region(event.x, event.y)
         if region == "nothing":
             tree.selection_remove(tree.selection())
 
     def _on_select(self, event, tree):
+        """处理设备选择事件"""
         selection = tree.selection()
         if selection and self.on_select_callback:
             item_id = selection[0]
             index = tree.index(item_id)
-            # Determine data source based on tree
             if tree == self.all_tree and 0 <= index < len(self.devices):
                 self.on_select_callback(self.devices[index])
             elif tree == self.added_tree and 0 <= index < len(self.added_devices):
@@ -158,24 +165,24 @@ class DeviceListPanel(ttk.Frame):
             elif tree == self.removed_tree and 0 <= index < len(self.removed_devices):
                 self.on_select_callback(self.removed_devices[index])
 
-    def update_devices(self, devices, added_devices=None, removed_devices=None):
+    def update_devices(self, devices: List[USBDevice], added_devices: Optional[List[USBDevice]] = None,
+                       removed_devices: Optional[List[USBDevice]] = None):
+        """更新设备列表显示"""
         self.devices = devices
         self.added_devices = added_devices or []
         self.removed_devices = removed_devices or []
 
-        # Update all devices list
         self._update_tree(self.all_tree, self.devices, "normal")
         self.count_label.config(text="{0} 个".format(len(devices)))
 
-        # Update added devices list
         self._update_tree(self.added_tree, self.added_devices, "item")
         self.added_count_label.config(text="{0} 个".format(len(self.added_devices)))
 
-        # Update removed devices list
         self._update_tree(self.removed_tree, self.removed_devices, "item")
         self.removed_count_label.config(text="{0} 个".format(len(self.removed_devices)))
 
-    def _update_tree(self, tree, device_list, tag):
+    def _update_tree(self, tree, device_list: List[USBDevice], tag: str):
+        """更新 Treeview 内容"""
         for item in tree.get_children():
             tree.delete(item)
 
@@ -184,17 +191,16 @@ class DeviceListPanel(ttk.Frame):
             vid_pid = device.get_vid_pid_string()
             manufacturer = device.manufacturer or "N/A"
 
-            item_id = str(len(tree.get_children()))
             tree.insert(
                 "",
                 "end",
-                iid=item_id,
                 values=(vid_pid, manufacturer),
                 text=display_name,
                 tags=(tag,)
             )
 
-    def get_selected_device(self):
+    def get_selected_device(self) -> Optional[USBDevice]:
+        """获取当前选中的设备"""
         for tree in [self.all_tree, self.added_tree, self.removed_tree]:
             selection = tree.selection()
             if selection:
@@ -208,6 +214,7 @@ class DeviceListPanel(ttk.Frame):
         return None
 
     def clear(self):
+        """清空所有显示"""
         for tree in [self.all_tree, self.added_tree, self.removed_tree]:
             for item in tree.get_children():
                 tree.delete(item)
