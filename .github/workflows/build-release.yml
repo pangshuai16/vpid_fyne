@@ -67,16 +67,6 @@ jobs:
         python -c "from src.gui.device_list import DeviceListPanel; print('device_list OK')"
         python -c "from src.gui.device_detail import DeviceDetailPanel; print('device_detail OK')"
 
-    - name: Extract version from tag
-      id: extract_version
-      shell: pwsh
-      run: |
-        $date = Get-Date -Format "yyyy.MM.dd"
-        $sha = "${{ github.sha }}".Substring(0, 7)
-        $version = "${date}-${sha}"
-        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-        echo "Version: $version"
-
     - name: Build executable with PyInstaller
       shell: pwsh
       run: |
@@ -92,7 +82,7 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ steps.extract_version.outputs.VERSION }}
-        name: "v${{ steps.extract_version.outputs.VERSION }} (XP Compatible)"
+        tag_name: ${{ github.ref_name }}
+        name: "${{ github.ref_name }} (XP Compatible)"
         files: dist/vpid_viewer.exe
         generate_release_notes: true

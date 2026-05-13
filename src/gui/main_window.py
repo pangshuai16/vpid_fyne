@@ -16,10 +16,9 @@ class MainWindow(object):
         self.root.minsize(900, 650)
 
         self.devices = []
-        self.old_devices = []
+        self.baseline_devices = []
         self.auto_refresh = False
         self.refresh_interval = 3000
-        self.is_first_scan = True
 
         self._setup_styles()
         self._setup_ui()
@@ -70,6 +69,13 @@ class MainWindow(object):
                         padding=10,
                         relief="flat")
 
+        style.configure("Baseline.TButton",
+                        background="#34C759",
+                        foreground="white",
+                        font=("SF Pro Text", 11),
+                        padding=10,
+                        relief="flat")
+
         style.configure("Apple.TCheckbutton",
                         background=bg_color,
                         foreground=text_color,
@@ -105,6 +111,10 @@ class MainWindow(object):
         style.map("Secondary.TButton",
                   background=[("active", "#E8E8ED"), ("pressed", "#D1D1D6")])
 
+        style.map("Baseline.TButton",
+                  background=[("active", "#2DA44E"), ("pressed", "#218737")],
+                  foreground=[("active", "white"), ("pressed", "white")])
+
         self.root.configure(bg=bg_color)
 
     def _setup_ui(self):
@@ -138,6 +148,14 @@ class MainWindow(object):
             command=self._on_refresh
         )
         self.refresh_btn.pack(side="left", padx=(0, 8))
+
+        self.baseline_btn = ttk.Button(
+            toolbar,
+            text="📌 设为基准",
+            style="Baseline.TButton",
+            command=self._on_set_baseline
+        )
+        self.baseline_btn.pack(side="left", padx=(0, 8))
 
         self.copy_btn = ttk.Button(
             toolbar,
@@ -182,6 +200,13 @@ class MainWindow(object):
         )
         self.status_label.pack(side="left", padx=15, pady=5)
 
+        self.baseline_status_label = ttk.Label(
+            status_frame,
+            text="",
+            style="Status.TLabel"
+        )
+        self.baseline_status_label.pack(side="right", padx=15, pady=5)
+
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _setup_menu(self):
@@ -197,6 +222,7 @@ class MainWindow(object):
         file_menu = tk.Menu(menubar, tearoff=0, bg="#FFFFFF", fg="#1D1D1F")
         menubar.add_cascade(label="文件", menu=file_menu)
         file_menu.add_command(label="刷新设备列表", command=self._on_refresh, accelerator="⌘R")
+        file_menu.add_command(label="设为基准", command=self._on_set_baseline)
         file_menu.add_separator()
         file_menu.add_command(label="退出", command=self._on_close)
 
@@ -240,17 +266,14 @@ class MainWindow(object):
             self.root.after(0, lambda: self._update_status("扫描失败: {0}".format(str(e))))
 
     def _update_device_list(self, devices):
-        added = []
-        removed = []
-
-        if not self.is_first_scan and self.old_devices:
-            added, removed = compare_devices(self.old_devices, devices)
-            self._show_change_notification(added, removed)
-        else:
-            self.is_first_scan = False
-
-        self.old_devices = self.devices[:]
         self.devices = devices
+
+        if not self.baseline_devices:
+            self.baseline_devices = devices[:]
+            self._update_baseline_status()
+
+        added, removed = compare_devices(self.baseline_devices, devices)
+
         self.device_list.update_devices(devices, added, removed)
         count = len(devices)
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -263,6 +286,26 @@ class MainWindow(object):
         self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change_info))
         self._update_status("最后刷新: {0}".format(timestamp))
         self.device_detail.set_device(None)
+
+        if added or removed:
+            self._show_change_notification(added, removed)
+
+    def _on_set_baseline(self):
+        if not self.devices:
+            messagebox.showinfo("提示", "当前没有设备列表，请先刷新")
+            return
+        self.baseline_devices = self.devices[:]
+        self._update_baseline_status()
+        self.device_list.update_devices(self.devices, [], [])
+        self._update_status("已将当前设备列表设为基准")
+        self.device_count_label.config(text="{0} 个设备已连接".format(len(self.devices)))
+
+    def _update_baseline_status(self):
+        if self.baseline_devices:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            self.baseline_status_label.config(
+                text="基准: {0} 个设备 ({1})".format(len(self.baseline_devices), timestamp)
+            )
 
     def _show_change_notification(self, added, removed):
         messages = []
@@ -323,7 +366,7 @@ class MainWindow(object):
         self.root.attributes("-fullscreen", not state)
 
     def _show_about(self):
-        about_text = """USB 设备管理器 v1.1.0
+        about_text = """USB 设备管理器 v1.2.0
 
 用于查看和管理系统中 USB 设备的详细信息
 
@@ -335,6 +378,7 @@ class MainWindow(object):
 • 自动刷新支持
 • Apple 风格 UI 设计
 • 新增/移除设备独立显示
+• 基准比对功能
 
 © 2024 USB Manager
 """
@@ -345,6 +389,9 @@ class MainWindow(object):
 
 【刷新设备】
 点击刷新按钮或按 ⌘R 重新扫描 USB 设备
+
+【设为基准】
+将当前设备列表设为基准，后续刷新将与基准比对
 
 【复制信息】
 选择设备后点击复制按钮，或使用快捷键 ⌘C
@@ -357,6 +404,7 @@ class MainWindow(object):
 
 【新增/移除设备】
 新增设备显示在绿色区域，移除设备显示在红色区域
+比对基于基准列表，点击"设为基准"可重置基准
 """
         messagebox.showinfo("使用帮助", help_text)
 
