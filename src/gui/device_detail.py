@@ -10,23 +10,26 @@ class DeviceDetailPanel(ttk.Frame):
         self._setup_ui()
 
     def _setup_ui(self):
+        # Apple-inspired color palette
         bg_color = "#FFFFFF"
-        header_bg = "#F5F5F7"
+        header_bg = "#F9FAFB"
         accent_color = "#007AFF"
         text_color = "#1D1D1F"
-        secondary_text = "#86868B"
-        border_color = "#E5E5E5"
+        secondary_text = "#6E6E73"
+        border_color = "#E5E5EA"
+        success_color = "#34C759"
+        error_color = "#FF3B30"
 
         container = tk.Frame(self, bg=bg_color)
         container.pack(fill="both", expand=True)
 
-        header_frame = tk.Frame(container, bg=header_bg, padx=15, pady=10)
+        header_frame = tk.Frame(container, bg=header_bg, padx=16, pady=12)
         header_frame.pack(fill="x")
 
         title_label = tk.Label(
             header_frame,
             text="设备详情",
-            font=("SF Pro Display", 12, "bold"),
+            font=("-apple-system", "SF Pro Display", 13, "bold"),
             bg=header_bg,
             fg=text_color
         )
@@ -35,13 +38,13 @@ class DeviceDetailPanel(ttk.Frame):
         self.icon_label = tk.Label(
             header_frame,
             text="⌥",
-            font=("SF Pro Display", 20),
+            font=("-apple-system", "SF Pro Display", 22),
             bg=header_bg,
             fg=secondary_text
         )
         self.icon_label.pack(side="right")
 
-        info_container = tk.Frame(container, bg=bg_color, padx=15, pady=10)
+        info_container = tk.Frame(container, bg=bg_color, padx=16, pady=12)
         info_container.pack(fill="both", expand=True)
 
         self.labels = {}
@@ -58,15 +61,15 @@ class DeviceDetailPanel(ttk.Frame):
 
         for i, (label_text, field) in enumerate(fields):
             row = tk.Frame(info_container, bg=bg_color)
-            row.pack(fill="x", pady=6)
+            row.pack(fill="x", pady=8)
 
             label = tk.Label(
                 row,
                 text=label_text,
-                font=("SF Pro Text", 11),
+                font=("-apple-system", "SF Pro Text", 12),
                 bg=bg_color,
                 fg=secondary_text,
-                width=12,
+                width=13,
                 anchor="w"
             )
             label.pack(side="left")
@@ -74,30 +77,30 @@ class DeviceDetailPanel(ttk.Frame):
             value_label = tk.Label(
                 row,
                 text="—",
-                font=("SF Pro Text", 11),
+                font=("-apple-system", "SF Pro Text", 12),
                 bg=bg_color,
                 fg=text_color,
                 anchor="w",
-                wraplength=200
+                wraplength=240
             )
-            value_label.pack(side="left", fill="x", expand=True, padx=(8, 0))
+            value_label.pack(side="left", fill="x", expand=True, padx=(12, 0))
             self.labels[field] = value_label
 
             if i < len(fields) - 1:
                 separator = tk.Frame(info_container, bg=border_color, height=1)
-                separator.pack(fill="x", pady=(0, 6))
+                separator.pack(fill="x", pady=(0, 8))
 
-        button_frame = tk.Frame(container, bg=bg_color, padx=15, pady=10)
+        button_frame = tk.Frame(container, bg=bg_color, padx=16, pady=12)
         button_frame.pack(fill="x", side="bottom")
 
-        copy_frame = tk.Frame(button_frame, bg="#F5F5F7", padx=10, pady=6)
-        copy_frame.pack(side="left", padx=(0, 8))
+        copy_frame = tk.Frame(button_frame, bg=header_bg, padx=14, pady=9)
+        copy_frame.pack(side="left", padx=(0, 12))
 
         self.copy_btn = tk.Label(
             copy_frame,
             text="⧉ 复制全部信息",
-            font=("SF Pro Text", 10),
-            bg="#F5F5F7",
+            font=("-apple-system", "SF Pro Text", 11, "semibold"),
+            bg=header_bg,
             fg=accent_color,
             cursor="hand2"
         )

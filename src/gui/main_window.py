@@ -12,9 +12,9 @@ class MainWindow(object):
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("USB 设备管理器")
-        self.root.geometry("1100x750")
-        self.root.minsize(900, 650)
-
+        self.root.geometry("1180x800")
+        self.root.minsize(980, 680)
+        
         self.devices = []
         self.baseline_devices = []
         self.auto_refresh = False
@@ -33,11 +33,17 @@ class MainWindow(object):
         except:
             pass
 
+        # Apple-inspired color palette
         bg_color = "#FFFFFF"
-        header_bg = "#F5F5F7"
+        header_bg = "#F9FAFB"
         accent_color = "#007AFF"
         text_color = "#1D1D1F"
-        secondary_text = "#86868B"
+        secondary_text = "#6E6E73"
+        border_color = "#E5E5EA"
+        success_color = "#34C759"
+        success_bg = "#F2FBF6"
+        error_color = "#FF3B30"
+        error_bg = "#FEF5F5"
 
         style.configure("TFrame", background=bg_color)
         style.configure("Main.TFrame", background=bg_color)
@@ -46,70 +52,75 @@ class MainWindow(object):
         style.configure("Title.TLabel",
                         background=header_bg,
                         foreground=text_color,
-                        font=("SF Pro Display", 18, "bold"),
-                        padding=20)
+                        font=("-apple-system", "SF Pro Display", 20, "bold"),
+                        padding=(20, 16))
 
         style.configure("Subtitle.TLabel",
                         background=header_bg,
                         foreground=secondary_text,
-                        font=("SF Pro Text", 11),
-                        padding=10)
+                        font=("-apple-system", "SF Pro Text", 13),
+                        padding=(8, 0))
 
+        # Apple-style buttons
         style.configure("Apple.TButton",
                         background=accent_color,
                         foreground="white",
-                        font=("SF Pro Text", 11),
-                        padding=10,
-                        relief="flat")
+                        font=("-apple-system", "SF Pro Text", 13, "semibold"),
+                        padding=(18, 10),
+                        relief="flat",
+                        borderwidth=0)
 
         style.configure("Secondary.TButton",
                         background="#F5F5F7",
                         foreground=text_color,
-                        font=("SF Pro Text", 11),
-                        padding=10,
-                        relief="flat")
+                        font=("-apple-system", "SF Pro Text", 13, "semibold"),
+                        padding=(18, 10),
+                        relief="flat",
+                        borderwidth=0)
 
         style.configure("Baseline.TButton",
-                        background="#34C759",
+                        background=success_color,
                         foreground="white",
-                        font=("SF Pro Text", 11),
-                        padding=10,
-                        relief="flat")
+                        font=("-apple-system", "SF Pro Text", 13, "semibold"),
+                        padding=(18, 10),
+                        relief="flat",
+                        borderwidth=0)
 
         style.configure("Apple.TCheckbutton",
                         background=bg_color,
                         foreground=text_color,
-                        font=("SF Pro Text", 11),
-                        padding=5,
+                        font=("-apple-system", "SF Pro Text", 13),
+                        padding=(10, 8),
                         relief="flat")
 
         style.configure("Status.TLabel",
                         background=header_bg,
                         foreground=secondary_text,
-                        font=("SF Pro Text", 10),
-                        padding=10)
+                        font=("-apple-system", "SF Pro Text", 12),
+                        padding=(16, 12))
 
         style.configure("Treeview",
                         background=bg_color,
                         foreground=text_color,
                         fieldbackground=bg_color,
-                        font=("SF Pro Text", 11),
-                        rowheight=32)
+                        font=("-apple-system", "SF Pro Text", 13),
+                        rowheight=38,
+                        borderwidth=0)
 
         style.configure("Treeview.Heading",
                         background=header_bg,
                         foreground=text_color,
-                        font=("SF Pro Text", 10, "bold"))
-
-        style.configure("Treeview", borderwidth=0, relief="flat")
-        style.configure("Treeview.Heading", borderwidth=0, relief="flat")
+                        font=("-apple-system", "SF Pro Text", 12, "semibold"),
+                        padding=(14, 10),
+                        borderwidth=0,
+                        relief="flat")
 
         style.map("Apple.TButton",
                   background=[("active", "#0056CC"), ("pressed", "#004499")],
                   foreground=[("active", "white"), ("pressed", "white")])
 
         style.map("Secondary.TButton",
-                  background=[("active", "#E8E8ED"), ("pressed", "#D1D1D6")])
+                  background=[("active", "#E5E5EA"), ("pressed", "#D1D1D6")])
 
         style.map("Baseline.TButton",
                   background=[("active", "#2DA44E"), ("pressed", "#218737")],
@@ -122,24 +133,24 @@ class MainWindow(object):
         header_frame.pack(side="top", fill="x")
 
         title_container = ttk.Frame(header_frame, style="Header.TFrame")
-        title_container.pack(fill="x", pady=(10, 5))
+        title_container.pack(fill="x", pady=(14, 6))
 
         title_label = ttk.Label(
             title_container,
             text="USB 设备管理器",
             style="Title.TLabel"
         )
-        title_label.pack(side="left", padx=(15, 10))
+        title_label.pack(side="left", padx=(18, 8))
 
         self.device_count_label = ttk.Label(
             title_container,
             text="0 个设备已连接",
             style="Subtitle.TLabel"
         )
-        self.device_count_label.pack(side="left", pady=(5, 0))
+        self.device_count_label.pack(side="left", pady=(4, 0))
 
         toolbar = ttk.Frame(header_frame, style="Header.TFrame")
-        toolbar.pack(fill="x", padx=15, pady=(0, 10))
+        toolbar.pack(fill="x", padx=18, pady=(0, 14))
 
         self.refresh_btn = ttk.Button(
             toolbar,
@@ -147,7 +158,7 @@ class MainWindow(object):
             style="Apple.TButton",
             command=self._on_refresh
         )
-        self.refresh_btn.pack(side="left", padx=(0, 8))
+        self.refresh_btn.pack(side="left", padx=(0, 10))
 
         self.baseline_btn = ttk.Button(
             toolbar,
@@ -155,7 +166,7 @@ class MainWindow(object):
             style="Baseline.TButton",
             command=self._on_set_baseline
         )
-        self.baseline_btn.pack(side="left", padx=(0, 8))
+        self.baseline_btn.pack(side="left", padx=(0, 10))
 
         self.copy_btn = ttk.Button(
             toolbar,
@@ -163,7 +174,7 @@ class MainWindow(object):
             style="Secondary.TButton",
             command=self._on_copy
         )
-        self.copy_btn.pack(side="left", padx=(0, 8))
+        self.copy_btn.pack(side="left", padx=(0, 18))
 
         self.auto_refresh_var = tk.BooleanVar(value=False)
         self.auto_refresh_check = ttk.Checkbutton(
@@ -173,22 +184,22 @@ class MainWindow(object):
             variable=self.auto_refresh_var,
             command=self._toggle_auto_refresh
         )
-        self.auto_refresh_check.pack(side="left", padx=(15, 0))
+        self.auto_refresh_check.pack(side="left")
 
         main_container = ttk.Frame(self.root, style="Main.TFrame")
-        main_container.pack(side="top", fill="both", expand=True, padx=15, pady=(0, 15))
+        main_container.pack(side="top", fill="both", expand=True, padx=18, pady=(0, 18))
 
         paned = ttk.PanedWindow(main_container, orient="horizontal")
         paned.pack(fill="both", expand=True)
 
         self.device_list = DeviceListPanel(paned, on_select_callback=self._on_device_select)
-        paned.add(self.device_list, weight=2)
+        paned.add(self.device_list, weight=6)
 
         separator = ttk.Separator(paned, orient="vertical")
         paned.add(separator, weight=0)
 
         self.device_detail = DeviceDetailPanel(paned)
-        paned.add(self.device_detail, weight=1)
+        paned.add(self.device_detail, weight=4)
 
         status_frame = ttk.Frame(self.root, style="Header.TFrame")
         status_frame.pack(side="bottom", fill="x")
@@ -198,14 +209,14 @@ class MainWindow(object):
             text="正在扫描 USB 设备...",
             style="Status.TLabel"
         )
-        self.status_label.pack(side="left", padx=15, pady=5)
+        self.status_label.pack(side="left", padx=18, pady=10)
 
         self.baseline_status_label = ttk.Label(
             status_frame,
             text="",
             style="Status.TLabel"
         )
-        self.baseline_status_label.pack(side="right", padx=15, pady=5)
+        self.baseline_status_label.pack(side="right", padx=18, pady=10)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -318,7 +329,7 @@ class MainWindow(object):
             notification = " | ".join(messages)
             self.status_label.config(foreground="#007AFF")
             self._update_status(notification)
-            self.root.after(3000, lambda: self.status_label.config(foreground="#86868B"))
+            self.root.after(3000, lambda: self.status_label.config(foreground="#6E6E73"))
 
     def _update_status(self, message):
         self.status_label.config(text=message)
