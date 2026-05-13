@@ -20,13 +20,13 @@ class DeviceDetailPanel(ttk.Frame):
         container = tk.Frame(self, bg=bg_color)
         container.pack(fill="both", expand=True)
 
-        header_frame = tk.Frame(container, bg=header_bg, padx=15, pady=12)
+        header_frame = tk.Frame(container, bg=header_bg, padx=15, pady=10)
         header_frame.pack(fill="x")
 
         title_label = tk.Label(
             header_frame,
             text="设备详情",
-            font=("SF Pro Display", 13, "bold"),
+            font=("SF Pro Display", 12, "bold"),
             bg=header_bg,
             fg=text_color
         )
@@ -35,14 +35,14 @@ class DeviceDetailPanel(ttk.Frame):
         self.icon_label = tk.Label(
             header_frame,
             text="⌥",
-            font=("SF Pro Display", 24),
+            font=("SF Pro Display", 20),
             bg=header_bg,
             fg=secondary_text
         )
         self.icon_label.pack(side="right")
 
-        info_container = tk.Frame(container, bg=bg_color, padx=20, pady=15)
-        info_container.pack(fill="both", expand=True, pady=(10, 0))
+        info_container = tk.Frame(container, bg=bg_color, padx=15, pady=10)
+        info_container.pack(fill="both", expand=True)
 
         self.labels = {}
         fields = [
@@ -58,15 +58,15 @@ class DeviceDetailPanel(ttk.Frame):
 
         for i, (label_text, field) in enumerate(fields):
             row = tk.Frame(info_container, bg=bg_color)
-            row.pack(fill="x", pady=8)
+            row.pack(fill="x", pady=6)
 
             label = tk.Label(
                 row,
                 text=label_text,
-                font=("SF Pro Text", 12),
+                font=("SF Pro Text", 11),
                 bg=bg_color,
                 fg=secondary_text,
-                width=15,
+                width=12,
                 anchor="w"
             )
             label.pack(side="left")
@@ -74,30 +74,29 @@ class DeviceDetailPanel(ttk.Frame):
             value_label = tk.Label(
                 row,
                 text="—",
-                font=("SF Pro Text", 12),
+                font=("SF Pro Text", 11),
                 bg=bg_color,
                 fg=text_color,
                 anchor="w",
-                wraplength=250
+                wraplength=200
             )
-            value_label.pack(side="left", fill="x", expand=True, padx=(10, 0))
+            value_label.pack(side="left", fill="x", expand=True, padx=(8, 0))
             self.labels[field] = value_label
 
             if i < len(fields) - 1:
                 separator = tk.Frame(info_container, bg=border_color, height=1)
-                separator.pack(fill="x", pady=(0, 8))
-                separator.lift()
+                separator.pack(fill="x", pady=(0, 6))
 
-        button_frame = tk.Frame(container, bg=bg_color, padx=20, pady=15)
+        button_frame = tk.Frame(container, bg=bg_color, padx=15, pady=10)
         button_frame.pack(fill="x", side="bottom")
 
-        copy_frame = tk.Frame(button_frame, bg="#F5F5F7", padx=12, pady=8)
-        copy_frame.pack(side="left", padx=(0, 10))
+        copy_frame = tk.Frame(button_frame, bg="#F5F5F7", padx=10, pady=6)
+        copy_frame.pack(side="left", padx=(0, 8))
 
         self.copy_btn = tk.Label(
             copy_frame,
             text="⧉ 复制全部信息",
-            font=("SF Pro Text", 11),
+            font=("SF Pro Text", 10),
             bg="#F5F5F7",
             fg=accent_color,
             cursor="hand2"

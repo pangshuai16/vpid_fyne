@@ -12,8 +12,8 @@ class MainWindow(object):
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("USB 设备管理器")
-        self.root.geometry("1000x650")
-        self.root.minsize(800, 550)
+        self.root.geometry("1100x750")
+        self.root.minsize(900, 650)
 
         self.devices = []
         self.old_devices = []
@@ -42,73 +42,58 @@ class MainWindow(object):
 
         style.configure("TFrame", background=bg_color)
         style.configure("Main.TFrame", background=bg_color)
-
         style.configure("Header.TFrame", background=header_bg)
 
         style.configure("Title.TLabel",
                         background=header_bg,
                         foreground=text_color,
-                        font=("SF Pro Display", 20, "bold"),
-                        padding=(20, 15))
+                        font=("SF Pro Display", 18, "bold"),
+                        padding=20)
 
         style.configure("Subtitle.TLabel",
                         background=header_bg,
                         foreground=secondary_text,
                         font=("SF Pro Text", 11),
-                        padding=(20, 0))
+                        padding=10)
 
         style.configure("Apple.TButton",
                         background=accent_color,
                         foreground="white",
-                        font=("SF Pro Text", 12),
-                        padding=(16, 8),
+                        font=("SF Pro Text", 11),
+                        padding=10,
                         relief="flat")
 
         style.configure("Secondary.TButton",
                         background="#F5F5F7",
                         foreground=text_color,
-                        font=("SF Pro Text", 12),
-                        padding=(16, 8),
+                        font=("SF Pro Text", 11),
+                        padding=10,
                         relief="flat")
 
         style.configure("Apple.TCheckbutton",
                         background=bg_color,
                         foreground=text_color,
-                        font=("SF Pro Text", 12),
-                        padding=(10, 5),
+                        font=("SF Pro Text", 11),
+                        padding=5,
                         relief="flat")
-
-        style.configure("Apple.TLabel",
-                        background=bg_color,
-                        foreground=text_color,
-                        font=("SF Pro Text", 13),
-                        padding=(10, 8))
-
-        style.configure("Section.TLabel",
-                        background=bg_color,
-                        foreground=secondary_text,
-                        font=("SF Pro Text", 11, "bold"),
-                        padding=(15, 15, 15, 5))
 
         style.configure("Status.TLabel",
                         background=header_bg,
                         foreground=secondary_text,
-                        font=("SF Pro Text", 11),
-                        padding=(15, 10))
+                        font=("SF Pro Text", 10),
+                        padding=10)
 
         style.configure("Treeview",
                         background=bg_color,
                         foreground=text_color,
                         fieldbackground=bg_color,
-                        font=("SF Pro Text", 12),
-                        rowheight=36,
-                        padding=10)
+                        font=("SF Pro Text", 11),
+                        rowheight=32)
 
         style.configure("Treeview.Heading",
                         background=header_bg,
                         foreground=text_color,
-                        font=("SF Pro Text", 11, "bold"),
-                        padding=(10, 10))
+                        font=("SF Pro Text", 10, "bold"))
 
         style.configure("Treeview", borderwidth=0, relief="flat")
         style.configure("Treeview.Heading", borderwidth=0, relief="flat")
@@ -127,24 +112,24 @@ class MainWindow(object):
         header_frame.pack(side="top", fill="x")
 
         title_container = ttk.Frame(header_frame, style="Header.TFrame")
-        title_container.pack(fill="x", pady=(15, 5))
+        title_container.pack(fill="x", pady=(10, 5))
 
         title_label = ttk.Label(
             title_container,
             text="USB 设备管理器",
             style="Title.TLabel"
         )
-        title_label.pack(side="left", padx=(20, 10))
+        title_label.pack(side="left", padx=(15, 10))
 
         self.device_count_label = ttk.Label(
             title_container,
             text="0 个设备已连接",
             style="Subtitle.TLabel"
         )
-        self.device_count_label.pack(side="left", pady=(8, 0))
+        self.device_count_label.pack(side="left", pady=(5, 0))
 
         toolbar = ttk.Frame(header_frame, style="Header.TFrame")
-        toolbar.pack(fill="x", padx=20, pady=(0, 15))
+        toolbar.pack(fill="x", padx=15, pady=(0, 10))
 
         self.refresh_btn = ttk.Button(
             toolbar,
@@ -173,19 +158,19 @@ class MainWindow(object):
         self.auto_refresh_check.pack(side="left", padx=(15, 0))
 
         main_container = ttk.Frame(self.root, style="Main.TFrame")
-        main_container.pack(side="top", fill="both", expand=True, padx=20, pady=(0, 20))
+        main_container.pack(side="top", fill="both", expand=True, padx=15, pady=(0, 15))
 
         paned = ttk.PanedWindow(main_container, orient="horizontal")
         paned.pack(fill="both", expand=True)
 
         self.device_list = DeviceListPanel(paned, on_select_callback=self._on_device_select)
-        paned.add(self.device_list, weight=3)
+        paned.add(self.device_list, weight=2)
 
         separator = ttk.Separator(paned, orient="vertical")
         paned.add(separator, weight=0)
 
         self.device_detail = DeviceDetailPanel(paned)
-        paned.add(self.device_detail, weight=2)
+        paned.add(self.device_detail, weight=1)
 
         status_frame = ttk.Frame(self.root, style="Header.TFrame")
         status_frame.pack(side="bottom", fill="x")
@@ -195,7 +180,7 @@ class MainWindow(object):
             text="正在扫描 USB 设备...",
             style="Status.TLabel"
         )
-        self.status_label.pack(side="left", padx=20, pady=5)
+        self.status_label.pack(side="left", padx=15, pady=5)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -282,9 +267,9 @@ class MainWindow(object):
     def _show_change_notification(self, added, removed):
         messages = []
         if added:
-            messages.append("🆕 新增 {0} 个设备".format(len(added)))
+            messages.append("新增 {0} 个设备".format(len(added)))
         if removed:
-            messages.append("❌ 移除 {0} 个设备".format(len(removed)))
+            messages.append("移除 {0} 个设备".format(len(removed)))
 
         if messages:
             notification = " | ".join(messages)
@@ -349,7 +334,7 @@ class MainWindow(object):
 • 制造商信息查看
 • 自动刷新支持
 • Apple 风格 UI 设计
-• 新增/移除设备高亮显示
+• 新增/移除设备独立显示
 
 © 2024 USB Manager
 """
@@ -371,7 +356,7 @@ class MainWindow(object):
 点击设备列表中的设备，查看详细信息
 
 【新增/移除设备】
-新增设备显示为绿色，移除设备显示为红色
+新增设备显示在绿色区域，移除设备显示在红色区域
 """
         messagebox.showinfo("使用帮助", help_text)
 
