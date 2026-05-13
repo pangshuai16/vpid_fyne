@@ -323,7 +323,7 @@ class MainWindow(object):
         self.root.attributes("-fullscreen", not state)
 
     def _show_about(self):
-        about_text = """USB 设备管理器 v1.1.0
+        about_text = """USB 设备管理器 v1.2.0
 
 用于查看和管理系统中 USB 设备的详细信息
 
