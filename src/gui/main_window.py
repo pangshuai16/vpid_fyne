@@ -15,6 +15,7 @@ from ..constants import (
     APPLE_TEXT,
     APPLE_SECONDARY_TEXT,
     APPLE_GREEN,
+    FONT_SUBTITLE,
     AUTO_REFRESH_INTERVAL,
     APP_NAME,
     APP_VERSION
