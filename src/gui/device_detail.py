@@ -3,20 +3,8 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem, QHeaderView
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
 from typing import Optional, List
 from ..device_info import USBDevice
-from ..constants import (
-    BG,
-    BG_HEADER,
-    TEXT,
-    TEXT_SECONDARY,
-    BORDER,
-    SUCCESS_BG,
-    SUCCESS_TEXT,
-    ERROR_BG,
-    ERROR_TEXT,
-)
 
 
 class DeviceChangePanel(QWidget):
@@ -32,85 +20,84 @@ class DeviceChangePanel(QWidget):
     def _setup_ui(self):
         """初始化 UI 组件"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
 
+        # 新增设备部分
         added_widget = QWidget()
         added_layout = QVBoxLayout(added_widget)
         added_layout.setContentsMargins(0, 0, 0, 4)
 
         added_header = QWidget()
-        added_header.setStyleSheet(f"background-color: {SUCCESS_BG};")
+        added_header.setStyleSheet("background-color: #F0F9EB; border-radius: 4px;")
         added_header_layout = QHBoxLayout(added_header)
-        added_header_layout.setContentsMargins(8, 4, 8, 4)  # 减少边距
+        added_header_layout.setContentsMargins(8, 4, 8, 4)
 
         added_title = QLabel("+ 新增设备")
-        added_title_font = QFont("Segoe UI", 9)  # 减小字体
-        added_title_font.setBold(True)
-        added_title.setFont(added_title_font)
-        added_title.setStyleSheet(f"color: {SUCCESS_TEXT};")
+        added_title.setStyleSheet("font-weight: 600; color: #67C23A;")
         added_header_layout.addWidget(added_title)
 
-        self.added_count_label = QLabel("0 个")
-        count_font = QFont("Segoe UI", 8)  # 减小字体
-        self.added_count_label.setFont(count_font)
-        self.added_count_label.setStyleSheet(f"color: {SUCCESS_TEXT};")
+        self.added_count_label = QLabel("0")
+        self.added_count_label.setStyleSheet("font-weight: 600; color: #67C23A;")
         added_header_layout.addStretch()
         added_header_layout.addWidget(self.added_count_label)
         added_layout.addWidget(added_header)
 
         self.added_tree = QTreeWidget()
-        self.added_tree.setHeaderLabels(["设备名称", "VID", "PID"])
-        added_header_view = self.added_tree.header()
-        added_header_view.setSectionResizeMode(0, QHeaderView.Stretch)
-        added_header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        added_header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.added_tree.setRootIsDecorated(False)
+        self.added_tree.setHeaderLabels(["VID", "PID", "设备名称"])
         self.added_tree.setAlternatingRowColors(True)
         self.added_tree.setSelectionMode(QTreeWidget.SingleSelection)
-        self.added_tree.itemSelectionChanged.connect(lambda: self._on_select(self.added_tree, self.added_devices))
+        self.added_tree.setRootIsDecorated(False)
+        self.added_tree.itemSelectionChanged.connect(
+            lambda: self._on_select(self.added_tree, self.added_devices)
+        )
+        added_header_view = self.added_tree.header()
+        added_header_view.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        added_header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        added_header_view.setSectionResizeMode(2, QHeaderView.Stretch)
         added_layout.addWidget(self.added_tree)
-        layout.addWidget(added_widget)
+        layout.addWidget(added_widget, 1)
 
+        # 分隔线
         separator = QWidget()
-        separator.setStyleSheet(f"background-color: {BORDER}; min-height: 1px; max-height: 1px;")
+        separator.setMaximumHeight(1)
+        separator.setStyleSheet("background-color: #E4E7ED;")
         layout.addWidget(separator)
 
+        # 移除设备部分
         removed_widget = QWidget()
         removed_layout = QVBoxLayout(removed_widget)
         removed_layout.setContentsMargins(0, 4, 0, 0)
 
         removed_header = QWidget()
-        removed_header.setStyleSheet(f"background-color: {ERROR_BG};")
+        removed_header.setStyleSheet("background-color: #FEF0F0; border-radius: 4px;")
         removed_header_layout = QHBoxLayout(removed_header)
-        removed_header_layout.setContentsMargins(8, 4, 8, 4)  # 减少边距
+        removed_header_layout.setContentsMargins(8, 4, 8, 4)
 
         removed_title = QLabel("- 移除设备")
-        removed_title_font = QFont("Segoe UI", 9)  # 减小字体
-        removed_title_font.setBold(True)
-        removed_title.setFont(removed_title_font)
-        removed_title.setStyleSheet(f"color: {ERROR_TEXT};")
+        removed_title.setStyleSheet("font-weight: 600; color: #F56C6C;")
         removed_header_layout.addWidget(removed_title)
 
-        self.removed_count_label = QLabel("0 个")
-        self.removed_count_label.setFont(count_font)
-        self.removed_count_label.setStyleSheet(f"color: {ERROR_TEXT};")
+        self.removed_count_label = QLabel("0")
+        self.removed_count_label.setStyleSheet("font-weight: 600; color: #F56C6C;")
         removed_header_layout.addStretch()
         removed_header_layout.addWidget(self.removed_count_label)
         removed_layout.addWidget(removed_header)
 
         self.removed_tree = QTreeWidget()
-        self.removed_tree.setHeaderLabels(["设备名称", "VID", "PID"])
-        removed_header_view = self.removed_tree.header()
-        removed_header_view.setSectionResizeMode(0, QHeaderView.Stretch)
-        removed_header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        removed_header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.removed_tree.setRootIsDecorated(False)
+        self.removed_tree.setHeaderLabels(["VID", "PID", "设备名称"])
         self.removed_tree.setAlternatingRowColors(True)
         self.removed_tree.setSelectionMode(QTreeWidget.SingleSelection)
-        self.removed_tree.itemSelectionChanged.connect(lambda: self._on_select(self.removed_tree, self.removed_devices))
+        self.removed_tree.setRootIsDecorated(False)
+        self.removed_tree.itemSelectionChanged.connect(
+            lambda: self._on_select(self.removed_tree, self.removed_devices)
+        )
+        removed_header_view = self.removed_tree.header()
+        removed_header_view.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        removed_header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        removed_header_view.setSectionResizeMode(2, QHeaderView.Stretch)
         removed_layout.addWidget(self.removed_tree)
-        layout.addWidget(removed_widget)
+        layout.addWidget(removed_widget, 1)
 
     def _on_select(self, tree, devices):
         """处理设备选择事件"""
@@ -126,19 +113,19 @@ class DeviceChangePanel(QWidget):
         self.removed_devices = removed_devices
 
         self._update_tree(self.added_tree, self.added_devices)
-        self.added_count_label.setText(f"{len(self.added_devices)} 个")
+        self.added_count_label.setText(str(len(self.added_devices)))
 
         self._update_tree(self.removed_tree, self.removed_devices)
-        self.removed_count_label.setText(f"{len(self.removed_devices)} 个")
+        self.removed_count_label.setText(str(len(self.removed_devices)))
 
     def _update_tree(self, tree, device_list):
         """更新 TreeView 内容"""
         tree.clear()
         for device in device_list:
             item = QTreeWidgetItem([
-                device.get_display_name(),
-                device.vid or "—",
-                device.pid or "—"
+                device.get_formatted_vid(),
+                device.get_formatted_pid(),
+                device.get_display_name()
             ])
             tree.addTopLevelItem(item)
 
@@ -164,5 +151,5 @@ class DeviceChangePanel(QWidget):
         self.removed_tree.clear()
         self.added_devices = []
         self.removed_devices = []
-        self.added_count_label.setText("0 个")
-        self.removed_count_label.setText("0 个")
+        self.added_count_label.setText("0")
+        self.removed_count_label.setText("0")

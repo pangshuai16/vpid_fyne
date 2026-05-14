@@ -106,6 +106,7 @@ def _scan_via_wmi():
                 device_id=usb.DeviceID or "",
                 pnp_device_id=usb.PNPDeviceID or "",
                 status=STATUS_CONNECTED if getattr(usb, 'ConfigManagerErrorCode', 0) == 0 else STATUS_ERROR,
+                path=usb.DeviceID or ""
             )
             devices.append(device)
 
@@ -132,17 +133,18 @@ def _scan_via_wmi():
                         manufacturer = parts[0]
 
                 device = USBDevice(
-                    vid=vid,
-                    pid=pid,
-                    serial=serial,
-                    name=pnp.Name or pnp.Caption or "USB Device",
-                    manufacturer=manufacturer,
-                    location=getattr(pnp, 'DeviceLocator', '') or getattr(pnp, 'Location', ''),
-                    driver="",
-                    device_id=pnp.DeviceID or "",
-                    pnp_device_id=pnp_id,
-                    status=STATUS_CONNECTED if getattr(pnp, 'ConfigManagerErrorCode', 0) == 0 else STATUS_ERROR,
-                )
+                vid=vid,
+                pid=pid,
+                serial=serial,
+                name=pnp.Name or pnp.Caption or "USB Device",
+                manufacturer=manufacturer,
+                location=getattr(pnp, 'DeviceLocator', '') or getattr(pnp, 'Location', ''),
+                driver="",
+                device_id=pnp.DeviceID or "",
+                pnp_device_id=pnp_id,
+                status=STATUS_CONNECTED if getattr(pnp, 'ConfigManagerErrorCode', 0) == 0 else STATUS_ERROR,
+                path=pnp.DeviceID or ""
+            )
                 devices.append(device)
 
             logger.debug("WMI PnPEntity 补充扫描完成，总计 %d 个设备", len(devices))
@@ -255,6 +257,7 @@ def _parse_registry_device(path, vid_part, pid_part, serial_part):
                 device_id=device_id,
                 pnp_device_id=device_id,
                 status=status,
+                path=device_id  # 设置路径为完整设备ID
             )
     except Exception as e:
         logger.debug("解析设备信息失败 %s: %s", path, e)

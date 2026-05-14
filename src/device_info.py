@@ -16,7 +16,8 @@ class USBDevice(object):
         driver="",
         device_id="",
         pnp_device_id="",
-        status=""
+        status="",
+        path=""  # 新增路径字段
     ):
         self.vid = vid
         self.pid = pid
@@ -28,6 +29,7 @@ class USBDevice(object):
         self.device_id = device_id
         self.pnp_device_id = pnp_device_id
         self.status = status
+        self.path = path
 
     def get_display_name(self):
         """获取设备显示名称"""
@@ -37,23 +39,35 @@ class USBDevice(object):
             return "{0} Device".format(self.manufacturer)
         return "Unknown USB Device"
 
+    def get_formatted_vid(self):
+        """获取格式化后的 VID（例如：8087）"""
+        # 移除 0x 前缀并转为大写
+        if self.vid.startswith("0x"):
+            return self.vid[2:].upper()
+        return self.vid.upper()
+
+    def get_formatted_pid(self):
+        """获取格式化后的 PID（例如：0024）"""
+        # 移除 0x 前缀并转为大写
+        if self.pid.startswith("0x"):
+            return self.pid[2:].upper()
+        return self.pid.upper()
+
     def get_vid_pid_string(self):
         """获取 VID/PID 格式化字符串"""
-        if self.vid and self.pid:
-            return "VID: {0}  PID: {1}".format(self.vid, self.pid)
-        return "VID: N/A  PID: N/A"
+        return "{0}:{1}".format(self.get_formatted_vid(), self.get_formatted_pid())
 
     def to_dict(self):
         """转换为字典格式"""
         return {
             "名称": self.name or "未知设备",
-            "供应商ID (VID)": self.vid or "N/A",
-            "产品ID (PID)": self.pid or "N/A",
+            "VID": self.get_formatted_vid() or "N/A",
+            "PID": self.get_formatted_pid() or "N/A",
             "序列号": self.serial or "N/A",
             "制造商": self.manufacturer or "N/A",
             "位置": self.location or "N/A",
-            "驱动程序": self.driver or "N/A",
-            "设备ID": self.device_id or "N/A",
+            "路径": self.path or "N/A",
+            "驱动": self.driver or "N/A",
             "状态": self.status or "N/A",
         }
 

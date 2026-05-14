@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QMenuBar, QAction, QMessageBox, QApplication, QStyle
 )
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt5.QtGui import QFont, QKeySequence, QIcon
+from PyQt5.QtGui import QKeySequence, QIcon
 from datetime import datetime
 from typing import Optional, List
 from ..device_info import USBDevice
@@ -15,18 +15,10 @@ from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
 from .device_detail import DeviceChangePanel
 from ..constants import (
-    BG,
-    BG_HEADER,
-    PRIMARY,
-    PRIMARY_HOVER,
-    PRIMARY_PRESSED,
-    TEXT,
-    TEXT_SECONDARY,
-    TEXT_ON_PRIMARY,
-    ACCENT_GREEN,
+    QSS_STYLE,
     AUTO_REFRESH_INTERVAL,
     APP_NAME,
-    APP_VERSION,
+    APP_VERSION
 )
 
 
@@ -48,11 +40,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle(APP_NAME)
-        self.resize(1180, 800)
-        self.setMinimumSize(980, 680)
-        
-        # 设置窗口图标
-        self._set_app_icon()
+        self.resize(1280, 720)  # 初始窗口大小 1280x720
+        self.setMinimumSize(960, 600)
 
         self.devices = []
         self.baseline_devices = []
@@ -60,10 +49,18 @@ class MainWindow(QMainWindow):
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self._on_refresh)
 
+        # 应用样式
+        self._apply_style()
+        self._set_app_icon()
+
         self._setup_ui()
         self._setup_menu()
         self._setup_status_bar()
         self._initial_scan()
+
+    def _apply_style(self):
+        """应用 QSS 样式表"""
+        self.setStyleSheet(QSS_STYLE)
 
     def _setup_ui(self):
         """初始化 UI 组件"""
@@ -73,93 +70,54 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        header_widget = QWidget()
-        header_widget.setStyleSheet(f"background-color: {BG_HEADER};")
-        header_layout = QHBoxLayout(header_widget)  # 改为横向布局，节省空间
-        header_layout.setContentsMargins(8, 4, 8, 4)  # 大幅减少边距
-        header_layout.setSpacing(8)  # 减少间距
+        # 紧凑的工具栏（仅一行，无大标题）
+        toolbar = QWidget()
+        toolbar.setStyleSheet("background-color: #FFFFFF; border-bottom: 1px solid #E4E7ED;")
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(12, 8, 12, 8)
+        toolbar_layout.setSpacing(12)
 
-        # 标题和设备数量在同一行
-        title_label = QLabel(APP_NAME)
-        title_font = QFont("Segoe UI", 11)  # 减小字体
-        title_font.setBold(True)
-        title_label.setFont(title_font)
-        title_label.setStyleSheet(f"color: {TEXT};")
-        header_layout.addWidget(title_label)
-
+        # 状态信息
         self.device_count_label = QLabel("0 个设备已连接")
-        count_font = QFont("Segoe UI", 9)
-        self.device_count_label.setFont(count_font)
-        self.device_count_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
-        header_layout.addWidget(self.device_count_label)
-        header_layout.addSpacing(12)  # 添加少量分隔
+        toolbar_layout.addWidget(self.device_count_label)
+        toolbar_layout.addSpacing(8)
 
-        # 所有控件在同一行，紧凑排列
+        # 按钮
         self.refresh_btn = QPushButton("刷新")
-        refresh_font = QFont("Segoe UI", 9)
-        self.refresh_btn.setFont(refresh_font)
-        self.refresh_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {PRIMARY};
-                color: {TEXT_ON_PRIMARY};
-                border: none;
-                padding: 4px 12px;  # 减少按钮内边距
-            }}
-            QPushButton:hover {{
-                background-color: {PRIMARY_HOVER};
-            }}
-            QPushButton:pressed {{
-                background-color: {PRIMARY_PRESSED};
-            }}
-        """)
         self.refresh_btn.clicked.connect(self._on_refresh)
-        header_layout.addWidget(self.refresh_btn)
+        toolbar_layout.addWidget(self.refresh_btn)
 
         self.baseline_btn = QPushButton("设为基准")
-        self.baseline_btn.setFont(refresh_font)
-        self.baseline_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {ACCENT_GREEN};
-                color: {TEXT_ON_PRIMARY};
-                border: none;
-                padding: 4px 12px;  # 减少按钮内边距
-            }}
-        """)
+        self.baseline_btn.setProperty("class", "success")
         self.baseline_btn.clicked.connect(self._on_set_baseline)
-        header_layout.addWidget(self.baseline_btn)
+        toolbar_layout.addWidget(self.baseline_btn)
 
         self.copy_btn = QPushButton("复制")
-        self.copy_btn.setFont(refresh_font)
-        self.copy_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {BG};
-                color: {TEXT};
-                border: 1px solid {TEXT_SECONDARY};
-                padding: 4px 12px;  # 减少按钮内边距
-            }}
-        """)
+        self.copy_btn.setProperty("class", "secondary")
         self.copy_btn.clicked.connect(self._on_copy)
-        header_layout.addWidget(self.copy_btn)
+        toolbar_layout.addWidget(self.copy_btn)
 
-        self.auto_refresh_check = QCheckBox("自动刷新 (3s)")
-        self.auto_refresh_check.setFont(QFont("Segoe UI", 9))
-        self.auto_refresh_check.setStyleSheet(f"color: {TEXT};")
+        toolbar_layout.addStretch()
+
+        # 自动刷新
+        self.auto_refresh_check = QCheckBox("自动刷新 (0.5s)")
         self.auto_refresh_check.stateChanged.connect(self._toggle_auto_refresh)
-        header_layout.addWidget(self.auto_refresh_check)
-        header_layout.addStretch()
+        toolbar_layout.addWidget(self.auto_refresh_check)
 
-        layout.addWidget(header_widget)
+        layout.addWidget(toolbar)
 
+        # 主内容区域
         splitter = QSplitter(Qt.Horizontal)
         self.device_list = DeviceListPanel()
         self.device_change = DeviceChangePanel()
 
         splitter.addWidget(self.device_list)
         splitter.addWidget(self.device_change)
-        splitter.setStretchFactor(0, 6)
-        splitter.setStretchFactor(1, 4)
+        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(1, 2)
+        splitter.setHandleWidth(4)
 
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, 1)
 
         self.device_list.device_selected.connect(self._on_device_select)
         self.device_change.device_selected.connect(self._on_change_select)
@@ -221,39 +179,35 @@ class MainWindow(QMainWindow):
     def _setup_status_bar(self):
         """设置状态栏"""
         self.status_bar = QStatusBar()
+        self.status_bar.setSizeGripEnabled(True)
         self.setStatusBar(self.status_bar)
-        self.status_label = QLabel("正在扫描 USB 设备...")
+        self.status_label = QLabel("就绪")
         self.status_bar.addWidget(self.status_label, 1)
         self.baseline_status_label = QLabel("")
         self.status_bar.addPermanentWidget(self.baseline_status_label)
 
     def _set_app_icon(self):
         """设置应用程序图标"""
-        # 获取图标路径（支持开发环境和打包后）
-        if getattr(sys, 'frozen', False):
-            # PyInstaller 打包后
-            base_dir = sys._MEIPASS
-        else:
-            # 开发环境
+        try:
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        
-        icon_path = os.path.join(base_dir, "assets", "usb-icon.png")
-        
-        # 优先使用自定义图标，如果文件不存在则回退到内置图标
-        if os.path.exists(icon_path):
-            icon = QIcon(icon_path)
-            self.setWindowIcon(icon)
-            app = QApplication.instance()
-            if app:
-                app.setWindowIcon(icon)
-        else:
-            # 回退到 PyQt5 内置的 USB 驱动器标准图标
-            style = self.style()
-            icon = style.standardIcon(QStyle.SP_DriveUSBIcon)
-            self.setWindowIcon(icon)
-            app = QApplication.instance()
-            if app:
-                app.setWindowIcon(icon)
+            icon_path = os.path.join(base_dir, "assets", "usb-icon.png")
+
+            if os.path.exists(icon_path):
+                icon = QIcon(icon_path)
+                self.setWindowIcon(icon)
+                app = QApplication.instance()
+                if app:
+                    app.setWindowIcon(icon)
+            else:
+                # 回退到内置图标
+                style = self.style()
+                icon = style.standardIcon(QStyle.SP_DriveUSBIcon)
+                self.setWindowIcon(icon)
+                app = QApplication.instance()
+                if app:
+                    app.setWindowIcon(icon)
+        except Exception:
+            pass
 
     def _initial_scan(self):
         """初始设备扫描"""
@@ -280,12 +234,12 @@ class MainWindow(QMainWindow):
         timestamp = datetime.now().strftime("%H:%M:%S")
         change_info = ""
         if added:
-            change_info += f" (+{len(added)})"
+            change_info += " (+{})".format(len(added))
         if removed:
-            change_info += f" (-{len(removed)})"
+            change_info += " (-{})".format(len(removed))
 
-        self.device_count_label.setText(f"{count} 个设备已连接{change_info}")
-        self._update_status(f"最后刷新: {timestamp} | 设备数: {prev_count} -> {count}")
+        self.device_count_label.setText("{} 个设备已连接{}".format(count, change_info))
+        self._update_status("最后刷新: {} | 设备数: {} → {}".format(timestamp, prev_count, count))
 
         if added or removed:
             self._show_change_notification(added, removed)
@@ -300,23 +254,23 @@ class MainWindow(QMainWindow):
         self.device_list.update_devices(self.devices)
         self.device_change.update_changes([], [])
         self._update_status("已将当前设备列表设为基准")
-        self.device_count_label.setText(f"{len(self.devices)} 个设备已连接")
+        self.device_count_label.setText("{} 个设备已连接".format(len(self.devices)))
 
     def _update_baseline_status(self):
         """更新基准状态显示"""
         if self.baseline_devices:
             timestamp = datetime.now().strftime("%H:%M:%S")
             self.baseline_status_label.setText(
-                f"基准: {len(self.baseline_devices)} 个设备 ({timestamp})"
+                "基准: {} 个设备 ({})".format(len(self.baseline_devices), timestamp)
             )
 
     def _show_change_notification(self, added, removed):
         """显示设备变化通知"""
         messages = []
         if added:
-            messages.append(f"新增 {len(added)} 个设备")
+            messages.append("新增 {} 个设备".format(len(added)))
         if removed:
-            messages.append(f"移除 {len(removed)} 个设备")
+            messages.append("移除 {} 个设备".format(len(removed)))
 
         if messages:
             notification = " | ".join(messages)
@@ -330,7 +284,12 @@ class MainWindow(QMainWindow):
         """左侧全部设备列表选择回调"""
         if device:
             self.device_change.clear_selection()
-            info = f"{device.get_display_name()} | VID: {device.vid or 'N/A'} | PID: {device.pid or 'N/A'} | 序列号: {device.serial or 'N/A'}"
+            info = "{} | VID: {} | PID: {} | 序列号: {}".format(
+                device.get_display_name(),
+                device.get_formatted_vid() or "N/A",
+                device.get_formatted_pid() or "N/A",
+                device.serial or "N/A"
+            )
             self._update_status(info)
 
     def _on_change_select(self, device):
@@ -339,7 +298,13 @@ class MainWindow(QMainWindow):
             self.device_list.clear_selection()
             added_keys = {d.get_unique_key() for d in self.device_change.added_devices}
             change_type = "新增" if device.get_unique_key() in added_keys else "移除"
-            info = f"[{change_type}] {device.get_display_name()} | VID: {device.vid or 'N/A'} | PID: {device.pid or 'N/A'} | 序列号: {device.serial or 'N/A'}"
+            info = "[{}] {} | VID: {} | PID: {} | 序列号: {}".format(
+                change_type,
+                device.get_display_name(),
+                device.get_formatted_vid() or "N/A",
+                device.get_formatted_pid() or "N/A",
+                device.serial or "N/A"
+            )
             self._update_status(info)
 
     def _get_selected_device(self):
@@ -364,7 +329,7 @@ class MainWindow(QMainWindow):
         if device:
             clipboard = QApplication.clipboard()
             clipboard.setText(device.to_clipboard_text())
-            self._update_status(f"已复制到剪贴板: {device.get_display_name()}")
+            self._update_status("已复制到剪贴板: {}".format(device.get_display_name()))
         else:
             QMessageBox.information(self, "提示", "请先选择一个设备")
 
@@ -373,9 +338,14 @@ class MainWindow(QMainWindow):
         device = self._get_selected_device()
         if device:
             clipboard = QApplication.clipboard()
-            value = getattr(device, field, "") or "N/A"
+            if field == "vid":
+                value = device.get_formatted_vid() or "N/A"
+            elif field == "pid":
+                value = device.get_formatted_pid() or "N/A"
+            else:
+                value = getattr(device, field, "") or "N/A"
             clipboard.setText(value)
-            self._update_status(f"已复制 {field}: {value}")
+            self._update_status("已复制 {}: {}".format(field.upper(), value))
 
     def _toggle_auto_refresh(self):
         """切换自动刷新"""
@@ -387,46 +357,10 @@ class MainWindow(QMainWindow):
 
     def _show_about(self):
         """显示关于对话框"""
-        about_text = f"""{APP_NAME} v{APP_VERSION}
-
-用于查看和管理系统中 USB 设备的详细信息
-
-功能特点:
-- 实时扫描 USB 设备
-- 显示 VID/PID 信息
-- 设备序列号追踪
-- 制造商信息查看
-- 自动刷新支持
-- 扁平风格 UI 设计
-- 新增/移除设备独立显示
-- 基准比对功能
-
-(C) 2025 {APP_NAME}"""
+        about_text = "{} v{}\n\n用于查看和管理系统中 USB 设备的详细信息\n\n功能特点:\n- 实时扫描 USB 设备\n- 显示 VID/PID 信息\n- 设备序列号追踪\n- 制造商信息查看\n- 自动刷新支持 (0.5s)\n- 现代化 UI 设计\n- 新增/移除设备独立显示\n- 基准比对功能\n\n(C) 2025 {}".format(APP_NAME, APP_VERSION, APP_NAME)
         QMessageBox.about(self, "关于", about_text)
 
     def _show_help(self):
         """显示帮助对话框"""
-        help_text = """使用帮助
-
-【刷新设备】
-点击刷新按钮或按 Ctrl+R 重新扫描 USB 设备
-
-【设为基准】
-将当前设备列表设为基准，后续刷新将与基准比对
-
-【复制信息】
-选择设备后点击复制按钮，或使用快捷键 Ctrl+C
-
-【自动刷新】
-勾选"自动刷新"选项，每3秒自动更新设备列表
-
-【设备变化】
-左侧显示全部设备列表
-右侧上方显示相对基准新增的设备（绿色）
-右侧下方显示相对基准移除的设备（红色）
-
-【基准比对】
-比对基于基准列表，点击"设为基准"可重置基准
-首次启动自动设置基准
-"""
+        help_text = "使用帮助\n\n【刷新设备】\n点击刷新按钮或按 Ctrl+R 重新扫描 USB 设备\n\n【设为基准】\n将当前设备列表设为基准，后续刷新将与基准比对\n\n【复制信息】\n选择设备后点击复制按钮，或使用快捷键 Ctrl+C\n\n【自动刷新】\n勾选\"自动刷新\"选项，每0.5秒自动更新设备列表\n\n【设备变化】\n左侧显示全部设备列表\n右侧上方显示相对基准新增的设备（绿色）\n右侧下方显示相对基准移除的设备（红色）\n\n【基准比对】\n比对基于基准列表，点击\"设为基准\"可重置基准\n首次启动自动设置基准"
         QMessageBox.information(self, "使用帮助", help_text)
