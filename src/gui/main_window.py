@@ -9,16 +9,12 @@ from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
 from .device_detail import DeviceChangePanel
 from ..constants import (
-    APPLE_WHITE,
-    APPLE_LIGHT_GRAY,
-    APPLE_BLUE,
-    APPLE_TEXT,
-    APPLE_SECONDARY_TEXT,
-    APPLE_GREEN,
-    FONT_SUBTITLE,
-    AUTO_REFRESH_INTERVAL,
-    APP_NAME,
-    APP_VERSION
+    BG, BG_HEADER, PRIMARY, TEXT, TEXT_SECONDARY, TEXT_ON_PRIMARY,
+    PRIMARY_HOVER, PRIMARY_PRESSED, BORDER, ACCENT_GREEN,
+    SELECT_BG, SELECT_FG, MENU_BG,
+    FONT_SYSTEM, FONT_SYSTEM_BOLD, FONT_SYSTEM_SMALL,
+    FONT_TITLE, FONT_SUBTITLE,
+    AUTO_REFRESH_INTERVAL, APP_NAME, APP_VERSION,
 )
 
 
@@ -31,8 +27,8 @@ class MainWindow:
         self.root.geometry("1180x800")
         self.root.minsize(980, 680)
 
-        self.devices: List[USBDevice] = []
-        self.baseline_devices: List[USBDevice] = []
+        self.devices = []
+        self.baseline_devices = []
         self.auto_refresh = False
         self.refresh_interval = AUTO_REFRESH_INTERVAL
 
@@ -47,90 +43,90 @@ class MainWindow:
         style = ttk.Style()
         try:
             style.theme_use("clam")
-        except:
+        except Exception:
             pass
 
-        style.configure("TFrame", background=APPLE_WHITE)
-        style.configure("Main.TFrame", background=APPLE_WHITE)
-        style.configure("Header.TFrame", background=APPLE_LIGHT_GRAY)
+        style.configure("TFrame", background=BG)
+        style.configure("Main.TFrame", background=BG)
+        style.configure("Header.TFrame", background=BG_HEADER)
 
         style.configure("Title.TLabel",
-                        background=APPLE_LIGHT_GRAY,
-                        foreground=APPLE_TEXT,
-                        font=("-apple-system", "SF Pro Display", 20, "bold"),
-                        padding=(20, 16))
+                        background=BG_HEADER,
+                        foreground=TEXT,
+                        font=FONT_TITLE,
+                        padding=(16, 8))
 
         style.configure("Subtitle.TLabel",
-                        background=APPLE_LIGHT_GRAY,
-                        foreground=APPLE_SECONDARY_TEXT,
-                        font=("-apple-system", "SF Pro Text", 13),
-                        padding=(8, 0))
+                        background=BG_HEADER,
+                        foreground=TEXT_SECONDARY,
+                        font=FONT_SUBTITLE,
+                        padding=(4, 0))
 
-        style.configure("Apple.TButton",
-                        background=APPLE_BLUE,
-                        foreground="white",
-                        font=("-apple-system", "SF Pro Text", 13, "semibold"),
-                        padding=(18, 10),
+        style.configure("Primary.TButton",
+                        background=PRIMARY,
+                        foreground=TEXT_ON_PRIMARY,
+                        font=FONT_SYSTEM_BOLD,
+                        padding=(16, 6),
                         relief="flat",
                         borderwidth=0)
 
         style.configure("Secondary.TButton",
-                        background=APPLE_LIGHT_GRAY,
-                        foreground=APPLE_TEXT,
-                        font=("-apple-system", "SF Pro Text", 13, "semibold"),
-                        padding=(18, 10),
+                        background=BG,
+                        foreground=TEXT,
+                        font=FONT_SYSTEM_BOLD,
+                        padding=(16, 6),
                         relief="flat",
-                        borderwidth=0)
+                        borderwidth=1)
 
         style.configure("Baseline.TButton",
-                        background=APPLE_GREEN,
-                        foreground="white",
-                        font=("-apple-system", "SF Pro Text", 13, "semibold"),
-                        padding=(18, 10),
+                        background=ACCENT_GREEN,
+                        foreground=TEXT_ON_PRIMARY,
+                        font=FONT_SYSTEM_BOLD,
+                        padding=(16, 6),
                         relief="flat",
                         borderwidth=0)
 
-        style.configure("Apple.TCheckbutton",
-                        background=APPLE_WHITE,
-                        foreground=APPLE_TEXT,
-                        font=("-apple-system", "SF Pro Text", 13),
-                        padding=(10, 8),
+        style.configure("Flat.TCheckbutton",
+                        background=BG,
+                        foreground=TEXT,
+                        font=FONT_SYSTEM,
+                        padding=(6, 4),
                         relief="flat")
 
         style.configure("Status.TLabel",
-                        background=APPLE_LIGHT_GRAY,
-                        foreground=APPLE_SECONDARY_TEXT,
-                        font=("-apple-system", "SF Pro Text", 12),
-                        padding=(16, 12))
+                        background=BG_HEADER,
+                        foreground=TEXT_SECONDARY,
+                        font=FONT_SYSTEM_SMALL,
+                        padding=(14, 8))
 
         style.configure("Treeview",
-                        background=APPLE_WHITE,
-                        foreground=APPLE_TEXT,
-                        fieldbackground=APPLE_WHITE,
-                        font=("-apple-system", "SF Pro Text", 13),
-                        rowheight=38,
-                        borderwidth=0)
+                        background="#FFFFFF",
+                        foreground=TEXT,
+                        fieldbackground="#FFFFFF",
+                        font=FONT_SYSTEM,
+                        rowheight=26,
+                        borderwidth=1)
 
         style.configure("Treeview.Heading",
-                        background=APPLE_LIGHT_GRAY,
-                        foreground=APPLE_TEXT,
-                        font=("-apple-system", "SF Pro Text", 12, "semibold"),
-                        padding=(14, 10),
+                        background=BG_HEADER,
+                        foreground=TEXT,
+                        font=FONT_SYSTEM_BOLD,
+                        padding=(10, 6),
                         borderwidth=0,
                         relief="flat")
 
-        style.map("Apple.TButton",
-                  background=[("active", "#0056CC"), ("pressed", "#004499")],
-                  foreground=[("active", "white"), ("pressed", "white")])
+        style.map("Primary.TButton",
+                  background=[("active", PRIMARY_HOVER), ("pressed", PRIMARY_PRESSED)],
+                  foreground=[("active", TEXT_ON_PRIMARY), ("pressed", TEXT_ON_PRIMARY)])
 
         style.map("Secondary.TButton",
-                  background=[("active", "#E5E5E5"), ("pressed", "#D1D1D6")])
+                  background=[("active", ITEM_HOVER_BG), ("pressed", BORDER)])
 
         style.map("Baseline.TButton",
-                  background=[("active", "#2DA44E"), ("pressed", "#218737")],
-                  foreground=[("active", "white"), ("pressed", "white")])
+                  background=[("active", "#0B5E0B"), ("pressed", "#084A08")],
+                  foreground=[("active", TEXT_ON_PRIMARY), ("pressed", TEXT_ON_PRIMARY)])
 
-        self.root.configure(bg=APPLE_WHITE)
+        self.root.configure(bg=BG)
 
     def _setup_ui(self):
         """初始化 UI 组件"""
@@ -138,61 +134,61 @@ class MainWindow:
         header_frame.pack(side="top", fill="x")
 
         title_container = ttk.Frame(header_frame, style="Header.TFrame")
-        title_container.pack(fill="x", pady=(14, 6))
+        title_container.pack(fill="x", pady=(6, 2))
 
         title_label = ttk.Label(
             title_container,
             text=APP_NAME,
             style="Title.TLabel"
         )
-        title_label.pack(side="left", padx=(18, 8))
+        title_label.pack(side="left", padx=(14, 6))
 
         self.device_count_label = ttk.Label(
             title_container,
             text="0 个设备已连接",
             style="Subtitle.TLabel"
         )
-        self.device_count_label.pack(side="left", pady=(4, 0))
+        self.device_count_label.pack(side="left", pady=(2, 0))
 
         toolbar = ttk.Frame(header_frame, style="Header.TFrame")
-        toolbar.pack(fill="x", padx=18, pady=(0, 14))
+        toolbar.pack(fill="x", padx=14, pady=(0, 8))
 
         self.refresh_btn = ttk.Button(
             toolbar,
-            text="↻ 刷新",
-            style="Apple.TButton",
+            text="刷新",
+            style="Primary.TButton",
             command=self._on_refresh
         )
-        self.refresh_btn.pack(side="left", padx=(0, 10))
+        self.refresh_btn.pack(side="left", padx=(0, 8))
 
         self.baseline_btn = ttk.Button(
             toolbar,
-            text="📌 设为基准",
+            text="设为基准",
             style="Baseline.TButton",
             command=self._on_set_baseline
         )
-        self.baseline_btn.pack(side="left", padx=(0, 10))
+        self.baseline_btn.pack(side="left", padx=(0, 8))
 
         self.copy_btn = ttk.Button(
             toolbar,
-            text="⧉ 复制",
+            text="复制",
             style="Secondary.TButton",
             command=self._on_copy
         )
-        self.copy_btn.pack(side="left", padx=(0, 18))
+        self.copy_btn.pack(side="left", padx=(0, 14))
 
         self.auto_refresh_var = tk.BooleanVar(value=False)
         self.auto_refresh_check = ttk.Checkbutton(
             toolbar,
-            text="自动刷新 (3秒)",
-            style="Apple.TCheckbutton",
+            text="自动刷新 (3s)",
+            style="Flat.TCheckbutton",
             variable=self.auto_refresh_var,
             command=self._toggle_auto_refresh
         )
         self.auto_refresh_check.pack(side="left")
 
         main_container = ttk.Frame(self.root, style="Main.TFrame")
-        main_container.pack(side="top", fill="both", expand=True, padx=18, pady=(0, 18))
+        main_container.pack(side="top", fill="both", expand=True, padx=14, pady=(0, 14))
 
         paned = ttk.PanedWindow(main_container, orient="horizontal")
         paned.pack(fill="both", expand=True)
@@ -214,62 +210,57 @@ class MainWindow:
             text="正在扫描 USB 设备...",
             style="Status.TLabel"
         )
-        self.status_label.pack(side="left", padx=18, pady=10)
+        self.status_label.pack(side="left", padx=14, pady=8)
 
         self.baseline_status_label = ttk.Label(
             status_frame,
             text="",
             style="Status.TLabel"
         )
-        self.baseline_status_label.pack(side="right", padx=18, pady=10)
+        self.baseline_status_label.pack(side="right", padx=14, pady=8)
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _setup_menu(self):
         """设置菜单栏"""
-        menubar = tk.Menu(self.root, bg=APPLE_WHITE, fg=APPLE_TEXT, bd=0, relief="flat")
+        menubar = tk.Menu(self.root, bg=MENU_BG, fg=TEXT, bd=0, relief="flat")
         self.root.config(menu=menubar)
 
-        apple_menu = tk.Menu(menubar, tearoff=0, bg=APPLE_WHITE, fg=APPLE_TEXT)
-        menubar.add_cascade(label="Apple", menu=apple_menu)
-        apple_menu.add_command(label="关于此应用", command=self._show_about)
-        apple_menu.add_separator()
-        apple_menu.add_command(label="退出", command=self._on_close, accelerator="⌘Q")
-
-        file_menu = tk.Menu(menubar, tearoff=0, bg=APPLE_WHITE, fg=APPLE_TEXT)
+        file_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="文件", menu=file_menu)
-        file_menu.add_command(label="刷新设备列表", command=self._on_refresh, accelerator="⌘R")
+        file_menu.add_command(label="刷新设备列表", command=self._on_refresh, accelerator="Ctrl+R")
         file_menu.add_command(label="设为基准", command=self._on_set_baseline)
         file_menu.add_separator()
         file_menu.add_command(label="退出", command=self._on_close)
 
-        edit_menu = tk.Menu(menubar, tearoff=0, bg=APPLE_WHITE, fg=APPLE_TEXT)
+        edit_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="编辑", menu=edit_menu)
-        edit_menu.add_command(label="复制设备信息", command=self._on_copy, accelerator="⌘C")
+        edit_menu.add_command(label="复制设备信息", command=self._on_copy, accelerator="Ctrl+C")
         edit_menu.add_command(label="复制 VID", command=lambda: self._copy_field("vid"))
         edit_menu.add_command(label="复制 PID", command=lambda: self._copy_field("pid"))
 
-        view_menu = tk.Menu(menubar, tearoff=0, bg=APPLE_WHITE, fg=APPLE_TEXT)
+        view_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="视图", menu=view_menu)
         view_menu.add_checkbutton(label="自动刷新", variable=self.auto_refresh_var,
                                   command=self._toggle_auto_refresh)
 
-        window_menu = tk.Menu(menubar, tearoff=0, bg=APPLE_WHITE, fg=APPLE_TEXT)
+        window_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="窗口", menu=window_menu)
         window_menu.add_command(label="最小化", command=lambda: self.root.iconify())
         window_menu.add_separator()
         window_menu.add_command(label="缩放", command=self._toggle_fullscreen)
 
-        help_menu = tk.Menu(menubar, tearoff=0, bg=APPLE_WHITE, fg=APPLE_TEXT)
+        help_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="帮助", menu=help_menu)
         help_menu.add_command(label="使用帮助", command=self._show_help)
+        help_menu.add_command(label="关于", command=self._show_about)
 
     def _bind_shortcuts(self):
         """绑定快捷键"""
-        self.root.bind("<Command-r>", lambda e: self._on_refresh())
-        self.root.bind("<Command-R>", lambda e: self._on_refresh())
-        self.root.bind("<Command-c>", lambda e: self._on_copy())
-        self.root.bind("<Command-C>", lambda e: self._on_copy())
+        self.root.bind("<Control-r>", lambda e: self._on_refresh())
+        self.root.bind("<Control-R>", lambda e: self._on_refresh())
+        self.root.bind("<Control-c>", lambda e: self._on_copy())
+        self.root.bind("<Control-C>", lambda e: self._on_copy())
 
     def _initial_scan(self):
         """初始设备扫描"""
@@ -286,7 +277,7 @@ class MainWindow:
         except Exception as e:
             self.root.after(0, lambda: self._update_status("扫描失败: {0}".format(str(e))))
 
-    def _update_device_list(self, devices: List[USBDevice]):
+    def _update_device_list(self, devices):
         """更新设备列表显示"""
         prev_count = len(self.devices)
         self.devices = devices
@@ -309,7 +300,7 @@ class MainWindow:
             change_info += " (-{0})".format(len(removed))
 
         self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change_info))
-        self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(timestamp, prev_count, count))
+        self._update_status("最后刷新: {0} | 设备数: {1} -> {2}".format(timestamp, prev_count, count))
 
         if added or removed:
             self._show_change_notification(added, removed)
@@ -334,7 +325,7 @@ class MainWindow:
                 text="基准: {0} 个设备 ({1})".format(len(self.baseline_devices), timestamp)
             )
 
-    def _show_change_notification(self, added: List[USBDevice], removed: List[USBDevice]):
+    def _show_change_notification(self, added, removed):
         """显示设备变化通知"""
         messages = []
         if added:
@@ -344,15 +335,15 @@ class MainWindow:
 
         if messages:
             notification = " | ".join(messages)
-            self.status_label.config(foreground=APPLE_BLUE)
+            self.status_label.config(foreground=PRIMARY)
             self._update_status(notification)
-            self.root.after(3000, lambda: self.status_label.config(foreground=APPLE_SECONDARY_TEXT))
+            self.root.after(3000, lambda: self.status_label.config(foreground=TEXT_SECONDARY))
 
-    def _update_status(self, message: str):
+    def _update_status(self, message):
         """更新状态栏文本"""
         self.status_label.config(text=message)
 
-    def _on_device_select(self, device: Optional[USBDevice]):
+    def _on_device_select(self, device):
         """左侧全部设备列表选择回调"""
         if device:
             self.device_change.clear_selection()
@@ -364,11 +355,12 @@ class MainWindow:
             )
             self._update_status(info)
 
-    def _on_change_select(self, device: Optional[USBDevice]):
+    def _on_change_select(self, device):
         """右侧变化设备列表选择回调"""
         if device:
             self.device_list.clear_selection()
-            change_type = "新增" if device in self.device_change.added_devices else "移除"
+            added_keys = {d.get_unique_key() for d in self.device_change.added_devices}
+            change_type = "新增" if device.get_unique_key() in added_keys else "移除"
             info = "[{4}] {0} | VID: {1} | PID: {2} | 序列号: {3}".format(
                 device.get_display_name(),
                 device.vid or "N/A",
@@ -378,7 +370,7 @@ class MainWindow:
             )
             self._update_status(info)
 
-    def _get_selected_device(self) -> Optional[USBDevice]:
+    def _get_selected_device(self):
         """获取当前选中的设备（从任意列表）"""
         device = self.device_list.get_selected_device()
         if device:
@@ -404,7 +396,7 @@ class MainWindow:
         else:
             messagebox.showinfo("提示", "请先选择一个设备")
 
-    def _copy_field(self, field: str):
+    def _copy_field(self, field):
         """复制特定字段"""
         device = self._get_selected_device()
         if device:
@@ -437,16 +429,16 @@ class MainWindow:
 用于查看和管理系统中 USB 设备的详细信息
 
 功能特点:
-• 实时扫描 USB 设备
-• 显示 VID/PID 信息
-• 设备序列号追踪
-• 制造商信息查看
-• 自动刷新支持
-• Apple 风格 UI 设计
-• 新增/移除设备独立显示
-• 基准比对功能
+- 实时扫描 USB 设备
+- 显示 VID/PID 信息
+- 设备序列号追踪
+- 制造商信息查看
+- 自动刷新支持
+- 扁平风格 UI 设计
+- 新增/移除设备独立显示
+- 基准比对功能
 
-© 2024 {0}
+(C) 2025 {0}
 """.format(APP_NAME, APP_VERSION)
         messagebox.showinfo("关于", about_text)
 
@@ -455,13 +447,13 @@ class MainWindow:
         help_text = """使用帮助
 
 【刷新设备】
-点击刷新按钮或按 ⌘R 重新扫描 USB 设备
+点击刷新按钮或按 Ctrl+R 重新扫描 USB 设备
 
 【设为基准】
 将当前设备列表设为基准，后续刷新将与基准比对
 
 【复制信息】
-选择设备后点击复制按钮，或使用快捷键 ⌘C
+选择设备后点击复制按钮，或使用快捷键 Ctrl+C
 
 【自动刷新】
 勾选"自动刷新"选项，每3秒自动更新设备列表

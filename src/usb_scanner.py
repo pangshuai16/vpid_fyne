@@ -1,7 +1,7 @@
 """USB 设备扫描模块"""
 import re
 import logging
-from typing import List, Tuple, Set, Optional
+from typing import List, Tuple, Set
 from .device_info import USBDevice
 from .constants import STATUS_CONNECTED, STATUS_ERROR, STATUS_UNKNOWN
 
@@ -10,12 +10,18 @@ try:
 except ImportError:
     winreg = None
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def extract_vid_pid(device_id: str) -> Tuple[str, str]:
-    """从设备ID中提取 VID 和 PID"""
+def extract_vid_pid(device_id):
+    """从设备ID中提取 VID 和 PID
+
+    Args:
+        device_id: 设备标识符字符串
+
+    Returns:
+        Tuple[str, str]: (vid, pid) 如 ("0x1234", "0x5678")，失败返回空字符串
+    """
     vid_match = re.search(r'VID_([0-9A-Fa-f]{4})', device_id, re.IGNORECASE)
     pid_match = re.search(r'PID_([0-9A-Fa-f]{4})', device_id, re.IGNORECASE)
     vid = "0x{0}".format(vid_match.group(1)) if vid_match else ""
@@ -23,16 +29,27 @@ def extract_vid_pid(device_id: str) -> Tuple[str, str]:
     return vid, pid
 
 
-def extract_serial_from_device_id(device_id: str) -> str:
-    """从设备ID中提取序列号"""
+def extract_serial_from_device_id(device_id):
+    """从设备ID中提取序列号
+
+    Args:
+        device_id: 设备标识符字符串，通常格式为 USB\\VID_xxxx&PID_yyyy\\SERIAL
+
+    Returns:
+        str: 序列号字符串
+    """
     parts = str(device_id).split('\\')
     if len(parts) >= 3:
         return parts[2]
     return ""
 
 
-def scan_usb_devices() -> List[USBDevice]:
-    """扫描系统中的 USB 设备"""
+def scan_usb_devices():
+    """扫描系统中的 USB 设备
+
+    Returns:
+        List[USBDevice]: 设备列表，优先使用 WMI，失败时回退到注册表
+    """
     devices = []
     devices_wmi = _scan_via_wmi()
     if devices_wmi:
@@ -50,13 +67,17 @@ def scan_usb_devices() -> List[USBDevice]:
     return result
 
 
-def _scan_via_wmi() -> List[USBDevice]:
-    """通过 WMI 扫描 USB 设备"""
+def _scan_via_wmi():
+    """通过 WMI 扫描 USB 设备
+
+    Returns:
+        List[USBDevice]: WMI 扫描到的设备列表
+    """
     try:
         import wmi
         c = wmi.WMI()
         devices = []
-        seen_keys: Set[Tuple[str, str, str]] = set()
+        seen_keys = set()
 
         for usb in c.Win32_USBHub():
             vid, pid = extract_vid_pid(usb.DeviceID or "")
@@ -130,12 +151,16 @@ def _scan_via_wmi() -> List[USBDevice]:
 
         return devices
     except Exception as e:
-        logger.error("WMI 扫描失败: %s", e, exc_info=True)
+        logger.error("WMI 扫描失败: %s", e)
         return []
 
 
-def _scan_via_registry() -> List[USBDevice]:
-    """通过注册表扫描 USB 设备，只返回已连接的设备"""
+def _scan_via_registry():
+    """通过注册表扫描 USB 设备，只返回已连接的设备
+
+    Returns:
+        List[USBDevice]: 注册表扫描到的已连接设备列表
+    """
     if winreg is None:
         logger.debug("winreg 不可用，跳过注册表扫描")
         return []
@@ -164,13 +189,22 @@ def _scan_via_registry() -> List[USBDevice]:
                 except OSError:
                     break
     except Exception as e:
-        logger.error("注册表扫描失败: %s", e, exc_info=True)
+        logger.error("注册表扫描失败: %s", e)
     logger.debug("注册表扫描完成，找到 %d 个已连接设备", len(devices))
     return devices
 
 
-def _parse_registry_device(path: str, vid_part: str, pid_part: str) -> Optional[USBDevice]:
-    """解析注册表中的设备信息"""
+def _parse_registry_device(path, vid_part, pid_part):
+    """解析注册表中的设备信息
+
+    Args:
+        path: 注册表路径
+        vid_part: VID 部分（4位十六进制字符串）
+        pid_part: PID 部分（4位十六进制字符串）
+
+    Returns:
+        Optional[USBDevice]: 设备对象，解析失败返回 None
+    """
     if winreg is None:
         return None
     try:
@@ -211,8 +245,16 @@ def _parse_registry_device(path: str, vid_part: str, pid_part: str) -> Optional[
         return None
 
 
-def _get_registry_value(key, value_name: str) -> Optional[str]:
-    """获取注册表值"""
+def _get_registry_value(key, value_name):
+    """获取注册表值
+
+    Args:
+        key: 注册表键对象
+        value_name: 值名称
+
+    Returns:
+        Optional[str]: 值字符串，失败返回 None
+    """
     if winreg is None:
         return None
     try:
@@ -224,9 +266,16 @@ def _get_registry_value(key, value_name: str) -> Optional[str]:
         return None
 
 
-def _deduplicate_devices(devices: List[USBDevice]) -> List[USBDevice]:
-    """去重设备列表"""
-    seen: Set[Tuple[str, str, str]] = set()
+def _deduplicate_devices(devices):
+    """去重设备列表
+
+    Args:
+        devices: 设备列表
+
+    Returns:
+        List[USBDevice]: 去重后的设备列表
+    """
+    seen = set()
     unique = []
     for device in devices:
         key = device.get_unique_key()
@@ -236,8 +285,16 @@ def _deduplicate_devices(devices: List[USBDevice]) -> List[USBDevice]:
     return unique
 
 
-def compare_devices(old_devices: List[USBDevice], new_devices: List[USBDevice]) -> Tuple[List[USBDevice], List[USBDevice]]:
-    """对比两个设备列表，找出新增和移除的设备"""
+def compare_devices(old_devices, new_devices):
+    """对比两个设备列表，找出新增和移除的设备
+
+    Args:
+        old_devices: 基准设备列表
+        new_devices: 新设备列表
+
+    Returns:
+        Tuple[List[USBDevice], List[USBDevice]]: (新增设备列表, 移除设备列表)
+    """
     old_keys = {device.get_unique_key() for device in old_devices}
     new_keys = {device.get_unique_key() for device in new_devices}
 
