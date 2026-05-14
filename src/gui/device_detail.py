@@ -42,17 +42,17 @@ class DeviceChangePanel(QWidget):
         added_header = QWidget()
         added_header.setStyleSheet(f"background-color: {SUCCESS_BG};")
         added_header_layout = QHBoxLayout(added_header)
-        added_header_layout.setContentsMargins(16, 10, 16, 10)
+        added_header_layout.setContentsMargins(8, 4, 8, 4)  # 减少边距
 
         added_title = QLabel("+ 新增设备")
-        added_title_font = QFont("Segoe UI", 10)
+        added_title_font = QFont("Segoe UI", 9)  # 减小字体
         added_title_font.setBold(True)
         added_title.setFont(added_title_font)
         added_title.setStyleSheet(f"color: {SUCCESS_TEXT};")
         added_header_layout.addWidget(added_title)
 
         self.added_count_label = QLabel("0 个")
-        count_font = QFont("Segoe UI", 9)
+        count_font = QFont("Segoe UI", 8)  # 减小字体
         self.added_count_label.setFont(count_font)
         self.added_count_label.setStyleSheet(f"color: {SUCCESS_TEXT};")
         added_header_layout.addStretch()
@@ -83,10 +83,10 @@ class DeviceChangePanel(QWidget):
         removed_header = QWidget()
         removed_header.setStyleSheet(f"background-color: {ERROR_BG};")
         removed_header_layout = QHBoxLayout(removed_header)
-        removed_header_layout.setContentsMargins(16, 10, 16, 10)
+        removed_header_layout.setContentsMargins(8, 4, 8, 4)  # 减少边距
 
         removed_title = QLabel("- 移除设备")
-        removed_title_font = QFont("Segoe UI", 10)
+        removed_title_font = QFont("Segoe UI", 9)  # 减小字体
         removed_title_font.setBold(True)
         removed_title.setFont(removed_title_font)
         removed_title.setStyleSheet(f"color: {ERROR_TEXT};")

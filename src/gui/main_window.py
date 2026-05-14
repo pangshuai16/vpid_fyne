@@ -75,43 +75,35 @@ class MainWindow(QMainWindow):
 
         header_widget = QWidget()
         header_widget.setStyleSheet(f"background-color: {BG_HEADER};")
-        header_layout = QVBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.setSpacing(0)
+        header_layout = QHBoxLayout(header_widget)  # 改为横向布局，节省空间
+        header_layout.setContentsMargins(8, 4, 8, 4)  # 大幅减少边距
+        header_layout.setSpacing(8)  # 减少间距
 
-        title_row = QWidget()
-        title_layout = QHBoxLayout(title_row)
-        title_layout.setContentsMargins(16, 8, 16, 8)
-
+        # 标题和设备数量在同一行
         title_label = QLabel(APP_NAME)
-        title_font = QFont("Segoe UI", 14)
+        title_font = QFont("Segoe UI", 11)  # 减小字体
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setStyleSheet(f"color: {TEXT};")
-        title_layout.addWidget(title_label)
+        header_layout.addWidget(title_label)
 
         self.device_count_label = QLabel("0 个设备已连接")
         count_font = QFont("Segoe UI", 9)
         self.device_count_label.setFont(count_font)
         self.device_count_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
-        title_layout.addWidget(self.device_count_label)
-        title_layout.addStretch()
-        header_layout.addWidget(title_row)
+        header_layout.addWidget(self.device_count_label)
+        header_layout.addSpacing(12)  # 添加少量分隔
 
-        toolbar_row = QWidget()
-        toolbar_layout = QHBoxLayout(toolbar_row)
-        toolbar_layout.setContentsMargins(14, 0, 14, 8)
-
+        # 所有控件在同一行，紧凑排列
         self.refresh_btn = QPushButton("刷新")
-        refresh_font = QFont("Segoe UI", 10)
-        refresh_font.setBold(True)
+        refresh_font = QFont("Segoe UI", 9)
         self.refresh_btn.setFont(refresh_font)
         self.refresh_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {PRIMARY};
                 color: {TEXT_ON_PRIMARY};
                 border: none;
-                padding: 6px 16px;
+                padding: 4px 12px;  # 减少按钮内边距
             }}
             QPushButton:hover {{
                 background-color: {PRIMARY_HOVER};
@@ -121,7 +113,7 @@ class MainWindow(QMainWindow):
             }}
         """)
         self.refresh_btn.clicked.connect(self._on_refresh)
-        toolbar_layout.addWidget(self.refresh_btn)
+        header_layout.addWidget(self.refresh_btn)
 
         self.baseline_btn = QPushButton("设为基准")
         self.baseline_btn.setFont(refresh_font)
@@ -130,11 +122,11 @@ class MainWindow(QMainWindow):
                 background-color: {ACCENT_GREEN};
                 color: {TEXT_ON_PRIMARY};
                 border: none;
-                padding: 6px 16px;
+                padding: 4px 12px;  # 减少按钮内边距
             }}
         """)
         self.baseline_btn.clicked.connect(self._on_set_baseline)
-        toolbar_layout.addWidget(self.baseline_btn)
+        header_layout.addWidget(self.baseline_btn)
 
         self.copy_btn = QPushButton("复制")
         self.copy_btn.setFont(refresh_font)
@@ -143,19 +135,18 @@ class MainWindow(QMainWindow):
                 background-color: {BG};
                 color: {TEXT};
                 border: 1px solid {TEXT_SECONDARY};
-                padding: 6px 16px;
+                padding: 4px 12px;  # 减少按钮内边距
             }}
         """)
         self.copy_btn.clicked.connect(self._on_copy)
-        toolbar_layout.addWidget(self.copy_btn)
+        header_layout.addWidget(self.copy_btn)
 
         self.auto_refresh_check = QCheckBox("自动刷新 (3s)")
-        self.auto_refresh_check.setFont(QFont("Segoe UI", 10))
+        self.auto_refresh_check.setFont(QFont("Segoe UI", 9))
         self.auto_refresh_check.setStyleSheet(f"color: {TEXT};")
         self.auto_refresh_check.stateChanged.connect(self._toggle_auto_refresh)
-        toolbar_layout.addWidget(self.auto_refresh_check)
-        toolbar_layout.addStretch()
-        header_layout.addWidget(toolbar_row)
+        header_layout.addWidget(self.auto_refresh_check)
+        header_layout.addStretch()
 
         layout.addWidget(header_widget)
 

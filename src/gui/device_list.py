@@ -32,17 +32,17 @@ class DeviceListPanel(QWidget):
         header_widget = QWidget()
         header_widget.setStyleSheet(f"background-color: {BG_HEADER};")
         header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(16, 12, 16, 12)
+        header_layout.setContentsMargins(8, 4, 8, 4)  # 减少边距
 
         title_label = QLabel("全部设备")
-        title_font = QFont("Segoe UI", 10)
+        title_font = QFont("Segoe UI", 9)  # 减小字体
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setStyleSheet(f"color: {TEXT};")
         header_layout.addWidget(title_label)
 
         self.count_label = QLabel("0 个")
-        count_font = QFont("Segoe UI", 9)
+        count_font = QFont("Segoe UI", 8)  # 减小字体
         self.count_label.setFont(count_font)
         self.count_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
         header_layout.addStretch()
