@@ -22,10 +22,10 @@ def extract_vid_pid(device_id):
     Returns:
         Tuple[str, str]: (vid, pid) 如 ("0x1234", "0x5678")，失败返回空字符串
     """
-    vid_match = re.search(r'VID_([0-9A-Fa-f]{4})', device_id, re.IGNORECASE)
-    pid_match = re.search(r'PID_([0-9A-Fa-f]{4})', device_id, re.IGNORECASE)
-    vid = "0x{0}".format(vid_match.group(1)) if vid_match else ""
-    pid = "0x{0}".format(pid_match.group(1)) if pid_match else ""
+    vid_match = re.search(r'VID[_\-]([0-9A-Fa-f]{4})', str(device_id), re.IGNORECASE)
+    pid_match = re.search(r'PID[_\-]([0-9A-Fa-f]{4})', str(device_id), re.IGNORECASE)
+    vid = "0x{0}".format(vid_match.group(1).upper()) if vid_match else ""
+    pid = "0x{0}".format(pid_match.group(1).upper()) if pid_match else ""
     return vid, pid
 
 
@@ -41,6 +41,46 @@ def extract_serial_from_device_id(device_id):
     parts = str(device_id).split('\\')
     if len(parts) >= 3:
         return parts[2]
+    return ""
+
+
+def parse_vid_from_key(vid_key_name):
+    """从注册表键名中解析 VID
+
+    Args:
+        vid_key_name: 注册表键名，格式可能是 "VID_xxxx" 或直接 "xxxx"
+
+    Returns:
+        str: 4位16进制 VID 字符串，或空字符串
+    """
+    vid_key_name = str(vid_key_name)
+    # 先尝试匹配 VID_xxxx 格式
+    match = re.search(r'VID[_\-]?([0-9A-Fa-f]{4})', vid_key_name, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    # 如果已经是4位十六进制，直接返回
+    if re.match(r'^[0-9A-Fa-f]{4}$', vid_key_name):
+        return vid_key_name.upper()
+    return ""
+
+
+def parse_pid_from_key(pid_key_name):
+    """从注册表键名中解析 PID
+
+    Args:
+        pid_key_name: 注册表键名，格式可能是 "PID_xxxx" 或直接 "xxxx"
+
+    Returns:
+        str: 4位16进制 PID 字符串，或空字符串
+    """
+    pid_key_name = str(pid_key_name)
+    # 先尝试匹配 PID_xxxx 格式
+    match = re.search(r'PID[_\-]?([0-9A-Fa-f]{4})', pid_key_name, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    # 如果已经是4位十六进制，直接返回
+    if re.match(r'^[0-9A-Fa-f]{4}$', pid_key_name):
+        return pid_key_name.upper()
     return ""
 
 
@@ -81,7 +121,8 @@ def _scan_via_wmi():
 
         for usb in c.Win32_USBHub():
             vid, pid = extract_vid_pid(usb.DeviceID or "")
-            if not vid and not pid:
+            # 确保有有效的 VID 和 PID
+            if not vid or not pid:
                 continue
             serial = extract_serial_from_device_id(usb.DeviceID or "")
             key = (vid, pid, serial)
@@ -118,6 +159,7 @@ def _scan_via_wmi():
                 if not pnp_id.upper().startswith("USB"):
                     continue
                 vid, pid = extract_vid_pid(pnp_id)
+                # 确保有有效的 VID 和 PID
                 if not vid or not pid:
                     continue
                 serial = extract_serial_from_device_id(pnp_id)
@@ -133,18 +175,18 @@ def _scan_via_wmi():
                         manufacturer = parts[0]
 
                 device = USBDevice(
-                vid=vid,
-                pid=pid,
-                serial=serial,
-                name=pnp.Name or pnp.Caption or "USB Device",
-                manufacturer=manufacturer,
-                location=getattr(pnp, 'DeviceLocator', '') or getattr(pnp, 'Location', ''),
-                driver="",
-                device_id=pnp.DeviceID or "",
-                pnp_device_id=pnp_id,
-                status=STATUS_CONNECTED if getattr(pnp, 'ConfigManagerErrorCode', 0) == 0 else STATUS_ERROR,
-                path=pnp.DeviceID or ""
-            )
+                    vid=vid,
+                    pid=pid,
+                    serial=serial,
+                    name=pnp.Name or pnp.Caption or "USB Device",
+                    manufacturer=manufacturer,
+                    location=getattr(pnp, 'DeviceLocator', '') or getattr(pnp, 'Location', ''),
+                    driver="",
+                    device_id=pnp.DeviceID or "",
+                    pnp_device_id=pnp_id,
+                    status=STATUS_CONNECTED if getattr(pnp, 'ConfigManagerErrorCode', 0) == 0 else STATUS_ERROR,
+                    path=pnp.DeviceID or ""
+                )
                 devices.append(device)
 
             logger.debug("WMI PnPEntity 补充扫描完成，总计 %d 个设备", len(devices))
@@ -174,12 +216,24 @@ def _scan_via_registry():
             while True:
                 try:
                     vid_key_name = winreg.EnumKey(base_key, i)
+                    # 解析 VID
+                    vid = parse_vid_from_key(vid_key_name)
+                    if not vid:
+                        i += 1
+                        continue
+
                     vid_path = "{0}\\{1}".format(base_path, vid_key_name)
                     with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, vid_path) as vid_key:
                         j = 0
                         while True:
                             try:
                                 pid_key_name = winreg.EnumKey(vid_key, j)
+                                # 解析 PID
+                                pid = parse_pid_from_key(pid_key_name)
+                                if not pid:
+                                    j += 1
+                                    continue
+
                                 pid_path = "{0}\\{1}".format(vid_path, pid_key_name)
                                 # 现在需要遍历设备实例（每个设备都有自己的子键，包含序列号）
                                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, pid_path) as pid_key:
@@ -188,7 +242,7 @@ def _scan_via_registry():
                                         try:
                                             serial_key_name = winreg.EnumKey(pid_key, k)
                                             serial_path = "{0}\\{1}".format(pid_path, serial_key_name)
-                                            device = _parse_registry_device(serial_path, vid_key_name, pid_key_name, serial_key_name)
+                                            device = _parse_registry_device(serial_path, vid, pid, serial_key_name)
                                             if device:
                                                 devices.append(device)
                                             k += 1
@@ -206,13 +260,13 @@ def _scan_via_registry():
     return devices
 
 
-def _parse_registry_device(path, vid_part, pid_part, serial_part):
+def _parse_registry_device(path, vid, pid, serial_part):
     """解析注册表中的设备信息
 
     Args:
         path: 注册表路径
-        vid_part: VID 部分（4位十六进制字符串）
-        pid_part: PID 部分（4位十六进制字符串）
+        vid: 4位十六进制 VID 字符串
+        pid: 4位十六进制 PID 字符串
         serial_part: 序列号/设备实例 ID
 
     Returns:
@@ -221,8 +275,8 @@ def _parse_registry_device(path, vid_part, pid_part, serial_part):
     if winreg is None:
         return None
     try:
+        device_id = "USB\\VID_{0}&PID_{1}\\{2}".format(vid, pid, serial_part)
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
-            device_id = "USB\\VID_{0}&PID_{1}\\{2}".format(vid_part, pid_part, serial_part)
             name = _get_registry_value(key, "FriendlyName") or _get_registry_value(key, "DeviceDesc") or "USB Device"
             # DeviceDesc 有时候是类似 "USB\\VID_xxxx&PID_xxxx\\Device Description" 格式，需要提取
             if "\\" in name:
@@ -247,8 +301,8 @@ def _parse_registry_device(path, vid_part, pid_part, serial_part):
                     pass
 
             return USBDevice(
-                vid="0x{0}".format(vid_part),
-                pid="0x{0}".format(pid_part),
+                vid="0x{0}".format(vid),
+                pid="0x{0}".format(pid),
                 serial=serial,
                 name=name,
                 manufacturer=manufacturer,
