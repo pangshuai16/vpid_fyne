@@ -81,7 +81,7 @@ jobs:
       if: github.ref_name != 'main'
       uses: actions/upload-artifact@v4
       with:
-        name: vpid_viewer-${{ github.ref_name }}
+        name: vpid_viewer-${{ github.sha }}
         path: dist/vpid_viewer.exe
         retention-days: 7
 
