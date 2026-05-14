@@ -44,54 +44,11 @@ def extract_serial_from_device_id(device_id):
     return ""
 
 
-def _get_mock_devices():
-    """生成模拟的 USB 设备数据（用于开发和测试）
-
-    Returns:
-        List[USBDevice]: 模拟的 USB 设备列表
-    """
-    mock_devices = [
-        USBDevice(
-            vid="0x8087",
-            pid="0x0024",
-            serial="ABC123XYZ001",
-            name="USB 键盘",
-            manufacturer="Generic",
-            status=STATUS_CONNECTED,
-        ),
-        USBDevice(
-            vid="0x046D",
-            pid="0xC534",
-            serial="MOUSE987654",
-            name="Logitech USB 鼠标",
-            manufacturer="Logitech",
-            status=STATUS_CONNECTED,
-        ),
-        USBDevice(
-            vid="0x0951",
-            pid="0x1666",
-            serial="KINGSTON001",
-            name="Kingston DataTraveler 3.0",
-            manufacturer="Kingston",
-            status=STATUS_CONNECTED,
-        ),
-        USBDevice(
-            vid="0x17EF",
-            pid="0x3087",
-            serial="LENOVO-WEBCAM-01",
-            name="Integrated Camera",
-            manufacturer="Lenovo",
-            status=STATUS_CONNECTED,
-        ),
-    ]
-    return mock_devices
-
-
 def scan_usb_devices():
     """扫描系统中的 USB 设备
 
     Returns:
-        List[USBDevice]: 设备列表，优先使用 WMI，失败时回退到注册表，开发环境使用模拟数据
+        List[USBDevice]: 设备列表，优先使用 WMI，失败时回退到注册表
     """
     devices = []
     devices_wmi = _scan_via_wmi()
@@ -102,10 +59,6 @@ def scan_usb_devices():
         devices_reg = _scan_via_registry()
         if devices_reg:
             devices.extend(devices_reg)
-    # 如果都没有扫描到设备（非Windows环境或开发调试），使用模拟数据
-    if not devices:
-        logger.debug("未扫描到真实设备，使用模拟数据")
-        devices = _get_mock_devices()
     result = _deduplicate_devices(devices)
     logger.debug("扫描完成，共找到 %d 个 USB 设备", len(result))
     for d in result:
@@ -203,10 +156,10 @@ def _scan_via_wmi():
 
 
 def _scan_via_registry():
-    """通过注册表扫描 USB 设备，只返回已连接的设备
+    """通过注册表扫描 USB 设备
 
     Returns:
-        List[USBDevice]: 注册表扫描到的已连接设备列表
+        List[USBDevice]: 注册表扫描到的设备列表
     """
     if winreg is None:
         logger.debug("winreg 不可用，跳过注册表扫描")
@@ -226,9 +179,19 @@ def _scan_via_registry():
                             try:
                                 pid_key_name = winreg.EnumKey(vid_key, j)
                                 pid_path = "{0}\\{1}".format(vid_path, pid_key_name)
-                                device = _parse_registry_device(pid_path, vid_key_name, pid_key_name)
-                                if device and device.status == STATUS_CONNECTED:
-                                    devices.append(device)
+                                # 现在需要遍历设备实例（每个设备都有自己的子键，包含序列号）
+                                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, pid_path) as pid_key:
+                                    k = 0
+                                    while True:
+                                        try:
+                                            serial_key_name = winreg.EnumKey(pid_key, k)
+                                            serial_path = "{0}\\{1}".format(pid_path, serial_key_name)
+                                            device = _parse_registry_device(serial_path, vid_key_name, pid_key_name, serial_key_name)
+                                            if device:
+                                                devices.append(device)
+                                            k += 1
+                                        except OSError:
+                                            break
                                 j += 1
                             except OSError:
                                 break
@@ -237,17 +200,18 @@ def _scan_via_registry():
                     break
     except Exception as e:
         logger.error("注册表扫描失败: %s", e)
-    logger.debug("注册表扫描完成，找到 %d 个已连接设备", len(devices))
+    logger.debug("注册表扫描完成，找到 %d 个设备", len(devices))
     return devices
 
 
-def _parse_registry_device(path, vid_part, pid_part):
+def _parse_registry_device(path, vid_part, pid_part, serial_part):
     """解析注册表中的设备信息
 
     Args:
         path: 注册表路径
         vid_part: VID 部分（4位十六进制字符串）
         pid_part: PID 部分（4位十六进制字符串）
+        serial_part: 序列号/设备实例 ID
 
     Returns:
         Optional[USBDevice]: 设备对象，解析失败返回 None
@@ -256,22 +220,27 @@ def _parse_registry_device(path, vid_part, pid_part):
         return None
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
-            device_id = "USB\\VID_{0}&PID_{1}".format(vid_part, pid_part)
+            device_id = "USB\\VID_{0}&PID_{1}\\{2}".format(vid_part, pid_part, serial_part)
             name = _get_registry_value(key, "FriendlyName") or _get_registry_value(key, "DeviceDesc") or "USB Device"
+            # DeviceDesc 有时候是类似 "USB\\VID_xxxx&PID_xxxx\\Device Description" 格式，需要提取
+            if "\\" in name:
+                name = name.split("\\")[-1]
             manufacturer = _get_registry_value(key, "Mfg") or ""
-            serial = ""
-            path_parts = path.split('\\')
-            if len(path_parts) >= 4:
-                serial = path_parts[3]
+            # 同样处理制造商信息
+            if "\\" in manufacturer:
+                manufacturer = manufacturer.split("\\")[-1]
+            serial = serial_part
             driver = _get_registry_value(key, "Driver") or ""
             location = _get_registry_value(key, "LocationInformation") or ""
 
-            status = STATUS_UNKNOWN
+            # 默认认为设备是已连接的（因为它在 CurrentControlSet 中）
+            status = STATUS_CONNECTED
             error_code_str = _get_registry_value(key, "ConfigManagerErrorCode")
             if error_code_str is not None:
                 try:
                     error_code = int(error_code_str)
-                    status = STATUS_CONNECTED if error_code == 0 else "{0} ({1})".format(STATUS_ERROR, error_code)
+                    if error_code != 0:
+                        status = "{0} ({1})".format(STATUS_ERROR, error_code)
                 except ValueError:
                     pass
 
@@ -326,7 +295,7 @@ def _deduplicate_devices(devices):
     unique = []
     for device in devices:
         key = device.get_unique_key()
-        if key not in seen and device.vid and device.pid:
+        if key not in seen:
             seen.add(key)
             unique.append(device)
     return unique
