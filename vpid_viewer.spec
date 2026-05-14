@@ -3,7 +3,9 @@ import os
 
 block_cipher = None
 
-datas = []
+datas = [
+    ('assets', 'assets'),
+]
 hiddenimports = [
     'wmi',
     'winreg',

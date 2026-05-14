@@ -1,11 +1,13 @@
 """主窗口模块"""
+import os
+import sys
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QCheckBox, QSplitter, QStatusBar,
-    QMenuBar, QAction, QMessageBox, QApplication
+    QMenuBar, QAction, QMessageBox, QApplication, QStyle
 )
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt5.QtGui import QFont, QKeySequence
+from PyQt5.QtGui import QFont, QKeySequence, QIcon
 from datetime import datetime
 from typing import Optional, List
 from ..device_info import USBDevice
@@ -48,6 +50,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.resize(1180, 800)
         self.setMinimumSize(980, 680)
+        
+        # 设置窗口图标
+        self._set_app_icon()
 
         self.devices = []
         self.baseline_devices = []
@@ -230,6 +235,34 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.status_label, 1)
         self.baseline_status_label = QLabel("")
         self.status_bar.addPermanentWidget(self.baseline_status_label)
+
+    def _set_app_icon(self):
+        """设置应用程序图标"""
+        # 获取图标路径（支持开发环境和打包后）
+        if getattr(sys, 'frozen', False):
+            # PyInstaller 打包后
+            base_dir = sys._MEIPASS
+        else:
+            # 开发环境
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        
+        icon_path = os.path.join(base_dir, "assets", "usb-icon.png")
+        
+        # 优先使用自定义图标，如果文件不存在则回退到内置图标
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            self.setWindowIcon(icon)
+            app = QApplication.instance()
+            if app:
+                app.setWindowIcon(icon)
+        else:
+            # 回退到 PyQt5 内置的 USB 驱动器标准图标
+            style = self.style()
+            icon = style.standardIcon(QStyle.SP_DriveUSBIcon)
+            self.setWindowIcon(icon)
+            app = QApplication.instance()
+            if app:
+                app.setWindowIcon(icon)
 
     def _initial_scan(self):
         """初始设备扫描"""
