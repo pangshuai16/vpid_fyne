@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle(APP_NAME)
-        self.resize(1280, 720)  # 初始窗口大小 1280x720
+        self.resize(1280, 720)
         self.setMinimumSize(960, 600)
 
         self.devices = []
@@ -49,7 +49,6 @@ class MainWindow(QMainWindow):
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self._on_refresh)
 
-        # 应用样式
         self._apply_style()
         self._set_app_icon()
 
@@ -70,19 +69,18 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 紧凑的工具栏（仅一行，无大标题）
+        # 工具栏 - 使用 setObjectName 让 QSS 识别，不用 setStyleSheet 覆盖
         toolbar = QWidget()
-        toolbar.setStyleSheet("background-color: #FFFFFF; border-bottom: 1px solid #E4E7ED;")
+        toolbar.setObjectName("toolbar")
         toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(12, 8, 12, 8)
-        toolbar_layout.setSpacing(12)
+        toolbar_layout.setContentsMargins(12, 6, 12, 6)
+        toolbar_layout.setSpacing(10)
 
-        # 状态信息
         self.device_count_label = QLabel("0 个设备已连接")
+        self.device_count_label.setStyleSheet("font-weight: 600; font-size: 13px; color: #303133;")
         toolbar_layout.addWidget(self.device_count_label)
-        toolbar_layout.addSpacing(8)
+        toolbar_layout.addSpacing(6)
 
-        # 按钮
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.clicked.connect(self._on_refresh)
         toolbar_layout.addWidget(self.refresh_btn)
@@ -99,7 +97,6 @@ class MainWindow(QMainWindow):
 
         toolbar_layout.addStretch()
 
-        # 自动刷新
         self.auto_refresh_check = QCheckBox("自动刷新 (0.5s)")
         self.auto_refresh_check.stateChanged.connect(self._toggle_auto_refresh)
         toolbar_layout.addWidget(self.auto_refresh_check)
@@ -199,7 +196,6 @@ class MainWindow(QMainWindow):
                 if app:
                     app.setWindowIcon(icon)
             else:
-                # 回退到内置图标
                 style = self.style()
                 icon = style.standardIcon(QStyle.SP_DriveUSBIcon)
                 self.setWindowIcon(icon)
@@ -271,10 +267,8 @@ class MainWindow(QMainWindow):
             messages.append("新增 {} 个设备".format(len(added)))
         if removed:
             messages.append("移除 {} 个设备".format(len(removed)))
-
         if messages:
-            notification = " | ".join(messages)
-            self._update_status(notification)
+            self._update_status(" | ".join(messages))
 
     def _update_status(self, message):
         """更新状态栏文本"""

@@ -1,8 +1,5 @@
 """应用程序常量配置 - 包含现代 QSS 样式系统"""
 
-# ============================================
-# 颜色常量
-# ============================================
 BG = "#F5F7FA"
 BG_HEADER = "#E9EDF2"
 BG_DARK = "#E3E6EB"
@@ -28,13 +25,17 @@ TEXT_ON_PRIMARY = "#FFFFFF"
 BORDER = "#DCDFE6"
 BORDER_LIGHT = "#E4E7ED"
 
-# ============================================
-# 现代 QSS 样式表
-# ============================================
+AUTO_REFRESH_INTERVAL = 500
+
+APP_NAME = "USB 设备管理器"
+APP_VERSION = "1.5.0"
+APP_AUTHOR = "USB Manager"
+
+STATUS_CONNECTED = "Connected"
+STATUS_ERROR = "Error"
+STATUS_UNKNOWN = "Unknown"
+
 QSS_STYLE = """
-/* ============================================
-   全局样式
-   ============================================ */
 QMainWindow {
     background-color: #F5F7FA;
 }
@@ -45,17 +46,22 @@ QWidget {
     color: #303133;
 }
 
-/* ============================================
-   按钮样式
-   ============================================ */
+/* 工具栏 */
+QWidget#toolbar {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E4E7ED;
+}
+
+/* 按钮 */
 QPushButton {
     background-color: #409EFF;
     color: #FFFFFF;
     border: none;
     border-radius: 4px;
-    padding: 8px 16px;
+    padding: 6px 14px;
     font-weight: 500;
-    min-width: 80px;
+    min-width: 70px;
+    max-height: 30px;
 }
 
 QPushButton:hover {
@@ -85,6 +91,7 @@ QPushButton[class="secondary"]:hover {
 
 QPushButton[class="success"] {
     background-color: #67C23A;
+    color: #FFFFFF;
 }
 
 QPushButton[class="success"]:hover {
@@ -95,17 +102,15 @@ QPushButton[class="success"]:pressed {
     background-color: #529B2E;
 }
 
-/* ============================================
-   复选框样式
-   ============================================ */
+/* 复选框 */
 QCheckBox {
     spacing: 6px;
     color: #606266;
 }
 
 QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border: 1px solid #DCDFE6;
     border-radius: 3px;
     background-color: #FFFFFF;
@@ -114,25 +119,23 @@ QCheckBox::indicator {
 QCheckBox::indicator:checked {
     background-color: #409EFF;
     border-color: #409EFF;
-    image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
 }
 
 QCheckBox::indicator:hover {
     border-color: #409EFF;
 }
 
-/* ============================================
-   树形控件样式
-   ============================================ */
+/* 树形控件 */
 QTreeWidget {
     background-color: #FFFFFF;
     border: 1px solid #E4E7ED;
     border-radius: 4px;
     outline: none;
+    alternate-background-color: #FAFAFA;
 }
 
 QTreeWidget::item {
-    padding: 8px 4px;
+    padding: 6px 4px;
     border-bottom: 1px solid #F2F6FC;
 }
 
@@ -145,37 +148,18 @@ QTreeWidget::item:selected {
     color: #409EFF;
 }
 
-QTreeWidget::item:selected:!active {
-    background-color: #ECF5FF;
-    color: #409EFF;
-}
-
 QHeaderView::section {
     background-color: #F5F7FA;
     color: #606266;
-    padding: 10px 8px;
+    padding: 8px 6px;
     border: none;
     border-right: 1px solid #E4E7ED;
     border-bottom: 1px solid #E4E7ED;
     font-weight: 600;
+    font-size: 12px;
 }
 
-QTreeWidget QHeaderView {
-    background-color: #F5F7FA;
-}
-
-QTreeWidget QHeaderView::section:first {
-    border-top-left-radius: 4px;
-}
-
-QTreeWidget QHeaderView::section:last {
-    border-top-right-radius: 4px;
-    border-right: none;
-}
-
-/* ============================================
-   标签样式
-   ============================================ */
+/* 标签 */
 QLabel {
     color: #606266;
 }
@@ -183,17 +167,16 @@ QLabel {
 QLabel[class="header"] {
     font-weight: 600;
     color: #303133;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 QLabel[class="count"] {
     font-weight: 600;
     color: #409EFF;
+    font-size: 13px;
 }
 
-/* ============================================
-   分割器样式
-   ============================================ */
+/* 分割器 */
 QSplitter::handle {
     background-color: #E4E7ED;
     width: 4px;
@@ -203,28 +186,26 @@ QSplitter::handle:hover {
     background-color: #DCDFE6;
 }
 
-/* ============================================
-   状态栏样式
-   ============================================ */
+/* 状态栏 */
 QStatusBar {
     background-color: #FFFFFF;
     border-top: 1px solid #E4E7ED;
+    font-size: 12px;
 }
 
 QStatusBar::item {
     border: none;
 }
 
-/* ============================================
-   菜单栏样式
-   ============================================ */
+/* 菜单栏 */
 QMenuBar {
     background-color: #FFFFFF;
     border-bottom: 1px solid #E4E7ED;
+    font-size: 12px;
 }
 
 QMenuBar::item {
-    padding: 6px 12px;
+    padding: 4px 10px;
 }
 
 QMenuBar::item:selected {
@@ -240,7 +221,7 @@ QMenu {
 }
 
 QMenu::item {
-    padding: 8px 24px;
+    padding: 6px 20px;
 }
 
 QMenu::item:selected {
@@ -248,16 +229,3 @@ QMenu::item:selected {
     color: #409EFF;
 }
 """
-
-# ============================================
-# 其他常量
-# ============================================
-AUTO_REFRESH_INTERVAL = 500  # 改为 0.5 秒
-
-APP_NAME = "USB 设备管理器"
-APP_VERSION = "1.5.0"
-APP_AUTHOR = "USB Manager"
-
-STATUS_CONNECTED = "Connected"
-STATUS_ERROR = "Error"
-STATUS_UNKNOWN = "Unknown"
