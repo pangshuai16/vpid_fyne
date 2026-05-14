@@ -1,153 +1,109 @@
 """设备列表面板组件 - 显示全部 USB 设备"""
-import tkinter as tk
-from tkinter import ttk
-from typing import Optional, List, Callable
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem, QHeaderView
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
+from typing import Optional, List
 from ..device_info import USBDevice
 from ..constants import (
     BG,
     BG_HEADER,
-    PRIMARY,
     TEXT,
     TEXT_SECONDARY,
-    SELECT_BG,
-    SELECT_FG,
-    VID_COLOR,
-    PID_COLOR,
-    FONT_SYSTEM,
-    FONT_SYSTEM_BOLD,
-    FONT_MONO,
 )
 
 
-class DeviceListPanel(ttk.Frame):
+class DeviceListPanel(QWidget):
     """显示全部 USB 设备列表的面板"""
+    device_selected = pyqtSignal(object)
 
-    def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
+    def __init__(self, parent=None):
         super(DeviceListPanel, self).__init__(parent)
-        self.on_select_callback = on_select_callback
         self.devices = []
         self._setup_ui()
 
     def _setup_ui(self):
         """初始化 UI 组件"""
-        container = tk.Frame(self, bg=BG)
-        container.pack(fill="both", expand=True)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        all_header = tk.Frame(container, bg=BG_HEADER, padx=16, pady=12)
-        all_header.pack(fill="x")
+        header_widget = QWidget()
+        header_widget.setStyleSheet(f"background-color: {BG_HEADER};")
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(16, 12, 16, 12)
 
-        tk.Label(
-            all_header,
-            text="全部设备",
-            font=FONT_SYSTEM_BOLD,
-            bg=BG_HEADER,
-            fg=TEXT
-        ).pack(side="left")
+        title_label = QLabel("全部设备")
+        title_font = QFont("Segoe UI", 10)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet(f"color: {TEXT};")
+        header_layout.addWidget(title_label)
 
-        self.count_label = tk.Label(
-            all_header,
-            text="0 个",
-            font=FONT_SYSTEM,
-            bg=BG_HEADER,
-            fg=TEXT_SECONDARY
-        )
-        self.count_label.pack(side="right")
+        self.count_label = QLabel("0 个")
+        count_font = QFont("Segoe UI", 9)
+        self.count_label.setFont(count_font)
+        self.count_label.setStyleSheet(f"color: {TEXT_SECONDARY};")
+        header_layout.addStretch()
+        header_layout.addWidget(self.count_label)
 
-        all_list_frame = tk.Frame(container, bg=BG, padx=12, pady=8)
-        all_list_frame.pack(fill="both", expand=True)
+        layout.addWidget(header_widget)
 
-        self.all_tree = self._create_treeview(all_list_frame)
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["设备名称", "VID", "PID", "序列号"])
+        header = self.tree.header()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        self.tree.setRootIsDecorated(False)
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setSelectionMode(QTreeWidget.SingleSelection)
+        self.tree.itemSelectionChanged.connect(self._on_select)
+        layout.addWidget(self.tree)
 
-    def _create_treeview(self, parent):
-        """创建统一风格的 Treeview"""
-        scrollbar = ttk.Scrollbar(parent, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
-
-        tree = ttk.Treeview(
-            parent,
-            columns=("vid", "pid", "serial"),
-            show="tree headings",
-            yscrollcommand=scrollbar.set,
-            selectmode="browse",
-        )
-        tree.pack(side="left", fill="both", expand=True)
-        scrollbar.config(command=tree.yview)
-
-        tree.heading("#0", text="设备名称", anchor="w")
-        tree.heading("vid", text="VID", anchor="w")
-        tree.heading("pid", text="PID", anchor="w")
-        tree.heading("serial", text="序列号", anchor="w")
-
-        tree.column("#0", width=200, minwidth=130, anchor="w", stretch=True)
-        tree.column("vid", width=90, minwidth=70, anchor="w", stretch=True)
-        tree.column("pid", width=90, minwidth=70, anchor="w", stretch=True)
-        tree.column("serial", width=130, minwidth=80, anchor="w", stretch=True)
-
-        tree.tag_configure("normal", font=FONT_SYSTEM)
-        tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
-
-        tree.bind("<<TreeviewSelect>>", lambda e: self._on_select(e))
-        tree.bind("<Button-1>", lambda e: self._on_click(e))
-
-        return tree
-
-    def _on_click(self, event):
-        """处理点击空白区域取消选择"""
-        region = self.all_tree.identify_region(event.x, event.y)
-        if region == "nothing":
-            self.all_tree.selection_remove(self.all_tree.selection())
-
-    def _on_select(self, event):
+    def _on_select(self):
         """处理设备选择事件"""
-        selection = self.all_tree.selection()
-        if selection and self.on_select_callback:
-            item_id = selection[0]
-            index = self.all_tree.index(item_id)
+        selected_items = self.tree.selectedItems()
+        if selected_items and self.devices:
+            index = self.tree.indexOfTopLevelItem(selected_items[0])
             if 0 <= index < len(self.devices):
-                self.on_select_callback(self.devices[index])
+                self.device_selected.emit(self.devices[index])
 
     def update_devices(self, devices):
         """更新设备列表显示"""
         self.devices = devices
-        self._update_tree(self.all_tree, self.devices)
-        self.count_label.config(text="{0} 个".format(len(devices)))
+        self._update_tree(self.devices)
+        self.count_label.setText(f"{len(devices)} 个")
 
-    def _update_tree(self, tree, device_list):
-        """更新 Treeview 内容"""
-        for item in tree.get_children():
-            tree.delete(item)
-
+    def _update_tree(self, device_list):
+        """更新 TreeView 内容"""
+        self.tree.clear()
         for device in device_list:
-            name = device.get_display_name()
-            vid = device.vid or "—"
-            pid = device.pid or "—"
-            serial = device.serial or "—"
-
-            tree.insert(
-                "",
-                "end",
-                text=name,
-                values=(vid, pid, serial),
-                tags=("normal",)
-            )
+            item = QTreeWidgetItem([
+                device.get_display_name(),
+                device.vid or "—",
+                device.pid or "—",
+                device.serial or "—"
+            ])
+            self.tree.addTopLevelItem(item)
 
     def get_selected_device(self):
         """获取当前选中的设备"""
-        selection = self.all_tree.selection()
-        if selection:
-            index = self.all_tree.index(selection[0])
+        selected_items = self.tree.selectedItems()
+        if selected_items and self.devices:
+            index = self.tree.indexOfTopLevelItem(selected_items[0])
             if 0 <= index < len(self.devices):
                 return self.devices[index]
         return None
 
     def clear_selection(self):
         """清除选择"""
-        for item in self.all_tree.selection():
-            self.all_tree.selection_remove(item)
+        self.tree.clearSelection()
 
     def clear(self):
         """清空所有显示"""
-        for item in self.all_tree.get_children():
-            self.all_tree.delete(item)
+        self.tree.clear()
         self.devices = []
-        self.count_label.config(text="0 个")
+        self.count_label.setText("0 个")

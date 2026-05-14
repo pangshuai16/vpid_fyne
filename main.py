@@ -14,19 +14,21 @@ sys.path.insert(0, get_base_path())
 def main():
     try:
         from src.gui.main_window import MainWindow
-        app = MainWindow()
-        app.run()
+        from PyQt5.QtWidgets import QApplication
+        app = QApplication(sys.argv)
+        app.setStyle('Fusion')
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec_())
     except Exception as e:
         import traceback
-        import tkinter as tk
-        from tkinter import messagebox
-        if tk._default_root is None:
-            root = tk.Tk()
-            root.withdraw()
-        error_msg = "{0}\n\n{1}".format(str(e), traceback.format_exc())
-        messagebox.showerror("Fatal Error", error_msg)
-        if tk._default_root:
-            tk._default_root.destroy()
+        from PyQt5.QtWidgets import QMessageBox
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText("Fatal Error")
+        msg.setDetailedText("{0}\n\n{1}".format(str(e), traceback.format_exc()))
+        msg.setWindowTitle("Fatal Error")
+        msg.exec_()
 
 
 if __name__ == "__main__":

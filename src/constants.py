@@ -21,10 +21,13 @@ VID_COLOR = "#8764B8"
 PID_COLOR = "#038387"
 MENU_BG = "#FFFFFF"
 
+# PyQt5 不使用元组字体格式，这些常量主要用于颜色和尺寸，
+# 实际字体在代码中使用 QFont 单独设置
+# 保留这些常量主要用于向后兼容
 FONT_SYSTEM = ("Segoe UI", 10)
 FONT_SYSTEM_BOLD = ("Segoe UI", 10, "bold")
 FONT_SYSTEM_SMALL = ("Segoe UI", 9)
-FONT_MONO = ("Consolas", 9, "bold")
+FONT_MONO = ("Consolas", 9)
 FONT_TITLE = ("Segoe UI", 14, "bold")
 FONT_SUBTITLE = ("Segoe UI", 9)
 

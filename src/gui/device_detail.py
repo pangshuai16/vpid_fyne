@@ -1,7 +1,10 @@
 """设备变化面板组件 - 显示新增和移除的设备"""
-import tkinter as tk
-from tkinter import ttk
-from typing import Optional, List, Callable
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTreeWidget, QTreeWidgetItem, QHeaderView
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
+from typing import Optional, List
 from ..device_info import USBDevice
 from ..constants import (
     BG,
@@ -9,205 +12,157 @@ from ..constants import (
     TEXT,
     TEXT_SECONDARY,
     BORDER,
-    ACCENT_GREEN,
     SUCCESS_BG,
     SUCCESS_TEXT,
-    ACCENT_RED,
     ERROR_BG,
     ERROR_TEXT,
-    SELECT_BG,
-    SELECT_FG,
-    FONT_SYSTEM,
-    FONT_SYSTEM_BOLD,
 )
 
 
-class DeviceChangePanel(ttk.Frame):
+class DeviceChangePanel(QWidget):
     """显示新增和移除 USB 设备的面板"""
+    device_selected = pyqtSignal(object)
 
-    def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
+    def __init__(self, parent=None):
         super(DeviceChangePanel, self).__init__(parent)
-        self.on_select_callback = on_select_callback
         self.added_devices = []
         self.removed_devices = []
         self._setup_ui()
 
     def _setup_ui(self):
         """初始化 UI 组件"""
-        container = tk.Frame(self, bg=BG)
-        container.pack(fill="both", expand=True)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        added_section = tk.Frame(container, bg=BG)
-        added_section.pack(fill="both", expand=True, pady=(0, 4))
+        added_widget = QWidget()
+        added_layout = QVBoxLayout(added_widget)
+        added_layout.setContentsMargins(0, 0, 0, 4)
 
-        added_header = tk.Frame(added_section, bg=SUCCESS_BG, padx=16, pady=10)
-        added_header.pack(fill="x")
+        added_header = QWidget()
+        added_header.setStyleSheet(f"background-color: {SUCCESS_BG};")
+        added_header_layout = QHBoxLayout(added_header)
+        added_header_layout.setContentsMargins(16, 10, 16, 10)
 
-        tk.Label(
-            added_header,
-            text="+ 新增设备",
-            font=FONT_SYSTEM_BOLD,
-            bg=SUCCESS_BG,
-            fg=SUCCESS_TEXT
-        ).pack(side="left")
+        added_title = QLabel("+ 新增设备")
+        added_title_font = QFont("Segoe UI", 10)
+        added_title_font.setBold(True)
+        added_title.setFont(added_title_font)
+        added_title.setStyleSheet(f"color: {SUCCESS_TEXT};")
+        added_header_layout.addWidget(added_title)
 
-        self.added_count_label = tk.Label(
-            added_header,
-            text="0 个",
-            font=FONT_SYSTEM,
-            bg=SUCCESS_BG,
-            fg=SUCCESS_TEXT
-        )
-        self.added_count_label.pack(side="right")
+        self.added_count_label = QLabel("0 个")
+        count_font = QFont("Segoe UI", 9)
+        self.added_count_label.setFont(count_font)
+        self.added_count_label.setStyleSheet(f"color: {SUCCESS_TEXT};")
+        added_header_layout.addStretch()
+        added_header_layout.addWidget(self.added_count_label)
+        added_layout.addWidget(added_header)
 
-        added_list_frame = tk.Frame(added_section, bg=BG, padx=12, pady=8)
-        added_list_frame.pack(fill="both", expand=True)
+        self.added_tree = QTreeWidget()
+        self.added_tree.setHeaderLabels(["设备名称", "VID", "PID"])
+        added_header_view = self.added_tree.header()
+        added_header_view.setSectionResizeMode(0, QHeaderView.Stretch)
+        added_header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        added_header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.added_tree.setRootIsDecorated(False)
+        self.added_tree.setAlternatingRowColors(True)
+        self.added_tree.setSelectionMode(QTreeWidget.SingleSelection)
+        self.added_tree.itemSelectionChanged.connect(lambda: self._on_select(self.added_tree, self.added_devices))
+        added_layout.addWidget(self.added_tree)
+        layout.addWidget(added_widget)
 
-        self.added_tree = self._create_treeview(added_list_frame)
-        self.added_tree.tag_configure(
-            "added",
-            background=SUCCESS_BG,
-            foreground=SUCCESS_TEXT,
-            font=FONT_SYSTEM
-        )
+        separator = QWidget()
+        separator.setStyleSheet(f"background-color: {BORDER}; min-height: 1px; max-height: 1px;")
+        layout.addWidget(separator)
 
-        separator = tk.Frame(container, bg=BORDER, height=1)
-        separator.pack(fill="x", padx=12, pady=4)
+        removed_widget = QWidget()
+        removed_layout = QVBoxLayout(removed_widget)
+        removed_layout.setContentsMargins(0, 4, 0, 0)
 
-        removed_section = tk.Frame(container, bg=BG)
-        removed_section.pack(fill="both", expand=True, pady=(4, 0))
+        removed_header = QWidget()
+        removed_header.setStyleSheet(f"background-color: {ERROR_BG};")
+        removed_header_layout = QHBoxLayout(removed_header)
+        removed_header_layout.setContentsMargins(16, 10, 16, 10)
 
-        removed_header = tk.Frame(removed_section, bg=ERROR_BG, padx=16, pady=10)
-        removed_header.pack(fill="x")
+        removed_title = QLabel("- 移除设备")
+        removed_title_font = QFont("Segoe UI", 10)
+        removed_title_font.setBold(True)
+        removed_title.setFont(removed_title_font)
+        removed_title.setStyleSheet(f"color: {ERROR_TEXT};")
+        removed_header_layout.addWidget(removed_title)
 
-        tk.Label(
-            removed_header,
-            text="- 移除设备",
-            font=FONT_SYSTEM_BOLD,
-            bg=ERROR_BG,
-            fg=ERROR_TEXT
-        ).pack(side="left")
+        self.removed_count_label = QLabel("0 个")
+        self.removed_count_label.setFont(count_font)
+        self.removed_count_label.setStyleSheet(f"color: {ERROR_TEXT};")
+        removed_header_layout.addStretch()
+        removed_header_layout.addWidget(self.removed_count_label)
+        removed_layout.addWidget(removed_header)
 
-        self.removed_count_label = tk.Label(
-            removed_header,
-            text="0 个",
-            font=FONT_SYSTEM,
-            bg=ERROR_BG,
-            fg=ERROR_TEXT
-        )
-        self.removed_count_label.pack(side="right")
+        self.removed_tree = QTreeWidget()
+        self.removed_tree.setHeaderLabels(["设备名称", "VID", "PID"])
+        removed_header_view = self.removed_tree.header()
+        removed_header_view.setSectionResizeMode(0, QHeaderView.Stretch)
+        removed_header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        removed_header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.removed_tree.setRootIsDecorated(False)
+        self.removed_tree.setAlternatingRowColors(True)
+        self.removed_tree.setSelectionMode(QTreeWidget.SingleSelection)
+        self.removed_tree.itemSelectionChanged.connect(lambda: self._on_select(self.removed_tree, self.removed_devices))
+        removed_layout.addWidget(self.removed_tree)
+        layout.addWidget(removed_widget)
 
-        removed_list_frame = tk.Frame(removed_section, bg=BG, padx=12, pady=8)
-        removed_list_frame.pack(fill="both", expand=True)
-
-        self.removed_tree = self._create_treeview(removed_list_frame)
-        self.removed_tree.tag_configure(
-            "removed",
-            background=ERROR_BG,
-            foreground=ERROR_TEXT,
-            font=FONT_SYSTEM
-        )
-
-    def _create_treeview(self, parent):
-        """创建统一风格的 Treeview"""
-        scrollbar = ttk.Scrollbar(parent, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
-
-        tree = ttk.Treeview(
-            parent,
-            columns=("vid", "pid"),
-            show="tree headings",
-            yscrollcommand=scrollbar.set,
-            selectmode="browse",
-        )
-        tree.pack(side="left", fill="both", expand=True)
-        scrollbar.config(command=tree.yview)
-
-        tree.heading("#0", text="设备名称", anchor="w")
-        tree.heading("vid", text="VID", anchor="w")
-        tree.heading("pid", text="PID", anchor="w")
-
-        tree.column("#0", width=180, minwidth=120, anchor="w", stretch=True)
-        tree.column("vid", width=80, minwidth=60, anchor="w", stretch=True)
-        tree.column("pid", width=80, minwidth=60, anchor="w", stretch=True)
-
-        tree.tag_configure("normal", font=FONT_SYSTEM)
-        tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
-
-        tree.bind("<<TreeviewSelect>>", lambda e, t=tree: self._on_select(e, t))
-        tree.bind("<Button-1>", lambda e, t=tree: self._on_click(e, t))
-
-        return tree
-
-    def _on_click(self, event, tree):
-        """处理点击空白区域取消选择"""
-        region = tree.identify_region(event.x, event.y)
-        if region == "nothing":
-            tree.selection_remove(tree.selection())
-
-    def _on_select(self, event, tree):
+    def _on_select(self, tree, devices):
         """处理设备选择事件"""
-        selection = tree.selection()
-        if selection and self.on_select_callback:
-            item_id = selection[0]
-            index = tree.index(item_id)
-            if tree == self.added_tree and 0 <= index < len(self.added_devices):
-                self.on_select_callback(self.added_devices[index])
-            elif tree == self.removed_tree and 0 <= index < len(self.removed_devices):
-                self.on_select_callback(self.removed_devices[index])
+        selected_items = tree.selectedItems()
+        if selected_items and devices:
+            index = tree.indexOfTopLevelItem(selected_items[0])
+            if 0 <= index < len(devices):
+                self.device_selected.emit(devices[index])
 
     def update_changes(self, added_devices, removed_devices):
         """更新新增和移除设备列表"""
         self.added_devices = added_devices
         self.removed_devices = removed_devices
 
-        self._update_tree(self.added_tree, self.added_devices, "added")
-        self.added_count_label.config(text="{0} 个".format(len(self.added_devices)))
+        self._update_tree(self.added_tree, self.added_devices)
+        self.added_count_label.setText(f"{len(self.added_devices)} 个")
 
-        self._update_tree(self.removed_tree, self.removed_devices, "removed")
-        self.removed_count_label.config(text="{0} 个".format(len(self.removed_devices)))
+        self._update_tree(self.removed_tree, self.removed_devices)
+        self.removed_count_label.setText(f"{len(self.removed_devices)} 个")
 
-    def _update_tree(self, tree, device_list, tag):
-        """更新 Treeview 内容"""
-        for item in tree.get_children():
-            tree.delete(item)
-
+    def _update_tree(self, tree, device_list):
+        """更新 TreeView 内容"""
+        tree.clear()
         for device in device_list:
-            name = device.get_display_name()
-            vid = device.vid or "—"
-            pid = device.pid or "—"
-
-            tree.insert(
-                "",
-                "end",
-                text=name,
-                values=(vid, pid),
-                tags=(tag,)
-            )
+            item = QTreeWidgetItem([
+                device.get_display_name(),
+                device.vid or "—",
+                device.pid or "—"
+            ])
+            tree.addTopLevelItem(item)
 
     def get_selected_device(self):
         """获取当前选中的设备"""
         for tree, devices in [(self.added_tree, self.added_devices),
                               (self.removed_tree, self.removed_devices)]:
-            selection = tree.selection()
-            if selection:
-                index = tree.index(selection[0])
+            selected_items = tree.selectedItems()
+            if selected_items and devices:
+                index = tree.indexOfTopLevelItem(selected_items[0])
                 if 0 <= index < len(devices):
                     return devices[index]
         return None
 
     def clear_selection(self):
         """清除所有选择"""
-        for tree in [self.added_tree, self.removed_tree]:
-            for item in tree.selection():
-                tree.selection_remove(item)
+        self.added_tree.clearSelection()
+        self.removed_tree.clearSelection()
 
     def clear(self):
         """清空所有显示"""
-        for tree in [self.added_tree, self.removed_tree]:
-            for item in tree.get_children():
-                tree.delete(item)
+        self.added_tree.clear()
+        self.removed_tree.clear()
         self.added_devices = []
         self.removed_devices = []
-        self.added_count_label.config(text="0 个")
-        self.removed_count_label.config(text="0 个")
+        self.added_count_label.setText("0 个")
+        self.removed_count_label.setText("0 个")
