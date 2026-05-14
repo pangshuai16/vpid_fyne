@@ -4,9 +4,18 @@ from tkinter import ttk
 from typing import Optional, List, Callable
 from ..device_info import USBDevice
 from ..constants import (
-    BG, BG_HEADER, PRIMARY, TEXT, TEXT_SECONDARY, TEXT_ON_PRIMARY,
-    SELECT_BG, SELECT_FG, ITEM_HOVER_BG, BORDER,
-    FONT_SYSTEM, FONT_SYSTEM_BOLD, FONT_SYSTEM_SMALL,
+    BG,
+    BG_HEADER,
+    PRIMARY,
+    TEXT,
+    TEXT_SECONDARY,
+    SELECT_BG,
+    SELECT_FG,
+    VID_COLOR,
+    PID_COLOR,
+    FONT_SYSTEM,
+    FONT_SYSTEM_BOLD,
+    FONT_MONO,
 )
 
 
@@ -16,7 +25,7 @@ class DeviceListPanel(ttk.Frame):
     def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
         super(DeviceListPanel, self).__init__(parent)
         self.on_select_callback = on_select_callback
-        self.devices: List[USBDevice] = []
+        self.devices = []
         self._setup_ui()
 
     def _setup_ui(self):
@@ -38,13 +47,13 @@ class DeviceListPanel(ttk.Frame):
         self.count_label = tk.Label(
             all_header,
             text="0 个",
-            font=FONT_SYSTEM_SMALL,
+            font=FONT_SYSTEM,
             bg=BG_HEADER,
             fg=TEXT_SECONDARY
         )
         self.count_label.pack(side="right")
 
-        all_list_frame = tk.Frame(container, bg=BG)
+        all_list_frame = tk.Frame(container, bg=BG, padx=12, pady=8)
         all_list_frame.pack(fill="both", expand=True)
 
         self.all_tree = self._create_treeview(all_list_frame)
@@ -69,10 +78,10 @@ class DeviceListPanel(ttk.Frame):
         tree.heading("pid", text="PID", anchor="w")
         tree.heading("serial", text="序列号", anchor="w")
 
-        tree.column("#0", width=180, minwidth=100, anchor="w", stretch=True)
-        tree.column("vid", width=80, minwidth=60, anchor="w", stretch=True)
-        tree.column("pid", width=80, minwidth=60, anchor="w", stretch=True)
-        tree.column("serial", width=120, minwidth=60, anchor="w", stretch=True)
+        tree.column("#0", width=200, minwidth=130, anchor="w", stretch=True)
+        tree.column("vid", width=90, minwidth=70, anchor="w", stretch=True)
+        tree.column("pid", width=90, minwidth=70, anchor="w", stretch=True)
+        tree.column("serial", width=130, minwidth=80, anchor="w", stretch=True)
 
         tree.tag_configure("normal", font=FONT_SYSTEM)
         tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
@@ -97,13 +106,13 @@ class DeviceListPanel(ttk.Frame):
             if 0 <= index < len(self.devices):
                 self.on_select_callback(self.devices[index])
 
-    def update_devices(self, devices: List[USBDevice]):
+    def update_devices(self, devices):
         """更新设备列表显示"""
         self.devices = devices
         self._update_tree(self.all_tree, self.devices)
         self.count_label.config(text="{0} 个".format(len(devices)))
 
-    def _update_tree(self, tree, device_list: List[USBDevice]):
+    def _update_tree(self, tree, device_list):
         """更新 Treeview 内容"""
         for item in tree.get_children():
             tree.delete(item)
@@ -122,7 +131,7 @@ class DeviceListPanel(ttk.Frame):
                 tags=("normal",)
             )
 
-    def get_selected_device(self) -> Optional[USBDevice]:
+    def get_selected_device(self):
         """获取当前选中的设备"""
         selection = self.all_tree.selection()
         if selection:

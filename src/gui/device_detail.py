@@ -4,11 +4,21 @@ from tkinter import ttk
 from typing import Optional, List, Callable
 from ..device_info import USBDevice
 from ..constants import (
-    BG, BG_HEADER, PRIMARY, TEXT, TEXT_SECONDARY, TEXT_ON_PRIMARY,
-    SELECT_BG, SELECT_FG, ITEM_HOVER_BG, BORDER,
-    SUCCESS_BG, SUCCESS_TEXT, ERROR_BG, ERROR_TEXT,
-    FONT_SYSTEM, FONT_SYSTEM_BOLD, FONT_SYSTEM_SMALL,
-    VID_COLOR, PID_COLOR,
+    BG,
+    BG_HEADER,
+    TEXT,
+    TEXT_SECONDARY,
+    BORDER,
+    ACCENT_GREEN,
+    SUCCESS_BG,
+    SUCCESS_TEXT,
+    ACCENT_RED,
+    ERROR_BG,
+    ERROR_TEXT,
+    SELECT_BG,
+    SELECT_FG,
+    FONT_SYSTEM,
+    FONT_SYSTEM_BOLD,
 )
 
 
@@ -18,8 +28,8 @@ class DeviceChangePanel(ttk.Frame):
     def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
         super(DeviceChangePanel, self).__init__(parent)
         self.on_select_callback = on_select_callback
-        self.added_devices: List[USBDevice] = []
-        self.removed_devices: List[USBDevice] = []
+        self.added_devices = []
+        self.removed_devices = []
         self._setup_ui()
 
     def _setup_ui(self):
@@ -30,7 +40,7 @@ class DeviceChangePanel(ttk.Frame):
         added_section = tk.Frame(container, bg=BG)
         added_section.pack(fill="both", expand=True, pady=(0, 4))
 
-        added_header = tk.Frame(added_section, bg=SUCCESS_BG, padx=16, pady=8)
+        added_header = tk.Frame(added_section, bg=SUCCESS_BG, padx=16, pady=10)
         added_header.pack(fill="x")
 
         tk.Label(
@@ -44,13 +54,13 @@ class DeviceChangePanel(ttk.Frame):
         self.added_count_label = tk.Label(
             added_header,
             text="0 个",
-            font=FONT_SYSTEM_SMALL,
+            font=FONT_SYSTEM,
             bg=SUCCESS_BG,
             fg=SUCCESS_TEXT
         )
         self.added_count_label.pack(side="right")
 
-        added_list_frame = tk.Frame(added_section, bg=BG)
+        added_list_frame = tk.Frame(added_section, bg=BG, padx=12, pady=8)
         added_list_frame.pack(fill="both", expand=True)
 
         self.added_tree = self._create_treeview(added_list_frame)
@@ -62,12 +72,12 @@ class DeviceChangePanel(ttk.Frame):
         )
 
         separator = tk.Frame(container, bg=BORDER, height=1)
-        separator.pack(fill="x", padx=8, pady=4)
+        separator.pack(fill="x", padx=12, pady=4)
 
         removed_section = tk.Frame(container, bg=BG)
         removed_section.pack(fill="both", expand=True, pady=(4, 0))
 
-        removed_header = tk.Frame(removed_section, bg=ERROR_BG, padx=16, pady=8)
+        removed_header = tk.Frame(removed_section, bg=ERROR_BG, padx=16, pady=10)
         removed_header.pack(fill="x")
 
         tk.Label(
@@ -81,13 +91,13 @@ class DeviceChangePanel(ttk.Frame):
         self.removed_count_label = tk.Label(
             removed_header,
             text="0 个",
-            font=FONT_SYSTEM_SMALL,
+            font=FONT_SYSTEM,
             bg=ERROR_BG,
             fg=ERROR_TEXT
         )
         self.removed_count_label.pack(side="right")
 
-        removed_list_frame = tk.Frame(removed_section, bg=BG)
+        removed_list_frame = tk.Frame(removed_section, bg=BG, padx=12, pady=8)
         removed_list_frame.pack(fill="both", expand=True)
 
         self.removed_tree = self._create_treeview(removed_list_frame)
@@ -117,9 +127,9 @@ class DeviceChangePanel(ttk.Frame):
         tree.heading("vid", text="VID", anchor="w")
         tree.heading("pid", text="PID", anchor="w")
 
-        tree.column("#0", width=140, minwidth=80, anchor="w", stretch=True)
-        tree.column("vid", width=70, minwidth=50, anchor="w", stretch=True)
-        tree.column("pid", width=70, minwidth=50, anchor="w", stretch=True)
+        tree.column("#0", width=180, minwidth=120, anchor="w", stretch=True)
+        tree.column("vid", width=80, minwidth=60, anchor="w", stretch=True)
+        tree.column("pid", width=80, minwidth=60, anchor="w", stretch=True)
 
         tree.tag_configure("normal", font=FONT_SYSTEM)
         tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
@@ -146,7 +156,7 @@ class DeviceChangePanel(ttk.Frame):
             elif tree == self.removed_tree and 0 <= index < len(self.removed_devices):
                 self.on_select_callback(self.removed_devices[index])
 
-    def update_changes(self, added_devices: List[USBDevice], removed_devices: List[USBDevice]):
+    def update_changes(self, added_devices, removed_devices):
         """更新新增和移除设备列表"""
         self.added_devices = added_devices
         self.removed_devices = removed_devices
@@ -157,7 +167,7 @@ class DeviceChangePanel(ttk.Frame):
         self._update_tree(self.removed_tree, self.removed_devices, "removed")
         self.removed_count_label.config(text="{0} 个".format(len(self.removed_devices)))
 
-    def _update_tree(self, tree, device_list: List[USBDevice], tag: str):
+    def _update_tree(self, tree, device_list, tag):
         """更新 Treeview 内容"""
         for item in tree.get_children():
             tree.delete(item)
@@ -175,7 +185,7 @@ class DeviceChangePanel(ttk.Frame):
                 tags=(tag,)
             )
 
-    def get_selected_device(self) -> Optional[USBDevice]:
+    def get_selected_device(self):
         """获取当前选中的设备"""
         for tree, devices in [(self.added_tree, self.added_devices),
                               (self.removed_tree, self.removed_devices)]:

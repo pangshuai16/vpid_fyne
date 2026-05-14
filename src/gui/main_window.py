@@ -13,7 +13,7 @@ from ..constants import (
     PRIMARY_HOVER, PRIMARY_PRESSED, BORDER, ACCENT_GREEN,
     SELECT_BG, SELECT_FG, MENU_BG,
     FONT_SYSTEM, FONT_SYSTEM_BOLD, FONT_SYSTEM_SMALL,
-    FONT_TITLE,
+    FONT_TITLE, FONT_SUBTITLE,
     AUTO_REFRESH_INTERVAL, APP_NAME, APP_VERSION,
 )
 
@@ -27,8 +27,8 @@ class MainWindow:
         self.root.geometry("1180x800")
         self.root.minsize(980, 680)
 
-        self.devices: List[USBDevice] = []
-        self.baseline_devices: List[USBDevice] = []
+        self.devices = []
+        self.baseline_devices = []
         self.auto_refresh = False
         self.refresh_interval = AUTO_REFRESH_INTERVAL
 
@@ -43,7 +43,7 @@ class MainWindow:
         style = ttk.Style()
         try:
             style.theme_use("clam")
-        except:
+        except Exception:
             pass
 
         style.configure("TFrame", background=BG)
@@ -54,7 +54,7 @@ class MainWindow:
                         background=BG_HEADER,
                         foreground=TEXT,
                         font=FONT_TITLE,
-                        padding=(16, 12))
+                        padding=(16, 8))
 
         style.configure("Subtitle.TLabel",
                         background=BG_HEADER,
@@ -134,7 +134,7 @@ class MainWindow:
         header_frame.pack(side="top", fill="x")
 
         title_container = ttk.Frame(header_frame, style="Header.TFrame")
-        title_container.pack(fill="x", pady=(10, 4))
+        title_container.pack(fill="x", pady=(6, 2))
 
         title_label = ttk.Label(
             title_container,
@@ -151,7 +151,7 @@ class MainWindow:
         self.device_count_label.pack(side="left", pady=(2, 0))
 
         toolbar = ttk.Frame(header_frame, style="Header.TFrame")
-        toolbar.pack(fill="x", padx=14, pady=(0, 10))
+        toolbar.pack(fill="x", padx=14, pady=(0, 8))
 
         self.refresh_btn = ttk.Button(
             toolbar,
@@ -226,12 +226,12 @@ class MainWindow:
         menubar = tk.Menu(self.root, bg=MENU_BG, fg=TEXT, bd=0, relief="flat")
         self.root.config(menu=menubar)
 
-        apple_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
-        menubar.add_cascade(label="文件", menu=apple_menu)
-        apple_menu.add_command(label="刷新设备列表", command=self._on_refresh, accelerator="Ctrl+R")
-        apple_menu.add_command(label="设为基准", command=self._on_set_baseline)
-        apple_menu.add_separator()
-        apple_menu.add_command(label="退出", command=self._on_close)
+        file_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
+        menubar.add_cascade(label="文件", menu=file_menu)
+        file_menu.add_command(label="刷新设备列表", command=self._on_refresh, accelerator="Ctrl+R")
+        file_menu.add_command(label="设为基准", command=self._on_set_baseline)
+        file_menu.add_separator()
+        file_menu.add_command(label="退出", command=self._on_close)
 
         edit_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="编辑", menu=edit_menu)
@@ -253,6 +253,7 @@ class MainWindow:
         help_menu = tk.Menu(menubar, tearoff=0, bg=MENU_BG, fg=TEXT)
         menubar.add_cascade(label="帮助", menu=help_menu)
         help_menu.add_command(label="使用帮助", command=self._show_help)
+        help_menu.add_command(label="关于", command=self._show_about)
 
     def _bind_shortcuts(self):
         """绑定快捷键"""
@@ -276,7 +277,7 @@ class MainWindow:
         except Exception as e:
             self.root.after(0, lambda: self._update_status("扫描失败: {0}".format(str(e))))
 
-    def _update_device_list(self, devices: List[USBDevice]):
+    def _update_device_list(self, devices):
         """更新设备列表显示"""
         prev_count = len(self.devices)
         self.devices = devices
@@ -299,7 +300,7 @@ class MainWindow:
             change_info += " (-{0})".format(len(removed))
 
         self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change_info))
-        self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(timestamp, prev_count, count))
+        self._update_status("最后刷新: {0} | 设备数: {1} -> {2}".format(timestamp, prev_count, count))
 
         if added or removed:
             self._show_change_notification(added, removed)
@@ -324,7 +325,7 @@ class MainWindow:
                 text="基准: {0} 个设备 ({1})".format(len(self.baseline_devices), timestamp)
             )
 
-    def _show_change_notification(self, added: List[USBDevice], removed: List[USBDevice]):
+    def _show_change_notification(self, added, removed):
         """显示设备变化通知"""
         messages = []
         if added:
@@ -338,11 +339,11 @@ class MainWindow:
             self._update_status(notification)
             self.root.after(3000, lambda: self.status_label.config(foreground=TEXT_SECONDARY))
 
-    def _update_status(self, message: str):
+    def _update_status(self, message):
         """更新状态栏文本"""
         self.status_label.config(text=message)
 
-    def _on_device_select(self, device: Optional[USBDevice]):
+    def _on_device_select(self, device):
         """左侧全部设备列表选择回调"""
         if device:
             self.device_change.clear_selection()
@@ -354,11 +355,12 @@ class MainWindow:
             )
             self._update_status(info)
 
-    def _on_change_select(self, device: Optional[USBDevice]):
+    def _on_change_select(self, device):
         """右侧变化设备列表选择回调"""
         if device:
             self.device_list.clear_selection()
-            change_type = "新增" if device in self.device_change.added_devices else "移除"
+            added_keys = {d.get_unique_key() for d in self.device_change.added_devices}
+            change_type = "新增" if device.get_unique_key() in added_keys else "移除"
             info = "[{4}] {0} | VID: {1} | PID: {2} | 序列号: {3}".format(
                 device.get_display_name(),
                 device.vid or "N/A",
@@ -368,7 +370,7 @@ class MainWindow:
             )
             self._update_status(info)
 
-    def _get_selected_device(self) -> Optional[USBDevice]:
+    def _get_selected_device(self):
         """获取当前选中的设备（从任意列表）"""
         device = self.device_list.get_selected_device()
         if device:
@@ -394,7 +396,7 @@ class MainWindow:
         else:
             messagebox.showinfo("提示", "请先选择一个设备")
 
-    def _copy_field(self, field: str):
+    def _copy_field(self, field):
         """复制特定字段"""
         device = self._get_selected_device()
         if device:
@@ -419,6 +421,26 @@ class MainWindow:
         """切换全屏"""
         state = self.root.attributes("-fullscreen")
         self.root.attributes("-fullscreen", not state)
+
+    def _show_about(self):
+        """显示关于对话框"""
+        about_text = """{0} v{1}
+
+用于查看和管理系统中 USB 设备的详细信息
+
+功能特点:
+- 实时扫描 USB 设备
+- 显示 VID/PID 信息
+- 设备序列号追踪
+- 制造商信息查看
+- 自动刷新支持
+- 扁平风格 UI 设计
+- 新增/移除设备独立显示
+- 基准比对功能
+
+(C) 2025 {0}
+""".format(APP_NAME, APP_VERSION)
+        messagebox.showinfo("关于", about_text)
 
     def _show_help(self):
         """显示帮助对话框"""
