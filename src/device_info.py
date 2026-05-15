@@ -1,9 +1,19 @@
 """USB 设备信息数据模型"""
-from typing import Dict, Optional
+from typing import Dict, Tuple
 
 
 class USBDevice(object):
-    """USB 设备信息类"""
+    """USB 设备信息类
+
+    通过 (vid, pid, serial) 三元组唯一标识一个 USB 设备。
+    vid/pid 内部存储格式为 "0xXXXX"（带 0x 前缀的大写十六进制）。
+    """
+
+    __slots__ = (
+        "vid", "pid", "serial", "name", "manufacturer",
+        "location", "driver", "device_id", "pnp_device_id",
+        "status", "path",
+    )
 
     def __init__(
         self,
@@ -17,7 +27,7 @@ class USBDevice(object):
         device_id="",
         pnp_device_id="",
         status="",
-        path=""  # 新增路径字段
+        path="",
     ):
         self.vid = vid
         self.pid = pid
@@ -31,8 +41,22 @@ class USBDevice(object):
         self.status = status
         self.path = path
 
+    @staticmethod
+    def _strip_0x(hex_str):
+        """去除 0x 前缀并转大写
+
+        Args:
+            hex_str: 如 "0x8087" 或 "8087"
+
+        Returns:
+            str: 如 "8087"
+        """
+        if hex_str.startswith("0x") or hex_str.startswith("0X"):
+            return hex_str[2:].upper()
+        return hex_str.upper()
+
     def get_display_name(self):
-        """获取设备显示名称"""
+        """获取设备显示名称，优先 name → manufacturer → 兜底"""
         if self.name:
             return self.name
         if self.manufacturer:
@@ -40,29 +64,27 @@ class USBDevice(object):
         return "Unknown USB Device"
 
     def get_formatted_vid(self):
-        """获取格式化后的 VID（例如：8087）"""
-        # 移除 0x 前缀并转为大写
-        if self.vid.startswith("0x"):
-            return self.vid[2:].upper()
-        return self.vid.upper()
+        """格式化 VID，去除 0x 前缀，如 '8087'"""
+        return self._strip_0x(self.vid) if self.vid else "N/A"
 
     def get_formatted_pid(self):
-        """获取格式化后的 PID（例如：0024）"""
-        # 移除 0x 前缀并转为大写
-        if self.pid.startswith("0x"):
-            return self.pid[2:].upper()
-        return self.pid.upper()
+        """格式化 PID，去除 0x 前缀，如 '0024'"""
+        return self._strip_0x(self.pid) if self.pid else "N/A"
 
     def get_vid_pid_string(self):
-        """获取 VID/PID 格式化字符串"""
+        """获取 'VID:PID' 格式字符串，如 '8087:0024'"""
         return "{0}:{1}".format(self.get_formatted_vid(), self.get_formatted_pid())
 
+    def get_unique_key(self):
+        """获取设备唯一标识 (vid, pid, serial)"""
+        return (self.vid, self.pid, self.serial)
+
     def to_dict(self):
-        """转换为字典格式"""
+        """转换为有序字典"""
         return {
             "名称": self.name or "未知设备",
-            "VID": self.get_formatted_vid() or "N/A",
-            "PID": self.get_formatted_pid() or "N/A",
+            "VID": self.get_formatted_vid(),
+            "PID": self.get_formatted_pid(),
             "序列号": self.serial or "N/A",
             "制造商": self.manufacturer or "N/A",
             "位置": self.location or "N/A",
@@ -72,21 +94,20 @@ class USBDevice(object):
         }
 
     def to_clipboard_text(self):
-        """转换为剪贴板文本格式"""
-        data = self.to_dict()
-        lines = ["{0}: {1}".format(key, value) for key, value in data.items()]
-        return "\n".join(lines)
-
-    def get_unique_key(self):
-        """获取设备唯一标识 key"""
-        return (self.vid, self.pid, self.serial)
+        """转换为剪贴板文本"""
+        return "\n".join(
+            "{0}: {1}".format(k, v) for k, v in self.to_dict().items()
+        )
 
     def __eq__(self, other):
-        """两个设备基于唯一 key 比较是否相等"""
         if not isinstance(other, USBDevice):
-            return False
+            return NotImplemented
         return self.get_unique_key() == other.get_unique_key()
 
     def __hash__(self):
-        """哈希基于唯一 key"""
         return hash(self.get_unique_key())
+
+    def __repr__(self):
+        return "USBDevice(vid={0!r}, pid={1!r}, serial={2!r}, name={3!r})".format(
+            self.vid, self.pid, self.serial, self.name
+        )

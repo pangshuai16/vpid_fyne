@@ -1,7 +1,4 @@
-__version__ = "1.3.0"
-__author__ = "vpid_py"
+"""USB 设备管理器"""
+from .constants import APP_NAME, APP_VERSION
 
-from .device_info import USBDevice
-from .usb_scanner import scan_usb_devices, compare_devices
-
-__all__ = ['USBDevice', 'scan_usb_devices', 'compare_devices']
+__version__ = APP_VERSION
