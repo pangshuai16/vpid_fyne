@@ -2,6 +2,7 @@
 import os
 import logging
 import threading
+import queue
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -32,7 +33,15 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(tk.Tk):
-    """USB 设备管理器主窗口"""
+    """USB 设备管理器主窗口
+
+    核心逻辑（必须严格遵循）：
+    1. 程序启动自动扫描一次，并设为基准列表
+    2. 每次扫描，扫描结果直接显示在"全部USB设备"，
+       并与基准列表比对，新增设备显示在"新增设备"，
+       减少设备显示在"移除设备"
+    3. 点击【设为基准】按钮时，将当前"全部USB设备"设定为新的基准列表
+    """
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -42,9 +51,9 @@ class MainWindow(tk.Tk):
 
         self.devices = []
         self.baseline_devices = []
-        self.prev_devices = []  # 上一次扫描结果，用于检测增量变化
         self._scanning = False
         self._auto_refresh_id = None
+        self._result_queue = queue.Queue()
 
         self._apply_style()
         self._set_icon()
@@ -54,6 +63,7 @@ class MainWindow(tk.Tk):
         self._build_menu()
 
         self._start_scan()
+        self._poll_scan_result()
 
     def _apply_style(self):
         """配置 ttk 主题样式"""
@@ -77,13 +87,6 @@ class MainWindow(tk.Tk):
         style.map("Treeview",
                   background=[("selected", "#ECF5FF")],
                   foreground=[("selected", COLOR_PRIMARY)])
-
-        style.configure("Primary.TButton",
-                        font=("Segoe UI", 9, "bold"))
-        style.configure("Success.TButton",
-                        font=("Segoe UI", 9, "bold"))
-        style.configure("Secondary.TButton",
-                        font=("Segoe UI", 9))
 
     def _set_icon(self):
         """设置窗口图标"""
@@ -214,7 +217,7 @@ class MainWindow(tk.Tk):
         self.bind("<Control-c>", lambda e: self._on_copy())
         self.bind("<Control-C>", lambda e: self._on_copy())
 
-    # ---- 扫描管理 ----
+    # ---- 扫描管理（线程安全） ----
 
     def _start_scan(self):
         """启动扫描（防并发）"""
@@ -228,39 +231,42 @@ class MainWindow(tk.Tk):
         thread.start()
 
     def _scan_worker(self):
-        """扫描工作线程"""
+        """扫描工作线程 - 结果放入队列，不直接操作 UI"""
         try:
             devices = scan_usb_devices()
-            self.after(0, self._on_scan_result, devices)
+            self._result_queue.put(("ok", devices))
         except Exception as e:
             logger.error("扫描线程异常: %s", e)
-            self.after(0, self._on_scan_result, [])
-        finally:
-            self.after(0, self._on_scan_done)
+            self._result_queue.put(("error", []))
 
-    def _on_scan_result(self, devices):
-        """扫描结果回调（主线程）"""
-        self._update_device_list(devices)
-
-    def _on_scan_done(self):
-        """扫描完成回调（主线程）"""
-        self._scanning = False
-        self.refresh_btn.config(state=tk.NORMAL)
+    def _poll_scan_result(self):
+        """主线程轮询扫描结果（线程安全）"""
+        try:
+            status, devices = self._result_queue.get_nowait()
+            if status == "ok":
+                self._update_device_list(devices)
+            self._scanning = False
+            self.refresh_btn.config(state=tk.NORMAL)
+        except queue.Empty:
+            pass
+        self.after(50, self._poll_scan_result)
 
     def _update_device_list(self, devices):
-        """更新设备列表显示"""
+        """更新设备列表显示
+
+        核心逻辑：
+        - 扫描结果直接显示在"全部USB设备"
+        - 与基准列表比对，新增显示在"新增设备"，减少显示在"移除设备"
+        - 首次扫描自动设为基准
+        """
         prev_count = len(self.devices)
         self.devices = devices
 
         if not self.baseline_devices:
             self.baseline_devices = list(devices)
-            self.prev_devices = list(devices)
             self._update_baseline_status()
 
-        # 增量比对：与上一次扫描结果比较
-        added, removed = compare_devices(self.prev_devices, devices)
-        self.prev_devices = list(devices)
-
+        added, removed = compare_devices(self.baseline_devices, devices)
         self.device_list.update_devices(devices)
         self.device_change.update_changes(added, removed)
 
@@ -278,14 +284,14 @@ class MainWindow(tk.Tk):
     # ---- 用户操作 ----
 
     def _on_set_baseline(self):
-        """设置基准"""
+        """设为基准：将当前全部USB设备设定为新的基准列表"""
         if not self.devices:
             messagebox.showinfo("提示", "当前没有设备列表，请先刷新", parent=self)
             return
         self.baseline_devices = list(self.devices)
-        self.prev_devices = list(self.devices)
         self._update_baseline_status()
-        self.device_change.update_changes([], [])
+        added, removed = compare_devices(self.baseline_devices, self.devices)
+        self.device_change.update_changes(added, removed)
         self._update_status("已将当前设备列表设为基准")
         self.device_count_label.config(text="{0} 个设备已连接".format(len(self.devices)))
 
