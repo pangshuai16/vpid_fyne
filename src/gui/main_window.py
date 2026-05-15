@@ -46,6 +46,8 @@ class MainWindow(QMainWindow):
         self.devices = []
         self.baseline_devices = []
         self.auto_refresh = False
+        self._scanning = False  # 防止并发扫描
+
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self._on_refresh)
 
@@ -69,7 +71,6 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 工具栏 - 使用 setObjectName 让 QSS 识别，不用 setStyleSheet 覆盖
         toolbar = QWidget()
         toolbar.setObjectName("toolbar")
         toolbar_layout = QHBoxLayout(toolbar)
@@ -103,7 +104,6 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(toolbar)
 
-        # 主内容区域
         splitter = QSplitter(Qt.Horizontal)
         self.device_list = DeviceListPanel()
         self.device_change = DeviceChangePanel()
@@ -205,12 +205,32 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def _start_scan(self):
+        """启动一次扫描（安全方式：防止并发、防止信号累积）"""
+        if self._scanning:
+            return
+        self._scanning = True
+        self.refresh_btn.setEnabled(False)
+        self._update_status("正在扫描 USB 设备...")
+
+        self.scan_thread = ScanThread()
+        # 只连接一次，扫描完成后自动断开
+        self.scan_thread.scan_finished.connect(self._on_scan_finished)
+        self.scan_thread.finished.connect(self._on_scan_thread_finished)
+        self.scan_thread.start()
+
+    def _on_scan_finished(self, devices):
+        """扫描完成回调（只处理数据，不管理线程状态）"""
+        self._update_device_list(devices)
+
+    def _on_scan_thread_finished(self):
+        """线程结束回调（管理线程状态）"""
+        self._scanning = False
+        self.refresh_btn.setEnabled(True)
+
     def _initial_scan(self):
         """初始设备扫描"""
-        self._update_status("正在扫描 USB 设备...")
-        self.scan_thread = ScanThread()
-        self.scan_thread.scan_finished.connect(self._update_device_list)
-        self.scan_thread.start()
+        self._start_scan()
 
     def _update_device_list(self, devices):
         """更新设备列表显示"""
@@ -310,12 +330,7 @@ class MainWindow(QMainWindow):
 
     def _on_refresh(self):
         """刷新按钮点击处理"""
-        self.refresh_btn.setEnabled(False)
-        self._update_status("正在扫描 USB 设备...")
-        self.scan_thread = ScanThread()
-        self.scan_thread.scan_finished.connect(self._update_device_list)
-        self.scan_thread.finished.connect(lambda: self.refresh_btn.setEnabled(True))
-        self.scan_thread.start()
+        self._start_scan()
 
     def _on_copy(self):
         """复制按钮点击处理"""

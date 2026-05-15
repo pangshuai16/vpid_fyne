@@ -48,20 +48,25 @@ def extract_serial_from_device_id(device_id):
 def scan_usb_devices():
     """扫描系统中的 USB 设备
 
+    同时使用 WMI 和注册表扫描，合并结果后去重，确保不遗漏设备。
+
     Returns:
-        List[USBDevice]: 设备列表，优先使用 WMI，失败时回退到注册表
+        List[USBDevice]: 设备列表
     """
     devices = []
+
     devices_wmi = _scan_via_wmi()
     if devices_wmi:
         devices.extend(devices_wmi)
-    if not devices:
-        logger.debug("WMI 扫描失败，尝试注册表扫描")
-        devices_reg = _scan_via_registry()
-        if devices_reg:
-            devices.extend(devices_reg)
+        logger.debug("WMI 扫描找到 %d 个设备", len(devices_wmi))
+
+    devices_reg = _scan_via_registry()
+    if devices_reg:
+        devices.extend(devices_reg)
+        logger.debug("注册表扫描找到 %d 个设备", len(devices_reg))
+
     result = _deduplicate_devices(devices)
-    logger.debug("扫描完成，共找到 %d 个 USB 设备", len(result))
+    logger.debug("扫描完成，去重后共 %d 个 USB 设备", len(result))
     for d in result:
         logger.debug("  设备: %s VID=%s PID=%s Serial=%s Status=%s",
                      d.get_display_name(), d.vid, d.pid, d.serial, d.status)
