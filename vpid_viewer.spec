@@ -18,6 +18,9 @@ hiddenimports = [
     'win32api',
     'win32con',
     'win32process',
+    'tkinter',
+    'tkinter.ttk',
+    'tkinter.messagebox',
 ]
 
 a = Analysis(
@@ -28,7 +31,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=['runtime_hook.py'],
-    excludes=[],
+    excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

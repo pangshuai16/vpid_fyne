@@ -1,92 +1,131 @@
 """设备变化面板 - 显示新增和移除的设备"""
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
-from PyQt5.QtCore import pyqtSignal
+import tkinter as tk
+from tkinter import ttk
+from typing import List, Callable, Optional
 
-from .base_tree import BaseDeviceTree
 from ..device_info import USBDevice
+from ..constants import (
+    COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_DANGER, COLOR_DANGER_BG,
+    COLOR_TEXT, COLOR_BORDER, COLOR_WHITE,
+)
 
 
-class _ChangeSection(BaseDeviceTree):
-    """单个变化区域（新增或移除），内部使用"""
+class _ChangeSection(ttk.Frame):
+    """单个变化区域（新增或移除）"""
 
-    def __init__(self, title, header_bg, text_color, parent=None):
+    COLUMNS = ("vid", "pid", "name")
+    HEADERS = ("VID", "PID", "设备名称")
+    WIDTHS = (70, 70, 200)
+
+    def __init__(self, parent, title, header_bg, text_color, on_select=None):
         super(_ChangeSection, self).__init__(parent)
-        self._title = title
-        self._header_bg = header_bg
-        self._text_color = text_color
-        self._setup_ui()
+        self.devices = []
+        self._on_select_cb = on_select
+        self._setup_ui(title, header_bg, text_color)
 
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+    def _setup_ui(self, title, header_bg, text_color):
+        header_frame = tk.Frame(self, bg=header_bg)
+        header_frame.pack(fill=tk.X, padx=2, pady=(2, 1))
 
-        header_widget = QWidget()
-        header_widget.setStyleSheet(
-            "background-color: {0}; border-radius: 4px;".format(self._header_bg)
+        tk.Label(
+            header_frame, text=title,
+            font=("Segoe UI", 9, "bold"), fg=text_color, bg=header_bg
+        ).pack(side=tk.LEFT, padx=6, pady=3)
+
+        self.count_label = tk.Label(
+            header_frame, text="0",
+            font=("Segoe UI", 9, "bold"), fg=text_color, bg=header_bg
         )
-        header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(8, 4, 8, 4)
+        self.count_label.pack(side=tk.RIGHT, padx=6, pady=3)
 
-        title_label = QLabel(self._title)
-        title_label.setStyleSheet(
-            "font-weight: 600; color: {0};".format(self._text_color)
+        tree_frame = ttk.Frame(self)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=(0, 2))
+
+        self.tree = ttk.Treeview(
+            tree_frame, columns=self.COLUMNS, show="headings",
+            selectmode="browse", height=5
         )
-        header_layout.addWidget(title_label)
 
-        self._count_label = QLabel("0")
-        self._count_label.setStyleSheet(
-            "font-weight: 600; color: {0};".format(self._text_color)
-        )
-        header_layout.addStretch()
-        header_layout.addWidget(self._count_label)
-        layout.addWidget(header_widget)
+        for col, heading, width in zip(self.COLUMNS, self.HEADERS, self.WIDTHS):
+            self.tree.heading(col, text=heading)
+            stretch = tk.YES if col == "name" else tk.NO
+            self.tree.column(col, width=width, minwidth=50, stretch=stretch)
 
-        self._tree = self._create_tree(self.COLUMNS_SHORT, stretch_last_index=[2])
-        layout.addWidget(self._tree, 1)
+        vsb = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.tree.bind("<<TreeviewSelect>>", self._on_select)
+
+    def _on_select(self, event=None):
+        device = self.get_selected_device()
+        if device and self._on_select_cb:
+            self._on_select_cb(device)
 
     def update_devices(self, devices):
         self.devices = list(devices)
-        self._populate_tree(self._tree, self.devices, self.COLUMNS_SHORT)
-        self._count_label.setText(str(len(self.devices)))
+        self._populate()
+        self.count_label.config(text=str(len(self.devices)))
+
+    def _populate(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for device in self.devices:
+            self.tree.insert("", tk.END, values=(
+                device.get_formatted_vid(),
+                device.get_formatted_pid(),
+                device.get_display_name(),
+            ))
+
+    def get_selected_device(self):
+        sel = self.tree.selection()
+        if not sel or not self.devices:
+            return None
+        idx = self.tree.index(sel[0])
+        if 0 <= idx < len(self.devices):
+            return self.devices[idx]
+        return None
+
+    def clear_selection(self):
+        for item in self.tree.selection():
+            self.tree.selection_remove(item)
+
+    def clear(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        self.devices = []
+        self.count_label.config(text="0")
 
 
-class DeviceChangePanel(QWidget):
+class DeviceChangePanel(ttk.Frame):
     """显示新增和移除 USB 设备的面板"""
 
-    device_selected = pyqtSignal(object)
-
-    def __init__(self, parent=None):
+    def __init__(self, parent, on_select=None):
         super(DeviceChangePanel, self).__init__(parent)
-        self.added_section = None
-        self.removed_section = None
+        self._on_select_cb = on_select
         self._setup_ui()
 
     def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
-
         self.added_section = _ChangeSection(
-            "+ 新增设备", "#F0F9EB", "#67C23A", self
+            self, "+ 新增设备", COLOR_SUCCESS_BG, COLOR_SUCCESS,
+            on_select=self._forward_select
         )
-        self.added_section.device_selected.connect(self._forward_selected)
-        layout.addWidget(self.added_section, 1)
+        self.added_section.pack(fill=tk.BOTH, expand=True, padx=4, pady=(4, 2))
 
-        separator = QWidget()
-        separator.setFixedHeight(1)
-        separator.setStyleSheet("background-color: #E4E7ED;")
-        layout.addWidget(separator)
+        sep = tk.Frame(self, bg=COLOR_BORDER, height=1)
+        sep.pack(fill=tk.X, padx=4, pady=2)
 
         self.removed_section = _ChangeSection(
-            "- 移除设备", "#FEF0F0", "#F56C6C", self
+            self, "- 移除设备", COLOR_DANGER_BG, COLOR_DANGER,
+            on_select=self._forward_select
         )
-        self.removed_section.device_selected.connect(self._forward_selected)
-        layout.addWidget(self.removed_section, 1)
+        self.removed_section.pack(fill=tk.BOTH, expand=True, padx=4, pady=(2, 4))
 
-    def _forward_selected(self, device):
-        """转发子面板的选中信号"""
-        self.device_selected.emit(device)
+    def _forward_select(self, device):
+        if self._on_select_cb:
+            self._on_select_cb(device)
 
     @property
     def added_devices(self):
@@ -97,12 +136,10 @@ class DeviceChangePanel(QWidget):
         return self.removed_section.devices
 
     def update_changes(self, added_devices, removed_devices):
-        """更新新增和移除设备列表"""
         self.added_section.update_devices(added_devices)
         self.removed_section.update_devices(removed_devices)
 
     def get_selected_device(self):
-        """获取当前选中的设备"""
         device = self.added_section.get_selected_device()
         if device:
             return device

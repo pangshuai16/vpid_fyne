@@ -49,63 +49,14 @@ jobs:
         python -m pip install -r requirements.txt
         python -m pip install pyinstaller==4.10
 
-    - name: Download and set up XP-compatible Qt 5.15.17 (cxxzhang build)
-      shell: powershell
-      run: |
-        Write-Host "Setting up XP-compatible Qt 5.15.17..."
-        
-        # Note: cxxzhang/qt5.15.17 provides Windows XP-compatible Qt builds
-        # We'll download and extract it to replace PyQt5's default Qt libraries
-        $qtUrl = "https://github.com/cxxzhang/qt5.15.17/releases/download/v5.15.17/qt5.15.17-msvc2019-x86_xp.zip"
-        $qtZip = "$env:TEMP\qt5.15.17-xp.zip"
-        $qtExtractPath = "$env:TEMP\qt5.15.17-xp"
-        
-        Write-Host "Downloading Qt 5.15.17 XP-compatible build..."
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        try {
-            Invoke-WebRequest -Uri $qtUrl -OutFile $qtZip -UseBasicParsing
-            Write-Host "Download complete"
-        } catch {
-            Write-Warning "Failed to download Qt 5.15.17 XP build: $_"
-            Write-Warning "Will proceed with standard PyQt5 Qt libraries (may not support XP)"
-            exit 0  # Don't fail the build, just skip XP compatibility
-        }
-        
-        Write-Host "Extracting Qt libraries..."
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($qtZip, $qtExtractPath)
-        
-        # Find PyQt5 installation path
-        $pyqtPath = python -c "import PyQt5; import os; print(os.path.dirname(PyQt5.__file__))"
-        Write-Host "PyQt5 installed at: $pyqtPath"
-        
-        # Check if Qt subdirectory exists and backup
-        $pyqtQtPath = Join-Path $pyqtPath "Qt5"
-        if (Test-Path $pyqtQtPath) {
-            $pyqtQtBackup = "$pyqtQtPath.backup"
-            if (Test-Path $pyqtQtBackup) {
-                Remove-Item -Path $pyqtQtBackup -Recurse -Force
-            }
-            Rename-Item -Path $pyqtQtPath -NewName "$pyqtQtPath.backup"
-            Write-Host "Backed up original PyQt5 Qt libraries"
-        }
-        
-        # Copy XP-compatible Qt libraries
-        $extractedQtPath = Get-ChildItem -Path $qtExtractPath -Directory | Select-Object -First 1
-        if ($extractedQtPath) {
-            Copy-Item -Path $extractedQtPath.FullName -Destination $pyqtQtPath -Recurse -Force
-            Write-Host "Successfully replaced PyQt5 Qt libraries with XP-compatible version"
-        } else {
-            Write-Warning "Could not find extracted Qt directory. Using original PyQt5 libraries."
-            if (Test-Path "$pyqtQtPath.backup") {
-                Rename-Item -Path "$pyqtQtPath.backup" -NewName $pyqtQtPath
-            }
-        }
+    - name: Verify tkinter availability
+      run: python -c "import tkinter; print('tkinter OK, Tk version:', tkinter.TkVersion)"
 
     - name: Check Python syntax
       run: |
         python -m py_compile main.py
         python -m py_compile src/__init__.py
+        python -m py_compile src/constants.py
         python -m py_compile src/device_info.py
         python -m py_compile src/usb_scanner.py
         python -m py_compile src/gui/__init__.py

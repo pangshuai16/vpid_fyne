@@ -29,27 +29,23 @@ def main():
     _setup_logging()
 
     try:
-        from PyQt5.QtWidgets import QApplication, QMessageBox
         from src.gui.main_window import MainWindow
         from src.constants import APP_NAME
 
-        app = QApplication(sys.argv)
-        app.setStyle('Fusion')
-        app.setApplicationName(APP_NAME)
-
-        window = MainWindow()
-        window.show()
-        sys.exit(app.exec_())
+        app = MainWindow()
+        app.mainloop()
     except Exception as e:
         import traceback
         try:
-            from PyQt5.QtWidgets import QMessageBox
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle("Fatal Error")
-            msg.setText("应用程序启动失败")
-            msg.setDetailedText("{0}\n\n{1}".format(str(e), traceback.format_exc()))
-            msg.exec_()
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror(
+                "Fatal Error",
+                "应用程序启动失败\n\n{0}".format(traceback.format_exc())
+            )
+            root.destroy()
         except Exception:
             sys.stderr.write("Fatal error: {0}\n{1}\n".format(str(e), traceback.format_exc()))
         sys.exit(1)
