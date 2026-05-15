@@ -42,6 +42,7 @@ class MainWindow(tk.Tk):
 
         self.devices = []
         self.baseline_devices = []
+        self.prev_devices = []  # 上一次扫描结果，用于检测增量变化
         self._scanning = False
         self._auto_refresh_id = None
 
@@ -102,7 +103,6 @@ class MainWindow(tk.Tk):
         """构建顶部工具栏"""
         toolbar = tk.Frame(self, bg=COLOR_WHITE, pady=6, padx=12)
         toolbar.pack(fill=tk.X)
-        toolbar.pack_propagate(False)
 
         self.device_count_label = tk.Label(
             toolbar, text="0 个设备已连接",
@@ -254,9 +254,13 @@ class MainWindow(tk.Tk):
 
         if not self.baseline_devices:
             self.baseline_devices = list(devices)
+            self.prev_devices = list(devices)
             self._update_baseline_status()
 
-        added, removed = compare_devices(self.baseline_devices, devices)
+        # 增量比对：与上一次扫描结果比较
+        added, removed = compare_devices(self.prev_devices, devices)
+        self.prev_devices = list(devices)
+
         self.device_list.update_devices(devices)
         self.device_change.update_changes(added, removed)
 
@@ -279,6 +283,7 @@ class MainWindow(tk.Tk):
             messagebox.showinfo("提示", "当前没有设备列表，请先刷新", parent=self)
             return
         self.baseline_devices = list(self.devices)
+        self.prev_devices = list(self.devices)
         self._update_baseline_status()
         self.device_change.update_changes([], [])
         self._update_status("已将当前设备列表设为基准")
