@@ -93,7 +93,7 @@ jobs:
       if: github.ref_name == 'main'
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.sha }}
-        name: "Build ${{ github.sha }}"
+        tag_name: v2.0.0-build.${{ github.run_number }}
+        name: "v2.0.0 Build #${{ github.run_number }}"
         files: dist/vpid_viewer.exe
         generate_release_notes: true
