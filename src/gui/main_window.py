@@ -31,6 +31,10 @@ from ..constants import (
 
 logger = logging.getLogger(__name__)
 
+_BTN_FONT = ("Segoe UI", 9, "bold")
+_BTN_PADX = 14
+_BTN_PADY = 4
+
 
 class MainWindow(tk.Tk):
     """USB 设备管理器主窗口
@@ -54,6 +58,7 @@ class MainWindow(tk.Tk):
         self._scanning = False
         self._auto_refresh_id = None
         self._result_queue = queue.Queue()
+        self.auto_refresh_var = tk.BooleanVar(value=True)
 
         self._apply_style()
         self._set_icon()
@@ -86,7 +91,7 @@ class MainWindow(tk.Tk):
                         foreground=COLOR_TEXT,
                         font=("Segoe UI", 9, "bold"))
         style.map("Treeview",
-                  background=[("selected", "#ECF5FF")],
+                  background=[("selected", "#E3F2FD")],
                   foreground=[("selected", COLOR_PRIMARY)])
 
     def _set_icon(self):
@@ -103,18 +108,38 @@ class MainWindow(tk.Tk):
         except Exception:
             pass
 
+    def _make_btn(self, parent, text, bg_color, command):
+        """创建统一样式的按钮"""
+        return tk.Button(
+            parent, text=text, font=_BTN_FONT,
+            bg=bg_color, fg=COLOR_WHITE,
+            activebackground=bg_color, activeforeground=COLOR_WHITE,
+            bd=0, padx=_BTN_PADX, pady=_BTN_PADY,
+            cursor="hand2", command=command,
+        )
+
     def _build_toolbar(self):
-        """构建顶部工具栏"""
+        """构建顶部工具栏
+
+        使用 grid 布局精确控制按钮位置，避免 pack_forget/pack 顺序混乱。
+
+        列布局:
+          col 0: 设备计数标签
+          col 1: 停止刷新 / 自动刷新
+          col 2: 手动刷新
+          col 3: 设为基准
+          col 4: (弹性空间)
+          col 5: 复制 (右对齐)
+        """
         toolbar = tk.Frame(self, bg=COLOR_WHITE, pady=6, padx=12)
         toolbar.pack(fill=tk.X)
+        toolbar.columnconfigure(4, weight=1)
 
         self.device_count_label = tk.Label(
             toolbar, text="0 个设备已连接",
             font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
         )
-        self.device_count_label.pack(side=tk.LEFT, padx=(0, 12))
-
-        self.auto_refresh_var = tk.BooleanVar(value=True)
+        self.device_count_label.grid(row=0, column=0, padx=(0, 12))
 
         self.stop_refresh_btn = self._make_btn(
             toolbar, "停止刷新", COLOR_DANGER, self._on_stop_refresh
@@ -140,17 +165,6 @@ class MainWindow(tk.Tk):
 
         sep = tk.Frame(self, bg=COLOR_BORDER, height=1)
         sep.pack(fill=tk.X)
-
-    @staticmethod
-    def _make_btn(parent, text, bg_color, command):
-        """创建统一样式的按钮"""
-        return tk.Button(
-            parent, text=text, font=("Segoe UI", 9, "bold"),
-            bg=bg_color, fg=COLOR_WHITE,
-            activebackground=bg_color, activeforeground=COLOR_WHITE,
-            bd=0, padx=14, pady=4,
-            cursor="hand2", command=command
-        )
 
     def _build_content(self):
         """构建主内容区域（左右分割）"""
@@ -204,6 +218,7 @@ class MainWindow(tk.Tk):
 
         view_menu = tk.Menu(menubar, tearoff=0)
         view_menu.add_command(label="停止自动刷新", command=self._on_stop_refresh)
+        view_menu.add_command(label="开启自动刷新", command=self._on_start_auto_refresh)
         view_menu.add_command(label="手动刷新", command=self._start_scan, accelerator="Ctrl+R")
         menubar.add_cascade(label="视图", menu=view_menu)
 
@@ -334,35 +349,33 @@ class MainWindow(tk.Tk):
     def _update_refresh_buttons(self):
         """根据自动刷新状态切换按钮显示
 
-        自动刷新开启：仅显示 [停止刷新] + [设为基准] + [复制]
-        自动刷新关闭：显示 [自动刷新] + [手动刷新] + [设为基准] + [复制]
+        使用 grid 布局精确控制位置，避免 pack 顺序混乱。
+
+        自动刷新开启: [停止刷新]  [设为基准]  ......  [复制]
+        自动刷新关闭: [自动刷新]  [手动刷新]  [设为基准]  ......  [复制]
         """
-        for btn in (self.stop_refresh_btn, self.auto_refresh_btn,
-                    self.manual_refresh_btn, self.baseline_btn, self.copy_btn):
-            btn.pack_forget()
+        self.stop_refresh_btn.grid_forget()
+        self.auto_refresh_btn.grid_forget()
+        self.manual_refresh_btn.grid_forget()
+        self.baseline_btn.grid_forget()
+        self.copy_btn.grid_forget()
 
         if self.auto_refresh_var.get():
-            self.stop_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+            self.stop_refresh_btn.grid(row=0, column=1, padx=(0, 6))
         else:
-            self.auto_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
-            self.manual_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+            self.auto_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+            self.manual_refresh_btn.grid(row=0, column=2, padx=(0, 6))
+            self.baseline_btn.grid(row=0, column=3, padx=(0, 6))
+        self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
-        self.baseline_btn.pack(side=tk.LEFT, padx=(0, 6))
-        self.copy_btn.pack(side=tk.RIGHT, padx=(0, 6))
-
-    def _toggle_auto_refresh(self):
-        """切换自动刷新"""
         if self.auto_refresh_var.get():
-            self._schedule_auto_refresh()
-        else:
-            self._cancel_auto_refresh()
-        self._update_refresh_buttons()
+            self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
 
     def _set_scan_buttons_state(self, state):
         """设置扫描相关按钮的启用/禁用状态"""
-        for btn in (self.stop_refresh_btn, self.auto_refresh_btn,
-                    self.manual_refresh_btn):
-            btn.config(state=state)
+        self.stop_refresh_btn.config(state=state)
+        self.auto_refresh_btn.config(state=state)
+        self.manual_refresh_btn.config(state=state)
 
     def _schedule_auto_refresh(self):
         """调度下一次自动刷新"""
@@ -435,9 +448,10 @@ class MainWindow(tk.Tk):
 
     def _show_help(self):
         messagebox.showinfo("使用帮助",
-            "【刷新】Ctrl+R 或点击刷新按钮\n"
+            "【自动刷新】默认开启，每 0.5 秒自动更新设备列表\n"
+            "【停止刷新】暂停自动刷新，显示手动刷新按钮\n"
+            "【手动刷新】点击一次立即刷新设备列表\n"
             "【设为基准】将当前列表设为基准，后续刷新自动比对\n"
             "【复制】选中设备后 Ctrl+C 复制完整信息\n"
-            "【自动刷新】勾选后每 0.5 秒自动更新\n"
             "【设备变化】左侧=全部设备，右侧上方=新增(绿)，右侧下方=移除(红)",
             parent=self)
