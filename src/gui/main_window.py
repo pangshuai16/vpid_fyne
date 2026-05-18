@@ -36,6 +36,60 @@ _BTN_PADX = 14
 _BTN_PADY = 4
 
 
+def _make_btn(parent, text, bg_color, command):
+    """创建统一样式的按钮（使用 Label 模拟，确保 bg 颜色在所有平台生效）
+
+    Windows 上 tk.Button 的 bg 参数被系统主题覆盖，无法显示自定义颜色。
+    使用 tk.Label 模拟按钮，bg/fg 颜色 100% 可控，且支持点击和悬停效果。
+    """
+    hover_bg = _lighten_color(bg_color, 0.15)
+    active_bg = _lighten_color(bg_color, 0.25)
+
+    lbl = tk.Label(
+        parent, text=text, font=_BTN_FONT,
+        bg=bg_color, fg=COLOR_WHITE,
+        padx=_BTN_PADX, pady=_BTN_PADY,
+        cursor="hand2",
+    )
+
+    def _on_enter(event):
+        lbl.config(bg=hover_bg)
+
+    def _on_leave(event):
+        lbl.config(bg=bg_color)
+
+    def _on_click(event):
+        lbl.config(bg=active_bg)
+        parent.after(100, lambda: lbl.config(bg=hover_bg))
+        command()
+
+    lbl.bind("<Enter>", _on_enter)
+    lbl.bind("<Leave>", _on_leave)
+    lbl.bind("<Button-1>", _on_click)
+
+    return lbl
+
+
+def _lighten_color(hex_color, factor):
+    """将十六进制颜色变亮
+
+    Args:
+        hex_color: 如 "#2775b6"
+        factor: 0.0 ~ 1.0，变亮程度
+
+    Returns:
+        str: 变亮后的十六进制颜色
+    """
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    r = min(255, int(r + (255 - r) * factor))
+    g = min(255, int(g + (255 - g) * factor))
+    b = min(255, int(b + (255 - b) * factor))
+    return "#{0:02x}{1:02x}{2:02x}".format(r, g, b)
+
+
 class MainWindow(tk.Tk):
     """USB 设备管理器主窗口
 
@@ -108,20 +162,10 @@ class MainWindow(tk.Tk):
         except Exception:
             pass
 
-    def _make_btn(self, parent, text, bg_color, command):
-        """创建统一样式的按钮"""
-        return tk.Button(
-            parent, text=text, font=_BTN_FONT,
-            bg=bg_color, fg=COLOR_WHITE,
-            activebackground=bg_color, activeforeground=COLOR_WHITE,
-            bd=0, padx=_BTN_PADX, pady=_BTN_PADY,
-            cursor="hand2", command=command,
-        )
-
     def _build_toolbar(self):
         """构建顶部工具栏
 
-        使用 grid 布局精确控制按钮位置，避免 pack_forget/pack 顺序混乱。
+        使用 grid 布局精确控制按钮位置。
 
         列布局:
           col 0: 设备计数标签
@@ -141,23 +185,23 @@ class MainWindow(tk.Tk):
         )
         self.device_count_label.grid(row=0, column=0, padx=(0, 12))
 
-        self.stop_refresh_btn = self._make_btn(
+        self.stop_refresh_btn = _make_btn(
             toolbar, "停止刷新", COLOR_DANGER, self._on_stop_refresh
         )
 
-        self.auto_refresh_btn = self._make_btn(
+        self.auto_refresh_btn = _make_btn(
             toolbar, "自动刷新", COLOR_SUCCESS, self._on_start_auto_refresh
         )
 
-        self.manual_refresh_btn = self._make_btn(
+        self.manual_refresh_btn = _make_btn(
             toolbar, "手动刷新", COLOR_PRIMARY, self._start_scan
         )
 
-        self.baseline_btn = self._make_btn(
+        self.baseline_btn = _make_btn(
             toolbar, "设为基准", COLOR_SUCCESS, self._on_set_baseline
         )
 
-        self.copy_btn = self._make_btn(
+        self.copy_btn = _make_btn(
             toolbar, "复制", COLOR_PRIMARY, self._on_copy
         )
 
@@ -349,8 +393,6 @@ class MainWindow(tk.Tk):
     def _update_refresh_buttons(self):
         """根据自动刷新状态切换按钮显示
 
-        使用 grid 布局精确控制位置，避免 pack 顺序混乱。
-
         自动刷新开启: [停止刷新]  [设为基准]  ......  [复制]
         自动刷新关闭: [自动刷新]  [手动刷新]  [设为基准]  ......  [复制]
         """
@@ -362,20 +404,21 @@ class MainWindow(tk.Tk):
 
         if self.auto_refresh_var.get():
             self.stop_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+            self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
         else:
             self.auto_refresh_btn.grid(row=0, column=1, padx=(0, 6))
             self.manual_refresh_btn.grid(row=0, column=2, padx=(0, 6))
             self.baseline_btn.grid(row=0, column=3, padx=(0, 6))
-        self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
-        if self.auto_refresh_var.get():
-            self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
+        self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
     def _set_scan_buttons_state(self, state):
         """设置扫描相关按钮的启用/禁用状态"""
-        self.stop_refresh_btn.config(state=state)
-        self.auto_refresh_btn.config(state=state)
-        self.manual_refresh_btn.config(state=state)
+        for btn in (self.stop_refresh_btn, self.auto_refresh_btn, self.manual_refresh_btn):
+            if state == tk.DISABLED:
+                btn.config(fg="#CCCCCC", cursor="no")
+            else:
+                btn.config(fg=COLOR_WHITE, cursor="hand2")
 
     def _schedule_auto_refresh(self):
         """调度下一次自动刷新"""
