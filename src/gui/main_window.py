@@ -20,7 +20,6 @@ from ..constants import (
     APP_NAME,
     APP_VERSION,
     COLOR_PRIMARY,
-    COLOR_PRIMARY_HOVER,
     COLOR_SUCCESS,
     COLOR_DANGER,
     COLOR_TEXT,
@@ -117,41 +116,41 @@ class MainWindow(tk.Tk):
 
         self.auto_refresh_var = tk.BooleanVar(value=True)
 
-        self.refresh_btn = tk.Button(
-            toolbar, text="刷新", font=("Segoe UI", 9, "bold"),
-            bg=COLOR_PRIMARY, fg=COLOR_WHITE, activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
-            cursor="hand2", command=self._start_scan
+        self.stop_refresh_btn = self._make_btn(
+            toolbar, "停止刷新", COLOR_DANGER, self._on_stop_refresh
         )
 
-        self.stop_refresh_btn = tk.Button(
-            toolbar, text="停止刷新", font=("Segoe UI", 9, "bold"),
-            bg=COLOR_DANGER, fg=COLOR_WHITE, activebackground="#F78989",
-            activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
-            cursor="hand2", command=self._on_stop_refresh
+        self.auto_refresh_btn = self._make_btn(
+            toolbar, "自动刷新", COLOR_SUCCESS, self._on_start_auto_refresh
+        )
+
+        self.manual_refresh_btn = self._make_btn(
+            toolbar, "手动刷新", COLOR_PRIMARY, self._start_scan
+        )
+
+        self.baseline_btn = self._make_btn(
+            toolbar, "设为基准", COLOR_SUCCESS, self._on_set_baseline
+        )
+
+        self.copy_btn = self._make_btn(
+            toolbar, "复制", COLOR_PRIMARY, self._on_copy
         )
 
         self._update_refresh_buttons()
 
-        self.baseline_btn = tk.Button(
-            toolbar, text="设为基准", font=("Segoe UI", 9, "bold"),
-            bg=COLOR_SUCCESS, fg=COLOR_WHITE, activebackground="#85CE61",
-            activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
-            cursor="hand2", command=self._on_set_baseline
-        )
-        self.baseline_btn.pack(side=tk.LEFT, padx=(0, 6))
-
-        self.copy_btn = tk.Button(
-            toolbar, text="复制", font=("Segoe UI", 9),
-            bg=COLOR_WHITE, fg=COLOR_TEXT, activebackground=COLOR_BG,
-            activeforeground=COLOR_PRIMARY, bd=1, relief=tk.SOLID,
-            highlightbackground=COLOR_BORDER, padx=14, pady=4,
-            cursor="hand2", command=self._on_copy
-        )
-        self.copy_btn.pack(side=tk.LEFT, padx=(0, 6))
-
         sep = tk.Frame(self, bg=COLOR_BORDER, height=1)
         sep.pack(fill=tk.X)
+
+    @staticmethod
+    def _make_btn(parent, text, bg_color, command):
+        """创建统一样式的按钮"""
+        return tk.Button(
+            parent, text=text, font=("Segoe UI", 9, "bold"),
+            bg=bg_color, fg=COLOR_WHITE,
+            activebackground=bg_color, activeforeground=COLOR_WHITE,
+            bd=0, padx=14, pady=4,
+            cursor="hand2", command=command
+        )
 
     def _build_content(self):
         """构建主内容区域（左右分割）"""
@@ -227,7 +226,7 @@ class MainWindow(tk.Tk):
         if self._scanning:
             return
         self._scanning = True
-        self.refresh_btn.config(state=tk.DISABLED)
+        self._set_scan_buttons_state(tk.DISABLED)
         self._update_status("正在扫描 USB 设备...")
 
         thread = threading.Thread(target=self._scan_worker, daemon=True)
@@ -249,7 +248,7 @@ class MainWindow(tk.Tk):
             if status == "ok":
                 self._update_device_list(devices)
             self._scanning = False
-            self.refresh_btn.config(state=tk.NORMAL)
+            self._set_scan_buttons_state(tk.NORMAL)
         except queue.Empty:
             pass
         self.after(50, self._poll_scan_result)
@@ -326,14 +325,30 @@ class MainWindow(tk.Tk):
         self._cancel_auto_refresh()
         self._update_refresh_buttons()
 
+    def _on_start_auto_refresh(self):
+        """开启自动刷新"""
+        self.auto_refresh_var.set(True)
+        self._schedule_auto_refresh()
+        self._update_refresh_buttons()
+
     def _update_refresh_buttons(self):
-        """根据自动刷新状态切换刷新/停止按钮"""
+        """根据自动刷新状态切换按钮显示
+
+        自动刷新开启：仅显示 [停止刷新] + [设为基准] + [复制]
+        自动刷新关闭：显示 [自动刷新] + [手动刷新] + [设为基准] + [复制]
+        """
+        for btn in (self.stop_refresh_btn, self.auto_refresh_btn,
+                    self.manual_refresh_btn, self.baseline_btn, self.copy_btn):
+            btn.pack_forget()
+
         if self.auto_refresh_var.get():
-            self.refresh_btn.pack_forget()
             self.stop_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
         else:
-            self.stop_refresh_btn.pack_forget()
-            self.refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+            self.auto_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+            self.manual_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.baseline_btn.pack(side=tk.LEFT, padx=(0, 6))
+        self.copy_btn.pack(side=tk.RIGHT, padx=(0, 6))
 
     def _toggle_auto_refresh(self):
         """切换自动刷新"""
@@ -342,6 +357,12 @@ class MainWindow(tk.Tk):
         else:
             self._cancel_auto_refresh()
         self._update_refresh_buttons()
+
+    def _set_scan_buttons_state(self, state):
+        """设置扫描相关按钮的启用/禁用状态"""
+        for btn in (self.stop_refresh_btn, self.auto_refresh_btn,
+                    self.manual_refresh_btn):
+            btn.config(state=state)
 
     def _schedule_auto_refresh(self):
         """调度下一次自动刷新"""
