@@ -6,7 +6,7 @@ from typing import List, Callable, Optional
 from ..device_info import USBDevice
 from ..constants import (
     COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_DANGER, COLOR_DANGER_BG,
-    COLOR_TEXT, COLOR_BORDER, COLOR_WHITE,
+    COLOR_PRIMARY, COLOR_TEXT, COLOR_BORDER, COLOR_WHITE,
 )
 
 

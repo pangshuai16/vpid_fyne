@@ -20,8 +20,8 @@ from ..constants import (
     APP_NAME,
     APP_VERSION,
     COLOR_PRIMARY,
-    COLOR_PRIMARY_HOVER,
     COLOR_SUCCESS,
+    COLOR_DANGER,
     COLOR_TEXT,
     COLOR_TEXT_SECONDARY,
     COLOR_BORDER,
@@ -30,6 +30,64 @@ from ..constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+_BTN_FONT = ("Segoe UI", 9, "bold")
+_BTN_PADX = 14
+_BTN_PADY = 4
+
+
+def _make_btn(parent, text, bg_color, command):
+    """创建统一样式的按钮（使用 Label 模拟，确保 bg 颜色在所有平台生效）
+
+    Windows 上 tk.Button 的 bg 参数被系统主题覆盖，无法显示自定义颜色。
+    使用 tk.Label 模拟按钮，bg/fg 颜色 100% 可控，且支持点击和悬停效果。
+    """
+    hover_bg = _lighten_color(bg_color, 0.15)
+    active_bg = _lighten_color(bg_color, 0.25)
+
+    lbl = tk.Label(
+        parent, text=text, font=_BTN_FONT,
+        bg=bg_color, fg=COLOR_WHITE,
+        padx=_BTN_PADX, pady=_BTN_PADY,
+        cursor="hand2",
+    )
+
+    def _on_enter(event):
+        lbl.config(bg=hover_bg)
+
+    def _on_leave(event):
+        lbl.config(bg=bg_color)
+
+    def _on_click(event):
+        lbl.config(bg=active_bg)
+        parent.after(100, lambda: lbl.config(bg=hover_bg))
+        command()
+
+    lbl.bind("<Enter>", _on_enter)
+    lbl.bind("<Leave>", _on_leave)
+    lbl.bind("<Button-1>", _on_click)
+
+    return lbl
+
+
+def _lighten_color(hex_color, factor):
+    """将十六进制颜色变亮
+
+    Args:
+        hex_color: 如 "#2775b6"
+        factor: 0.0 ~ 1.0，变亮程度
+
+    Returns:
+        str: 变亮后的十六进制颜色
+    """
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    r = min(255, int(r + (255 - r) * factor))
+    g = min(255, int(g + (255 - g) * factor))
+    b = min(255, int(b + (255 - b) * factor))
+    return "#{0:02x}{1:02x}{2:02x}".format(r, g, b)
 
 
 class MainWindow(tk.Tk):
@@ -54,6 +112,7 @@ class MainWindow(tk.Tk):
         self._scanning = False
         self._auto_refresh_id = None
         self._result_queue = queue.Queue()
+        self.auto_refresh_var = tk.BooleanVar(value=True)
 
         self._apply_style()
         self._set_icon()
@@ -64,6 +123,7 @@ class MainWindow(tk.Tk):
 
         self._start_scan()
         self._poll_scan_result()
+        self._schedule_auto_refresh()
 
     def _apply_style(self):
         """配置 ttk 主题样式"""
@@ -85,7 +145,7 @@ class MainWindow(tk.Tk):
                         foreground=COLOR_TEXT,
                         font=("Segoe UI", 9, "bold"))
         style.map("Treeview",
-                  background=[("selected", "#ECF5FF")],
+                  background=[("selected", "#E3F2FD")],
                   foreground=[("selected", COLOR_PRIMARY)])
 
     def _set_icon(self):
@@ -103,49 +163,49 @@ class MainWindow(tk.Tk):
             pass
 
     def _build_toolbar(self):
-        """构建顶部工具栏"""
+        """构建顶部工具栏
+
+        使用 grid 布局精确控制按钮位置。
+
+        列布局:
+          col 0: 设备计数标签
+          col 1: 停止刷新 / 自动刷新
+          col 2: 手动刷新
+          col 3: 设为基准
+          col 4: (弹性空间)
+          col 5: 复制 (右对齐)
+        """
         toolbar = tk.Frame(self, bg=COLOR_WHITE, pady=6, padx=12)
         toolbar.pack(fill=tk.X)
+        toolbar.columnconfigure(4, weight=1)
 
         self.device_count_label = tk.Label(
             toolbar, text="0 个设备已连接",
             font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
         )
-        self.device_count_label.pack(side=tk.LEFT, padx=(0, 12))
+        self.device_count_label.grid(row=0, column=0, padx=(0, 12))
 
-        self.refresh_btn = tk.Button(
-            toolbar, text="刷新", font=("Segoe UI", 9, "bold"),
-            bg=COLOR_PRIMARY, fg=COLOR_WHITE, activebackground=COLOR_PRIMARY_HOVER,
-            activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
-            cursor="hand2", command=self._start_scan
+        self.stop_refresh_btn = _make_btn(
+            toolbar, "停止刷新", COLOR_DANGER, self._on_stop_refresh
         )
-        self.refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.baseline_btn = tk.Button(
-            toolbar, text="设为基准", font=("Segoe UI", 9, "bold"),
-            bg=COLOR_SUCCESS, fg=COLOR_WHITE, activebackground="#85CE61",
-            activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
-            cursor="hand2", command=self._on_set_baseline
+        self.auto_refresh_btn = _make_btn(
+            toolbar, "自动刷新", COLOR_SUCCESS, self._on_start_auto_refresh
         )
-        self.baseline_btn.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.copy_btn = tk.Button(
-            toolbar, text="复制", font=("Segoe UI", 9),
-            bg=COLOR_WHITE, fg=COLOR_TEXT, activebackground=COLOR_BG,
-            activeforeground=COLOR_PRIMARY, bd=1, relief=tk.SOLID,
-            highlightbackground=COLOR_BORDER, padx=14, pady=4,
-            cursor="hand2", command=self._on_copy
+        self.manual_refresh_btn = _make_btn(
+            toolbar, "手动刷新", COLOR_PRIMARY, self._start_scan
         )
-        self.copy_btn.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.auto_refresh_var = tk.BooleanVar(value=False)
-        auto_cb = tk.Checkbutton(
-            toolbar, text="自动刷新 (0.5s)", variable=self.auto_refresh_var,
-            font=("Segoe UI", 9), fg=COLOR_TEXT, bg=COLOR_WHITE,
-            activebackground=COLOR_WHITE, activeforeground=COLOR_TEXT,
-            selectcolor=COLOR_WHITE, command=self._toggle_auto_refresh
+        self.baseline_btn = _make_btn(
+            toolbar, "设为基准", COLOR_SUCCESS, self._on_set_baseline
         )
-        auto_cb.pack(side=tk.RIGHT)
+
+        self.copy_btn = _make_btn(
+            toolbar, "复制", COLOR_PRIMARY, self._on_copy
+        )
+
+        self._update_refresh_buttons()
 
         sep = tk.Frame(self, bg=COLOR_BORDER, height=1)
         sep.pack(fill=tk.X)
@@ -201,8 +261,9 @@ class MainWindow(tk.Tk):
         menubar.add_cascade(label="编辑", menu=edit_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_checkbutton(label="自动刷新", variable=self.auto_refresh_var,
-                                   command=self._toggle_auto_refresh)
+        view_menu.add_command(label="停止自动刷新", command=self._on_stop_refresh)
+        view_menu.add_command(label="开启自动刷新", command=self._on_start_auto_refresh)
+        view_menu.add_command(label="手动刷新", command=self._start_scan, accelerator="Ctrl+R")
         menubar.add_cascade(label="视图", menu=view_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -224,7 +285,7 @@ class MainWindow(tk.Tk):
         if self._scanning:
             return
         self._scanning = True
-        self.refresh_btn.config(state=tk.DISABLED)
+        self._set_scan_buttons_state(tk.DISABLED)
         self._update_status("正在扫描 USB 设备...")
 
         thread = threading.Thread(target=self._scan_worker, daemon=True)
@@ -246,7 +307,7 @@ class MainWindow(tk.Tk):
             if status == "ok":
                 self._update_device_list(devices)
             self._scanning = False
-            self.refresh_btn.config(state=tk.NORMAL)
+            self._set_scan_buttons_state(tk.NORMAL)
         except queue.Empty:
             pass
         self.after(50, self._poll_scan_result)
@@ -317,12 +378,47 @@ class MainWindow(tk.Tk):
         self.clipboard_append(value)
         self._update_status("已复制 {0}: {1}".format(field.upper(), value))
 
-    def _toggle_auto_refresh(self):
-        """切换自动刷新"""
+    def _on_stop_refresh(self):
+        """停止自动刷新"""
+        self.auto_refresh_var.set(False)
+        self._cancel_auto_refresh()
+        self._update_refresh_buttons()
+
+    def _on_start_auto_refresh(self):
+        """开启自动刷新"""
+        self.auto_refresh_var.set(True)
+        self._schedule_auto_refresh()
+        self._update_refresh_buttons()
+
+    def _update_refresh_buttons(self):
+        """根据自动刷新状态切换按钮显示
+
+        自动刷新开启: [停止刷新]  [设为基准]  ......  [复制]
+        自动刷新关闭: [自动刷新]  [手动刷新]  [设为基准]  ......  [复制]
+        """
+        self.stop_refresh_btn.grid_forget()
+        self.auto_refresh_btn.grid_forget()
+        self.manual_refresh_btn.grid_forget()
+        self.baseline_btn.grid_forget()
+        self.copy_btn.grid_forget()
+
         if self.auto_refresh_var.get():
-            self._schedule_auto_refresh()
+            self.stop_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+            self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
         else:
-            self._cancel_auto_refresh()
+            self.auto_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+            self.manual_refresh_btn.grid(row=0, column=2, padx=(0, 6))
+            self.baseline_btn.grid(row=0, column=3, padx=(0, 6))
+
+        self.copy_btn.grid(row=0, column=5, padx=(0, 6))
+
+    def _set_scan_buttons_state(self, state):
+        """设置扫描相关按钮的启用/禁用状态"""
+        for btn in (self.stop_refresh_btn, self.auto_refresh_btn, self.manual_refresh_btn):
+            if state == tk.DISABLED:
+                btn.config(fg="#CCCCCC", cursor="no")
+            else:
+                btn.config(fg=COLOR_WHITE, cursor="hand2")
 
     def _schedule_auto_refresh(self):
         """调度下一次自动刷新"""
@@ -395,9 +491,10 @@ class MainWindow(tk.Tk):
 
     def _show_help(self):
         messagebox.showinfo("使用帮助",
-            "【刷新】Ctrl+R 或点击刷新按钮\n"
+            "【自动刷新】默认开启，每 0.5 秒自动更新设备列表\n"
+            "【停止刷新】暂停自动刷新，显示手动刷新按钮\n"
+            "【手动刷新】点击一次立即刷新设备列表\n"
             "【设为基准】将当前列表设为基准，后续刷新自动比对\n"
             "【复制】选中设备后 Ctrl+C 复制完整信息\n"
-            "【自动刷新】勾选后每 0.5 秒自动更新\n"
             "【设备变化】左侧=全部设备，右侧上方=新增(绿)，右侧下方=移除(红)",
             parent=self)
