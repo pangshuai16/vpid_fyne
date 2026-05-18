@@ -3,13 +3,18 @@
 只返回当前真实连接的 USB 设备。已断开的设备不会出现在结果中。
 不允许有缓存数据，不允许有模拟数据，不允许有硬编码。
 
-扫描策略（按可靠性从高到低）：
+扫描策略（合并去重）：
 1. SetupAPI（最可靠）：使用 SetupDiGetClassDevs + DIGCF_PRESENT 标志，
    与 Windows 设备管理器使用相同的 API，只返回当前真正连接的设备。
 2. WMI（次可靠）：Win32_USBHub + Win32_PnPEntity，
    通过 ConfigManagerErrorCode == 0 过滤已断开设备。
 3. 注册表（最后手段）：CurrentControlSet\\Enum\\USB，
    必须检查 ConfigManagerErrorCode == 0 且 ConfigFlags 不含移除标记。
+
+设备过滤规则：
+  不再使用 instance_id.startswith("USB") 过滤，因为很多 USB 设备的实例 ID
+  以其他前缀开头（如 HID\\、FTDIBUS\\ 等）。改为检查实例 ID 中是否包含
+  VID_ 和 PID_ 模式，这是 USB 设备的专属标识，非 USB 设备不会使用。
 
 注意：注册表 CurrentControlSet\\Enum\\USB 包含历史设备记录，
 已断开的设备条目仍然存在，必须严格过滤。
@@ -40,6 +45,7 @@ def extract_vid_pid(device_id):
 
     Args:
         device_id: 如 "USB\\VID_8087&PID_0024\\5&1234"
+                   或 "HID\\VID_046D&PID_C52B&MI_02\\7&1234"
 
     Returns:
         Tuple[str, str]: ("0x8087", "0x0024")，匹配失败返回 ("", "")
@@ -108,6 +114,23 @@ def _is_device_connected(error_code):
         return False
 
 
+def _has_vid_pid(device_id):
+    """检查设备 ID 是否包含 VID 和 PID 模式
+
+    USB 设备的实例 ID 中包含 VID_xxxx&PID_xxxx 模式，
+    无论前缀是 USB\\、HID\\、FTDIBUS\\ 还是其他。
+    非 USB 设备不会使用此模式。
+
+    Args:
+        device_id: 设备实例 ID
+
+    Returns:
+        bool: 包含 VID 和 PID 返回 True
+    """
+    device_id = str(device_id).upper()
+    return bool(_VID_RE.search(device_id) and _PID_RE.search(device_id))
+
+
 def _clean_registry_string(value):
     """清理注册表字符串值，提取反斜杠分隔的最后一段"""
     if not value:
@@ -163,6 +186,10 @@ def _scan_via_setupapi():
 
     DIGCF_PRESENT 标志确保只枚举当前物理存在的设备，
     已断开的设备不会被返回。
+
+    过滤规则：不再限制 instance_id 必须以 "USB" 开头，
+    而是检查是否包含 VID_/PID_ 模式，以涵盖 HID、
+    FTDIBUS 等前缀的 USB 设备。
 
     Returns:
         List[USBDevice]: 当前连接的设备列表
@@ -262,43 +289,42 @@ def _scan_via_setupapi():
                 instance_id_buf, 1024, ctypes.byref(required_size)
             ):
                 instance_id = instance_id_buf.value
-                if instance_id.upper().startswith("USB"):
-                    vid, pid = extract_vid_pid(instance_id)
-                    if vid and pid:
-                        serial = extract_serial_from_device_id(instance_id)
-                        key = (vid, pid, serial)
-                        if key not in seen_keys:
-                            seen_keys.add(key)
+                vid, pid = extract_vid_pid(instance_id)
+                if vid and pid:
+                    serial = extract_serial_from_device_id(instance_id)
+                    key = (vid, pid, serial)
+                    if key not in seen_keys:
+                        seen_keys.add(key)
 
-                            name = _get_setupapi_reg_property(
-                                setupapi, h_dev_info, dev_info,
-                                SPDRP_FRIENDLYNAME
-                            ) or _get_setupapi_reg_property(
-                                setupapi, h_dev_info, dev_info,
-                                SPDRP_DEVICEDESC
-                            )
-                            manufacturer = _get_setupapi_reg_property(
-                                setupapi, h_dev_info, dev_info,
-                                SPDRP_MFG
-                            )
-                            driver = _get_setupapi_reg_property(
-                                setupapi, h_dev_info, dev_info,
-                                SPDRP_DRIVER
-                            )
-                            location = _get_setupapi_reg_property(
-                                setupapi, h_dev_info, dev_info,
-                                SPDRP_LOCATION_INFORMATION
-                            )
+                        name = _get_setupapi_reg_property(
+                            setupapi, h_dev_info, dev_info,
+                            SPDRP_FRIENDLYNAME
+                        ) or _get_setupapi_reg_property(
+                            setupapi, h_dev_info, dev_info,
+                            SPDRP_DEVICEDESC
+                        )
+                        manufacturer = _get_setupapi_reg_property(
+                            setupapi, h_dev_info, dev_info,
+                            SPDRP_MFG
+                        )
+                        driver = _get_setupapi_reg_property(
+                            setupapi, h_dev_info, dev_info,
+                            SPDRP_DRIVER
+                        )
+                        location = _get_setupapi_reg_property(
+                            setupapi, h_dev_info, dev_info,
+                            SPDRP_LOCATION_INFORMATION
+                        )
 
-                            devices.append(_build_device(
-                                vid=vid, pid=pid, serial=serial,
-                                name=name, manufacturer=manufacturer,
-                                location=location, driver=driver,
-                                device_id=instance_id,
-                                pnp_device_id=instance_id,
-                                status=STATUS_CONNECTED,
-                                path=instance_id,
-                            ))
+                        devices.append(_build_device(
+                            vid=vid, pid=pid, serial=serial,
+                            name=name, manufacturer=manufacturer,
+                            location=location, driver=driver,
+                            device_id=instance_id,
+                            pnp_device_id=instance_id,
+                            status=STATUS_CONNECTED,
+                            path=instance_id,
+                        ))
 
             index += 1
     finally:
@@ -338,7 +364,7 @@ def _get_setupapi_reg_property(setupapi, h_dev_info, dev_info, prop_id):
     if result:
         return buffer.value
 
-    if ctypes.get_last_error() == 122:  # ERROR_INSUFFICIENT_BUFFER
+    if ctypes.get_last_error() == 122:
         buf_size = required_size.value + 2
         buffer = ctypes.create_unicode_buffer(buf_size)
         result = setupapi.SetupDiGetDeviceRegistryPropertyW(
@@ -364,8 +390,9 @@ def _scan_via_wmi():
     WMI 的 Win32_USBHub 和 Win32_PnPEntity 查询中，
     通过 ConfigManagerErrorCode == 0 过滤已断开设备。
 
-    注意：Win32_PnPEntity 可能返回"存在但未连接"的设备，
-    因此必须严格检查 ConfigManagerErrorCode。
+    过滤规则：不再限制 PNPDeviceID 必须以 "USB" 开头，
+    而是检查是否包含 VID_/PID_ 模式，以涵盖 HID、
+    FTDIBUS 等前缀的 USB 设备。
 
     Returns:
         List[USBDevice]: 当前连接的设备列表
@@ -428,7 +455,7 @@ def _scan_via_wmi():
     try:
         for pnp in c.Win32_PnPEntity():
             pnp_id = pnp.PNPDeviceID or ""
-            if not pnp_id.upper().startswith("USB"):
+            if not _has_vid_pid(pnp_id):
                 continue
             _add_wmi_device(
                 pnp,
@@ -455,6 +482,10 @@ def _scan_via_registry():
     已断开的设备条目仍然存在。必须同时满足以下条件才认为设备已连接：
     1. ConfigManagerErrorCode == 0
     2. ConfigFlags 不包含 CONFIGFLAG_REMOVED (0x00000004) 标记
+
+    注意：注册表 Enum\\USB 路径下只有 USB\\ 前缀的设备，
+    HID\\ 等前缀的设备在 Enum\\HID 等其他路径下，
+    因此注册表扫描只能发现 USB\\ 前缀的设备。
 
     Returns:
         List[USBDevice]: 当前连接的设备列表
@@ -599,25 +630,38 @@ def scan_usb_devices():
     只返回当前已连接的设备，已断开的设备不会出现在结果中。
     不允许有缓存数据，不允许有模拟数据，不允许有硬编码。
 
-    扫描优先级：
-    1. SetupAPI（最可靠，DIGCF_PRESENT 只返回当前连接的设备）
-    2. WMI（次可靠，ConfigManagerErrorCode == 0 过滤）
-    3. 注册表（最后手段，ConfigManagerErrorCode + ConfigFlags 双重过滤）
+    扫描策略：合并 SetupAPI + WMI 结果并去重。
+    - SetupAPI（DIGCF_PRESENT）和 WMI（ConfigManagerErrorCode==0）
+      都有可靠的连接状态检查，合并后不会引入幽灵设备。
+    - 注册表仅在前两者都失败时作为最后手段使用。
+
+    设备覆盖范围：
+    - USB\\ 前缀：USB 控制器、Hub、复合设备
+    - HID\\ 前缀：USB 键盘、鼠标等 HID 设备
+    - FTDIBUS\\ 等其他前缀：FTDI 串口等特殊 USB 设备
+    只要设备 ID 中包含 VID_/PID_ 模式，就会被识别为 USB 设备。
 
     Returns:
         List[USBDevice]: 当前连接的设备列表
     """
+    devices = []
+
     devices_setupapi = _scan_via_setupapi()
     if devices_setupapi:
+        devices.extend(devices_setupapi)
         logger.debug(
             "SetupAPI 扫描找到 %d 个已连接设备", len(devices_setupapi)
         )
-        return devices_setupapi
 
     devices_wmi = _scan_via_wmi()
     if devices_wmi:
+        devices.extend(devices_wmi)
         logger.debug("WMI 扫描找到 %d 个已连接设备", len(devices_wmi))
-        return devices_wmi
+
+    if devices:
+        result = _deduplicate_devices(devices)
+        logger.debug("合并去重后共 %d 个已连接 USB 设备", len(result))
+        return result
 
     devices_reg = _scan_via_registry()
     if devices_reg:
