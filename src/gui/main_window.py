@@ -22,6 +22,7 @@ from ..constants import (
     COLOR_PRIMARY,
     COLOR_PRIMARY_HOVER,
     COLOR_SUCCESS,
+    COLOR_DANGER,
     COLOR_TEXT,
     COLOR_TEXT_SECONDARY,
     COLOR_BORDER,
@@ -64,6 +65,7 @@ class MainWindow(tk.Tk):
 
         self._start_scan()
         self._poll_scan_result()
+        self._schedule_auto_refresh()
 
     def _apply_style(self):
         """配置 ttk 主题样式"""
@@ -113,13 +115,23 @@ class MainWindow(tk.Tk):
         )
         self.device_count_label.pack(side=tk.LEFT, padx=(0, 12))
 
+        self.auto_refresh_var = tk.BooleanVar(value=True)
+
         self.refresh_btn = tk.Button(
             toolbar, text="刷新", font=("Segoe UI", 9, "bold"),
             bg=COLOR_PRIMARY, fg=COLOR_WHITE, activebackground=COLOR_PRIMARY_HOVER,
             activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
             cursor="hand2", command=self._start_scan
         )
-        self.refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.stop_refresh_btn = tk.Button(
+            toolbar, text="停止刷新", font=("Segoe UI", 9, "bold"),
+            bg=COLOR_DANGER, fg=COLOR_WHITE, activebackground="#F78989",
+            activeforeground=COLOR_WHITE, bd=0, padx=14, pady=4,
+            cursor="hand2", command=self._on_stop_refresh
+        )
+
+        self._update_refresh_buttons()
 
         self.baseline_btn = tk.Button(
             toolbar, text="设为基准", font=("Segoe UI", 9, "bold"),
@@ -137,15 +149,6 @@ class MainWindow(tk.Tk):
             cursor="hand2", command=self._on_copy
         )
         self.copy_btn.pack(side=tk.LEFT, padx=(0, 6))
-
-        self.auto_refresh_var = tk.BooleanVar(value=False)
-        auto_cb = tk.Checkbutton(
-            toolbar, text="自动刷新 (0.5s)", variable=self.auto_refresh_var,
-            font=("Segoe UI", 9), fg=COLOR_TEXT, bg=COLOR_WHITE,
-            activebackground=COLOR_WHITE, activeforeground=COLOR_TEXT,
-            selectcolor=COLOR_WHITE, command=self._toggle_auto_refresh
-        )
-        auto_cb.pack(side=tk.RIGHT)
 
         sep = tk.Frame(self, bg=COLOR_BORDER, height=1)
         sep.pack(fill=tk.X)
@@ -201,8 +204,8 @@ class MainWindow(tk.Tk):
         menubar.add_cascade(label="编辑", menu=edit_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_checkbutton(label="自动刷新", variable=self.auto_refresh_var,
-                                   command=self._toggle_auto_refresh)
+        view_menu.add_command(label="停止自动刷新", command=self._on_stop_refresh)
+        view_menu.add_command(label="手动刷新", command=self._start_scan, accelerator="Ctrl+R")
         menubar.add_cascade(label="视图", menu=view_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -317,12 +320,28 @@ class MainWindow(tk.Tk):
         self.clipboard_append(value)
         self._update_status("已复制 {0}: {1}".format(field.upper(), value))
 
+    def _on_stop_refresh(self):
+        """停止自动刷新"""
+        self.auto_refresh_var.set(False)
+        self._cancel_auto_refresh()
+        self._update_refresh_buttons()
+
+    def _update_refresh_buttons(self):
+        """根据自动刷新状态切换刷新/停止按钮"""
+        if self.auto_refresh_var.get():
+            self.refresh_btn.pack_forget()
+            self.stop_refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+        else:
+            self.stop_refresh_btn.pack_forget()
+            self.refresh_btn.pack(side=tk.LEFT, padx=(0, 6))
+
     def _toggle_auto_refresh(self):
         """切换自动刷新"""
         if self.auto_refresh_var.get():
             self._schedule_auto_refresh()
         else:
             self._cancel_auto_refresh()
+        self._update_refresh_buttons()
 
     def _schedule_auto_refresh(self):
         """调度下一次自动刷新"""
