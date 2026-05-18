@@ -46,10 +46,14 @@ jobs:
         python -m pip install -r requirements.txt
         python -m pip install pyinstaller==4.10
 
+    - name: Verify tkinter availability
+      run: python -c "import tkinter; print('tkinter OK, Tk version:', tkinter.TkVersion)"
+
     - name: Check Python syntax
       run: |
         python -m py_compile main.py
         python -m py_compile src/__init__.py
+        python -m py_compile src/constants.py
         python -m py_compile src/device_info.py
         python -m py_compile src/usb_scanner.py
         python -m py_compile src/gui/__init__.py
@@ -89,7 +93,7 @@ jobs:
       if: github.ref_name == 'main'
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.sha }}
-        name: "Build ${{ github.sha }}"
+        tag_name: v2.0.0-build.${{ github.run_number }}
+        name: "v2.0.0 Build #${{ github.run_number }}"
         files: dist/vpid_viewer.exe
         generate_release_notes: true

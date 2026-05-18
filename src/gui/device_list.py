@@ -1,153 +1,97 @@
-"""设备列表面板组件 - 显示全部 USB 设备"""
+"""设备列表面板 - 显示全部 USB 设备"""
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional, List, Callable
+from typing import List, Callable, Optional
+
 from ..device_info import USBDevice
-from ..constants import (
-    BG,
-    BG_HEADER,
-    PRIMARY,
-    TEXT,
-    TEXT_SECONDARY,
-    SELECT_BG,
-    SELECT_FG,
-    VID_COLOR,
-    PID_COLOR,
-    FONT_SYSTEM,
-    FONT_SYSTEM_BOLD,
-    FONT_MONO,
-)
+from ..constants import COLOR_PRIMARY, COLOR_TEXT, COLOR_BG, COLOR_WHITE
 
 
 class DeviceListPanel(ttk.Frame):
     """显示全部 USB 设备列表的面板"""
 
-    def __init__(self, parent, on_select_callback: Optional[Callable[[USBDevice], None]] = None):
+    COLUMNS = ("vid", "pid", "name", "path")
+    HEADERS = ("VID", "PID", "设备名称", "路径")
+    WIDTHS = (70, 70, 200, 300)
+
+    def __init__(self, parent, on_select=None):
         super(DeviceListPanel, self).__init__(parent)
-        self.on_select_callback = on_select_callback
         self.devices = []
+        self._on_select_cb = on_select
         self._setup_ui()
 
     def _setup_ui(self):
-        """初始化 UI 组件"""
-        container = tk.Frame(self, bg=BG)
-        container.pack(fill="both", expand=True)
-
-        all_header = tk.Frame(container, bg=BG_HEADER, padx=16, pady=12)
-        all_header.pack(fill="x")
+        header_frame = tk.Frame(self, bg=COLOR_WHITE)
+        header_frame.pack(fill=tk.X, padx=4, pady=(4, 2))
 
         tk.Label(
-            all_header,
-            text="全部设备",
-            font=FONT_SYSTEM_BOLD,
-            bg=BG_HEADER,
-            fg=TEXT
-        ).pack(side="left")
+            header_frame, text="全部 USB 设备",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
+        ).pack(side=tk.LEFT)
 
         self.count_label = tk.Label(
-            all_header,
-            text="0 个",
-            font=FONT_SYSTEM,
-            bg=BG_HEADER,
-            fg=TEXT_SECONDARY
+            header_frame, text="0",
+            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_WHITE
         )
-        self.count_label.pack(side="right")
+        self.count_label.pack(side=tk.RIGHT)
 
-        all_list_frame = tk.Frame(container, bg=BG, padx=12, pady=8)
-        all_list_frame.pack(fill="both", expand=True)
+        tree_frame = ttk.Frame(self)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
 
-        self.all_tree = self._create_treeview(all_list_frame)
-
-    def _create_treeview(self, parent):
-        """创建统一风格的 Treeview"""
-        scrollbar = ttk.Scrollbar(parent, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
-
-        tree = ttk.Treeview(
-            parent,
-            columns=("vid", "pid", "serial"),
-            show="tree headings",
-            yscrollcommand=scrollbar.set,
-            selectmode="browse",
+        self.tree = ttk.Treeview(
+            tree_frame, columns=self.COLUMNS, show="headings",
+            selectmode="browse", height=10
         )
-        tree.pack(side="left", fill="both", expand=True)
-        scrollbar.config(command=tree.yview)
 
-        tree.heading("#0", text="设备名称", anchor="w")
-        tree.heading("vid", text="VID", anchor="w")
-        tree.heading("pid", text="PID", anchor="w")
-        tree.heading("serial", text="序列号", anchor="w")
+        for col, heading, width in zip(self.COLUMNS, self.HEADERS, self.WIDTHS):
+            self.tree.heading(col, text=heading)
+            stretch = tk.YES if col in ("name", "path") else tk.NO
+            self.tree.column(col, width=width, minwidth=50, stretch=stretch)
 
-        tree.column("#0", width=200, minwidth=130, anchor="w", stretch=True)
-        tree.column("vid", width=90, minwidth=70, anchor="w", stretch=True)
-        tree.column("pid", width=90, minwidth=70, anchor="w", stretch=True)
-        tree.column("serial", width=130, minwidth=80, anchor="w", stretch=True)
+        vsb = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
 
-        tree.tag_configure("normal", font=FONT_SYSTEM)
-        tree.tag_configure("selected", background=SELECT_BG, foreground=SELECT_FG)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
-        tree.bind("<<TreeviewSelect>>", lambda e: self._on_select(e))
-        tree.bind("<Button-1>", lambda e: self._on_click(e))
+        self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
-        return tree
-
-    def _on_click(self, event):
-        """处理点击空白区域取消选择"""
-        region = self.all_tree.identify_region(event.x, event.y)
-        if region == "nothing":
-            self.all_tree.selection_remove(self.all_tree.selection())
-
-    def _on_select(self, event):
-        """处理设备选择事件"""
-        selection = self.all_tree.selection()
-        if selection and self.on_select_callback:
-            item_id = selection[0]
-            index = self.all_tree.index(item_id)
-            if 0 <= index < len(self.devices):
-                self.on_select_callback(self.devices[index])
+    def _on_select(self, event=None):
+        device = self.get_selected_device()
+        if device and self._on_select_cb:
+            self._on_select_cb(device)
 
     def update_devices(self, devices):
-        """更新设备列表显示"""
-        self.devices = devices
-        self._update_tree(self.all_tree, self.devices)
-        self.count_label.config(text="{0} 个".format(len(devices)))
+        self.devices = list(devices)
+        self._populate()
+        self.count_label.config(text=str(len(self.devices)))
 
-    def _update_tree(self, tree, device_list):
-        """更新 Treeview 内容"""
-        for item in tree.get_children():
-            tree.delete(item)
-
-        for device in device_list:
-            name = device.get_display_name()
-            vid = device.vid or "—"
-            pid = device.pid or "—"
-            serial = device.serial or "—"
-
-            tree.insert(
-                "",
-                "end",
-                text=name,
-                values=(vid, pid, serial),
-                tags=("normal",)
-            )
+    def _populate(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for device in self.devices:
+            self.tree.insert("", tk.END, values=(
+                device.get_formatted_vid(),
+                device.get_formatted_pid(),
+                device.get_display_name(),
+                device.path or "-",
+            ))
 
     def get_selected_device(self):
-        """获取当前选中的设备"""
-        selection = self.all_tree.selection()
-        if selection:
-            index = self.all_tree.index(selection[0])
-            if 0 <= index < len(self.devices):
-                return self.devices[index]
+        sel = self.tree.selection()
+        if not sel or not self.devices:
+            return None
+        idx = self.tree.index(sel[0])
+        if 0 <= idx < len(self.devices):
+            return self.devices[idx]
         return None
 
     def clear_selection(self):
-        """清除选择"""
-        for item in self.all_tree.selection():
-            self.all_tree.selection_remove(item)
+        for item in self.tree.selection():
+            self.tree.selection_remove(item)
 
     def clear(self):
-        """清空所有显示"""
-        for item in self.all_tree.get_children():
-            self.all_tree.delete(item)
+        for item in self.tree.get_children():
+            self.tree.delete(item)
         self.devices = []
-        self.count_label.config(text="0 个")
+        self.count_label.config(text="0")

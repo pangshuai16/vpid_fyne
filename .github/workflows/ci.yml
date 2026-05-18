@@ -49,10 +49,14 @@ jobs:
         python -m pip install -r requirements.txt
         python -m pip install pyinstaller==4.10
 
+    - name: Verify tkinter availability
+      run: python -c "import tkinter; print('tkinter OK, Tk version:', tkinter.TkVersion)"
+
     - name: Check Python syntax
       run: |
         python -m py_compile main.py
         python -m py_compile src/__init__.py
+        python -m py_compile src/constants.py
         python -m py_compile src/device_info.py
         python -m py_compile src/usb_scanner.py
         python -m py_compile src/gui/__init__.py
