@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows x86
+          # Windows x86 (XP compatible)
           - os: windows-latest
             platform_id: windows_x86
             ext: .exe
@@ -58,24 +58,110 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Windows / macOS: 原生构建
-      - name: Set up Python
-        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+      # Windows x86: 使用 XP 兼容的 Python 3.8.20 社区补丁版
+      - name: Cache Python 3.8.20 installation
+        if: matrix.platform_id == 'windows_x86'
+        id: cache-python
+        uses: actions/cache@v4
+        with:
+          path: C:\Python38
+          key: python-3.8.20-xp-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install Python 3.8.20 (XP compatible, community patch)
+        if: matrix.platform_id == 'windows_x86' && steps.cache-python.outputs.cache-hit != 'true'
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/adang1345/PythonVista/master/3.8.20/python-3.8.20-full.exe"
+          $installer = "$env:TEMP\python-3.8.20-full.exe"
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Write-Host "Downloading Python 3.8.20 x86 (community XP patch)..."
+          Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
+          Write-Host "Installing Python 3.8.20..."
+          Start-Process -FilePath $installer -ArgumentList '/quiet InstallAllUsers=0 TargetDir=C:\Python38 Include_pip=1 Include_launcher=0' -Wait -NoNewWindow
+          if (Test-Path "C:\Python38\python.exe") {
+              Write-Host "Python 3.8.20 installed successfully"
+              & "C:\Python38\python.exe" --version
+          } else {
+              Write-Error "Python 3.8.20 installation failed"
+              exit 1
+          }
+
+      - name: Add Python 3.8 to PATH
+        if: matrix.platform_id == 'windows_x86'
+        shell: powershell
+        run: |
+          "C:\Python38" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "C:\Python38\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Cache pip dependencies (Windows x86)
+        if: matrix.platform_id == 'windows_x86'
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Upgrade pip (Windows x86)
+        if: matrix.platform_id == 'windows_x86'
+        run: python -m pip install --upgrade pip
+
+      - name: Install dependencies (Windows x86)
+        if: matrix.platform_id == 'windows_x86'
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller==${{ matrix.pyinstaller }}
+
+      - name: Build Windows x86
+        if: matrix.platform_id == 'windows_x86'
+        shell: pwsh
+        run: |
+          pyinstaller vpid_viewer.spec --clean --noconfirm
+          if (Test-Path dist/vpid_viewer.exe) {
+              Write-Host "Build successful: dist/vpid_viewer.exe"
+              Get-Item dist/vpid_viewer.exe | Select-Object Name, Length, LastWriteTime
+          } else {
+              Write-Error "Build failed: exe not found in dist/"
+              exit 1
+          }
+
+      # Windows ARM64: 原生构建
+      - name: Set up Python (Windows ARM64)
+        if: matrix.platform_id == 'windows_arm64'
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install dependencies (Native)
-        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+      - name: Install dependencies (Windows ARM64)
+        if: matrix.platform_id == 'windows_arm64'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==${{ matrix.pyinstaller }}
 
-      - name: Build (Native)
-        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+      - name: Build Windows ARM64
+        if: matrix.platform_id == 'windows_arm64'
+        run: pyinstaller vpid_viewer.spec --clean --noconfirm
+
+      # macOS: 原生构建
+      - name: Set up Python (macOS)
+        if: contains(matrix.platform_id, 'macos')
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies (macOS)
+        if: contains(matrix.platform_id, 'macos')
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==${{ matrix.pyinstaller }}
+
+      - name: Build macOS
+        if: contains(matrix.platform_id, 'macos')
         run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
       # Linux: Alpine + musl 容器构建（零 glibc 依赖）
