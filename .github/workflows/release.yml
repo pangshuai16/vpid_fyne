@@ -24,13 +24,13 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-          # Linux (Rocky 8, glibc 2.28 compatible)
+          # Linux (manylinux2014, glibc 2.17 compatible)
           - os: ubuntu-latest
             platform_id: linux_amd64
             ext: ""
             python: "3.11"
             pyinstaller: "6.11.0"
-            container: quay.io/rockylinux/rockylinux:8
+            container: quay.io/pypa/manylinux2014_x86_64
             arch: amd64
 
           - os: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
             runner: ubuntu-latest-24.04-arm
-            container: quay.io/rockylinux/rockylinux:8
+            container: quay.io/pypa/manylinux2014_aarch64
             arch: arm64
 
           # Linux LoongArch64 (暂不支持，因为没有官方 runner)
@@ -134,28 +134,6 @@ jobs:
               exit 1
           }
 
-      # Linux: Rocky 8 容器内构建
-      - name: Install dependencies in Rocky 8 container (Linux)
-        if: startsWith(matrix.platform_id, 'linux_')
-        run: |
-          dnf install -y python311 python311-devel python311-pip gcc binutils patchelf make git xz
-          alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-          alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.11 1
-          python3 --version
-          pip3 --version
-
-      - name: Install Python dependencies (Linux)
-        if: startsWith(matrix.platform_id, 'linux_')
-        run: |
-          pip3 install --upgrade pip
-          pip3 install -r requirements.txt
-          pip3 install pyinstaller==${{ matrix.pyinstaller }}
-
-      - name: Build Linux
-        if: startsWith(matrix.platform_id, 'linux_')
-        run: |
-          pyinstaller vpid_viewer.spec --clean --noconfirm
-
       # Windows ARM64 / macOS: 原生构建
       - name: Set up Python (Windows ARM64 / macOS)
         if: matrix.platform_id != 'windows_x86' && !startsWith(matrix.platform_id, 'linux_')
@@ -175,15 +153,33 @@ jobs:
         run: |
           pyinstaller vpid_viewer.spec --clean --noconfirm
 
+      # Linux: manylinux2014 容器内构建
+      - name: Build Linux in manylinux2014 container
+        if: startsWith(matrix.platform_id, 'linux_')
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.container }}
+          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          run: |
+            # 使用 manylinux2014 预编译的 Python 3.11
+            export PATH="/opt/python/cp311-cp311/bin:$PATH"
+            python3 --version
+            pip3 --version
+            # 安装编译工具
+            yum install -y gcc git make binutils patchelf
+            # 安装依赖
+            pip3 install --upgrade pip
+            pip3 install -r requirements.txt
+            pip3 install pyinstaller==${{ matrix.pyinstaller }}
+            # 构建
+            pyinstaller vpid_viewer.spec --clean --noconfirm
+            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+
       # 重命名产物
       - name: Rename artifact (Windows)
         if: contains(matrix.platform_id, 'windows')
         shell: bash
         run: mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
-
-      - name: Rename artifact (Linux)
-        if: contains(matrix.platform_id, 'linux')
-        run: mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Rename artifact (macOS)
         if: contains(matrix.platform_id, 'macos')

@@ -19,7 +19,7 @@ jobs:
             arch: amd64
             platform_id: linux_amd64
             ext: ""
-            container: "quay.io/rockylinux/rockylinux:8"
+            container: "quay.io/pypa/manylinux2014_x86_64"
 
     runs-on: ${{ matrix.os }}
 
@@ -94,19 +94,25 @@ jobs:
               exit 1
           }
 
-      # Linux AMD64: Rocky 8 容器构建（glibc 2.28 兼容）
-      - name: Build Linux in Rocky 8 container
+      # Linux AMD64: manylinux2014 容器构建（glibc 2.17 兼容）
+      - name: Build Linux in manylinux2014 container
         if: contains(matrix.platform_id, 'linux')
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.container }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            dnf install -y python311 python311-pip python311-devel gcc git
-            ln -sf /usr/bin/python3.11 /usr/bin/python3
-            python3 -m pip install --upgrade pip
-            python3 -m pip install -r requirements.txt
-            python3 -m pip install pyinstaller
+            # 使用 manylinux2014 预编译的 Python 3.11
+            export PATH="/opt/python/cp311-cp311/bin:$PATH"
+            python3 --version
+            pip3 --version
+            # 安装编译工具
+            yum install -y gcc git make binutils patchelf
+            # 安装依赖
+            pip3 install --upgrade pip
+            pip3 install -r requirements.txt
+            pip3 install pyinstaller
+            # 构建
             pyinstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
