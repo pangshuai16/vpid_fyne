@@ -102,29 +102,33 @@ jobs:
           image: ${{ matrix.container }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # 更新 apt 源并安装基础依赖
+            # 更新 apt 源并安装编译依赖
             apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-                build-essential git curl software-properties-common patchelf
-            # 从 deadsnakes PPA 安装 Python 3.8
-            add-apt-repository -y ppa:deadsnakes/ppa
-            apt-get update
-            apt-get install -y python3.8 python3.8-dev python3.8-distutils
-            # 安装 pip
-            curl https://bootstrap.pypa.io/pip/3.8/get-pip.py -o get-pip.py
-            python3.8 get-pip.py
-            # 设置默认 Python
-            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
-            update-alternatives --install /usr/bin/pip3 pip3 /usr/local/bin/pip3.8 1
-            python3 --version
-            pip3 --version
-            # 验证 Python 共享库
+                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
+                libreadline-dev libsqlite3-dev wget libncurses5-dev \
+                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
+            # 从源码编译 Python 3.8（带共享库）
+            cd /tmp
+            curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
+            tar -xzf Python-3.8.20.tgz
+            cd Python-3.8.20
+            ./configure --enable-shared --enable-optimizations --with-ensurepip=install
+            make -j$(nproc)
+            make altinstall
+            # 配置共享库路径
+            echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
+            ldconfig
+            # 验证 Python 和共享库
+            /usr/local/bin/python3.8 --version
             ldconfig -p | grep python3.8
+            # 安装 pip 和依赖
+            /usr/local/bin/python3.8 -m ensurepip --upgrade
+            /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
             # 构建项目
             cd /workspace
-            pip3 install --upgrade pip
-            pip3 install -r requirements.txt
-            pip3 install pyinstaller
-            pyinstaller vpid_viewer.spec --clean --noconfirm
+            /usr/local/bin/python3.8 -m pip install -r requirements.txt
+            /usr/local/bin/python3.8 -m pip install pyinstaller
+            /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Rename artifact
