@@ -37,11 +37,10 @@ def test_get_display_name():
 def test_get_vid_pid_string():
     """测试获取 VID/PID 字符串"""
     device1 = USBDevice(vid="0x1234", pid="0x5678")
-    assert "VID: 0x1234" in device1.get_vid_pid_string()
-    assert "PID: 0x5678" in device1.get_vid_pid_string()
+    assert device1.get_vid_pid_string() == "1234:5678"
 
     device2 = USBDevice()
-    assert "N/A" in device2.get_vid_pid_string()
+    assert device2.get_vid_pid_string() == "N/A:N/A"
 
 
 def test_to_dict():
@@ -53,8 +52,8 @@ def test_to_dict():
         serial="123"
     )
     d = device.to_dict()
-    assert d["供应商ID (VID)"] == "0x1234"
-    assert d["产品ID (PID)"] == "0x5678"
+    assert d["VID"] == "1234"
+    assert d["PID"] == "5678"
     assert d["名称"] == "Test"
     assert d["序列号"] == "123"
 
@@ -64,7 +63,7 @@ def test_to_clipboard_text():
     device = USBDevice(name="Test", vid="0x1234")
     text = device.to_clipboard_text()
     assert "Test" in text
-    assert "0x1234" in text
+    assert "1234" in text
 
 
 def test_get_unique_key():

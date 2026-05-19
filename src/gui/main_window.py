@@ -285,7 +285,6 @@ class MainWindow(tk.Tk):
         if self._scanning:
             return
         self._scanning = True
-        self._set_scan_buttons_state(tk.DISABLED)
         self._update_status("正在扫描 USB 设备...")
 
         thread = threading.Thread(target=self._scan_worker, daemon=True)
@@ -307,7 +306,6 @@ class MainWindow(tk.Tk):
             if status == "ok":
                 self._update_device_list(devices)
             self._scanning = False
-            self._set_scan_buttons_state(tk.NORMAL)
         except queue.Empty:
             pass
         self.after(50, self._poll_scan_result)
@@ -319,28 +317,43 @@ class MainWindow(tk.Tk):
         - 扫描结果直接显示在"全部USB设备"
         - 与基准列表比对，新增显示在"新增设备"，减少显示在"移除设备"
         - 首次扫描自动设为基准
+        - 仅当设备数据发生变化时才刷新UI，避免无意义的重绘
         """
         prev_count = len(self.devices)
-        self.devices = devices
 
         if not self.baseline_devices:
             self.baseline_devices = list(devices)
             self._update_baseline_status()
 
         added, removed = compare_devices(self.baseline_devices, devices)
-        self.device_list.update_devices(devices)
-        self.device_change.update_changes(added, removed)
 
-        count = len(devices)
-        ts = datetime.now().strftime("%H:%M:%S")
-        change = ""
-        if added:
-            change += " (+{})".format(len(added))
-        if removed:
-            change += " (-{})".format(len(removed))
+        # 检查数据是否真正发生变化
+        current_keys = {d.get_unique_key() for d in self.devices}
+        new_keys = {d.get_unique_key() for d in devices}
+        has_changed = current_keys != new_keys
 
-        self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change))
-        self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(ts, prev_count, count))
+        # 更新内部数据
+        self.devices = devices
+
+        # 仅当数据变化时才刷新UI
+        if has_changed:
+            self.device_list.update_devices(devices)
+            self.device_change.update_changes(added, removed)
+
+            count = len(devices)
+            ts = datetime.now().strftime("%H:%M:%S")
+            change = ""
+            if added:
+                change += " (+{})".format(len(added))
+            if removed:
+                change += " (-{})".format(len(removed))
+
+            self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change))
+            self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(ts, prev_count, count))
+        else:
+            # 数据无变化，仅更新状态栏时间戳
+            ts = datetime.now().strftime("%H:%M:%S")
+            self._update_status("最后刷新: {0} | 设备数: {1} (无变化)".format(ts, len(devices)))
 
     # ---- 用户操作 ----
 
@@ -413,7 +426,10 @@ class MainWindow(tk.Tk):
         self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
     def _set_scan_buttons_state(self, state):
-        """设置扫描相关按钮的启用/禁用状态"""
+        """设置扫描相关按钮的启用/禁用状态
+
+        注意：仅修改视觉状态（fg/cursor），不修改 bg，避免触发按钮的重绘效果。
+        """
         for btn in (self.stop_refresh_btn, self.auto_refresh_btn, self.manual_refresh_btn):
             if state == tk.DISABLED:
                 btn.config(fg="#CCCCCC", cursor="no")
