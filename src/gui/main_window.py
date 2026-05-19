@@ -285,7 +285,6 @@ class MainWindow(tk.Tk):
         if self._scanning:
             return
         self._scanning = True
-        self._set_scan_buttons_state(tk.DISABLED)
         self._update_status("正在扫描 USB 设备...")
 
         thread = threading.Thread(target=self._scan_worker, daemon=True)
@@ -307,7 +306,6 @@ class MainWindow(tk.Tk):
             if status == "ok":
                 self._update_device_list(devices)
             self._scanning = False
-            self._set_scan_buttons_state(tk.NORMAL)
         except queue.Empty:
             pass
         self.after(50, self._poll_scan_result)
@@ -428,7 +426,10 @@ class MainWindow(tk.Tk):
         self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
     def _set_scan_buttons_state(self, state):
-        """设置扫描相关按钮的启用/禁用状态"""
+        """设置扫描相关按钮的启用/禁用状态
+
+        注意：仅修改视觉状态（fg/cursor），不修改 bg，避免触发按钮的重绘效果。
+        """
         for btn in (self.stop_refresh_btn, self.auto_refresh_btn, self.manual_refresh_btn):
             if state == tk.DISABLED:
                 btn.config(fg="#CCCCCC", cursor="no")
