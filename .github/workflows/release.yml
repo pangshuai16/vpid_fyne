@@ -2,83 +2,131 @@ name: Release
 
 on:
   push:
-    branches: [ main ]
-
-permissions:
-  contents: write
+    branches: [main]
 
 jobs:
-  build-and-release:
-    runs-on: windows-latest
+  build-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows
+          - os: windows-latest
+            platform_id: windows_x86
+            ext: .exe
+            python: "3.8.20"
+            pyinstaller: "4.10"
+
+          - os: windows-11-arm
+            platform_id: windows_arm64
+            ext: .exe
+            python: "3.11"
+            pyinstaller: "6.11.0"
+
+          # Linux (Alpine + musl, zero glibc dependency)
+          - os: ubuntu-latest
+            platform_id: linux_amd64
+            ext: ""
+            container: "alpine:3.19"
+
+          - os: ubuntu-24.04-arm
+            platform_id: linux_arm64
+            ext: ""
+            container: "alpine:3.19"
+
+          # Linux LoongArch64 (community QEMU + Alpine)
+          - os: ubuntu-latest
+            platform_id: linux_loong64
+            ext: ""
+            container: "ghcr.io/loong64/alpine:3.23"
+            qemu: true
+
+          # macOS
+          - os: macos-13
+            platform_id: macos_amd64
+            ext: ""
+            python: "3.11"
+            pyinstaller: "6.11.0"
+
+          - os: macos-14
+            platform_id: macos_arm64
+            ext: ""
+            python: "3.11"
+            pyinstaller: "6.11.0"
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Cache Python 3.8.20 installation
-      id: cache-python
-      uses: actions/cache@v4
-      with:
-        path: C:\Python38
-        key: python-3.8.20-xp-${{ runner.os }}-${{ runner.arch }}
+      # Windows / macOS: 原生构建
+      - name: Set up Python
+        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
 
-    - name: Install Python 3.8.20 (XP compatible, community patch)
-      if: steps.cache-python.outputs.cache-hit != 'true'
-      shell: powershell
-      run: |
-        $url = "https://raw.githubusercontent.com/adang1345/PythonVista/master/3.8.20/python-3.8.20-full.exe"
-        $installer = "$env:TEMP\python-3.8.20-full.exe"
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Write-Host "Downloading Python 3.8.20 x86 (community XP patch)..."
-        Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
-        Write-Host "Installing Python 3.8.20..."
-        Start-Process -FilePath $installer -ArgumentList '/quiet InstallAllUsers=0 TargetDir=C:\Python38 Include_pip=1 Include_launcher=0' -Wait -NoNewWindow
-        if (Test-Path "C:\Python38\python.exe") {
-            Write-Host "Python 3.8.20 installed successfully"
-            & "C:\Python38\python.exe" --version
-        } else {
-            Write-Error "Python 3.8.20 installation failed"
-            exit 1
-        }
+      - name: Install dependencies (Native)
+        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==${{ matrix.pyinstaller }}
 
-    - name: Add Python 3.8 to PATH
-      shell: powershell
-      run: |
-        "C:\Python38" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        "C:\Python38\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Build (Native)
+        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+        run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
-    - name: Cache pip dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          pip-${{ runner.os }}-
+      # Linux: Alpine + musl 容器构建（零 glibc 依赖）
+      - name: Set up QEMU (LoongArch64)
+        if: matrix.qemu == true
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: loongarch64
 
-    - name: Upgrade pip
-      run: python -m pip install --upgrade pip
+      - name: Build Linux (Alpine musl)
+        if: contains(matrix.platform_id, 'linux')
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.container }}
+          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          run: |
+            apk add --no-cache python3 py3-pip gcc musl-dev zlib-dev \
+              linux-headers libusb-dev tk tk-dev
+            pip3 install --break-system-packages pyinstaller pyusb libusb-package
+            pyinstaller vpid_viewer.spec --clean --noconfirm
 
-    - name: Install dependencies
-      run: |
-        python -m pip install -r requirements.txt
-        python -m pip install pyinstaller==4.10
+      - name: Rename artifact
+        shell: bash
+        run: |
+          if [ "${{ matrix.ext }}" = ".exe" ]; then
+            mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
+          elif [ "${{ matrix.platform_id }}" = "macos_amd64" ] || [ "${{ matrix.platform_id }}" = "macos_arm64" ]; then
+            mv dist/vpid_viewer.app dist/vpid_viewer_${{ matrix.platform_id }}.app
+          else
+            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+          fi
 
-    - name: Build executable with PyInstaller
-      shell: pwsh
-      run: |
-        pyinstaller vpid_viewer.spec --clean --noconfirm
-        if (Test-Path dist/vpid_viewer.exe) {
-            Write-Host "Build successful: dist/vpid_viewer.exe"
-            Get-Item dist/vpid_viewer.exe | Select-Object Name, Length, LastWriteTime
-        } else {
-            Write-Error "Build failed: exe not found in dist/"
-            exit 1
-        }
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform_id }}
+          path: dist/vpid_viewer_${{ matrix.platform_id }}*
+          retention-days: 30
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v2.0.0-build.${{ github.run_number }}
-        name: "v2.0.0 Build #${{ github.run_number }}"
-        files: dist/vpid_viewer.exe
-        generate_release_notes: true
+  release:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: release-*
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          files: artifacts/**/*
+          generate_release_notes: true

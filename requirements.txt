@@ -1,2 +1,4 @@
-wmi==1.5.1
+wmi==1.5.1; sys_platform == 'win32'
 pywin32==228; sys_platform == 'win32'
+pyusb==1.2.1
+libusb-package==1.0.26.2; sys_platform != 'win32'
