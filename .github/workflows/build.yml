@@ -27,15 +27,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Windows x86: 使用 XP 兼容的 Python 3.8.20 社区版
-      - name: Download Python 3.8.20 (XP compatible)
+      - name: Set up Python
         if: contains(matrix.platform_id, 'windows')
-        run: |
-          curl -L -o python-3.8.20.zip "https://github.com/adang1345/PythonWin7/raw/master/3.8.20/python-3.8.20-embed-win32.zip"
-          Expand-Archive -Path python-3.8.20.zip -DestinationPath "$env:RUNNER_TEMP\python3820"
-          "$env:RUNNER_TEMP\python3820" | Out-File -FilePath $env:GITHUB_PATH -Append
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
 
-      - name: Install dependencies (Windows)
+      - name: Install dependencies
         if: contains(matrix.platform_id, 'windows')
         run: |
           python -m pip install --upgrade pip
@@ -61,8 +59,7 @@ jobs:
             # 在容器内完成重命名，避免宿主机权限问题
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
-      # Windows: 在宿主机上重命名产物
-      - name: Rename artifact (Windows)
+      - name: Rename artifact
         if: contains(matrix.platform_id, 'windows')
         shell: bash
         run: mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
