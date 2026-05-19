@@ -74,6 +74,20 @@ if sys.platform == 'darwin':
         bundle_identifier='com.usbmanager.vpidviewer',
         icon='assets/app-icon.icns',
     )
+elif sys.platform == 'win32':
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        name='vpid_viewer',
+        debug=False,
+        strip=False,
+        upx=True,
+        console=False,
+        icon='assets/app-icon.ico',
+    )
 else:
     exe = EXE(
         pyz,
@@ -86,5 +100,5 @@ else:
         strip=False,
         upx=True,
         console=False,
-        icon=None,
+        icon='assets/app-icon-linux.png',
     )
