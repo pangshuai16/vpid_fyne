@@ -95,8 +95,8 @@ jobs:
               exit 1
           }
 
-      # Linux AMD64: Alpine + musl 容器构建
-      - name: Build Linux AMD64 (Alpine musl)
+      # Linux AMD64: Alpine + staticx 构建（真正静态链接，零外部依赖）
+      - name: Build Linux AMD64 (staticx)
         if: contains(matrix.platform_id, 'linux')
         uses: addnab/docker-run-action@v3
         with:
@@ -105,10 +105,12 @@ jobs:
           run: |
             apk add --no-cache python3 py3-pip gcc musl-dev zlib-dev \
               linux-headers libusb-dev tk tk-dev
-            pip3 install --break-system-packages pyinstaller pyusb libusb-package
+            pip3 install --break-system-packages pyinstaller pyusb libusb-package staticx patchelf
             pyinstaller vpid_viewer.spec --clean --noconfirm
+            # 使用 staticx 将动态链接的 musl/so 全部打包进二进制，产生真正静态的 ELF
+            staticx dist/vpid_viewer dist/vpid_viewer.tmp
             # 在容器内完成重命名，避免宿主机权限问题
-            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+            mv dist/vpid_viewer.tmp dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Rename artifact
         if: contains(matrix.platform_id, 'windows')

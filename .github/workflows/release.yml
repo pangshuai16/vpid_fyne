@@ -24,7 +24,7 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-          # Linux (Alpine + musl, zero glibc dependency)
+          # Linux (Alpine + staticx, 真正静态链接，零外部依赖)
           - os: ubuntu-latest
             platform_id: linux_amd64
             ext: ""
@@ -164,14 +164,14 @@ jobs:
         if: contains(matrix.platform_id, 'macos')
         run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
-      # Linux: Alpine + musl 容器构建（零 glibc 依赖）
+      # Linux: Alpine + staticx 构建（真正静态链接，零外部依赖）
       - name: Set up QEMU (LoongArch64)
         if: matrix.qemu == true
         uses: docker/setup-qemu-action@v3
         with:
           platforms: loongarch64
 
-      - name: Build Linux (Alpine musl)
+      - name: Build Linux (staticx)
         if: contains(matrix.platform_id, 'linux')
         uses: addnab/docker-run-action@v3
         with:
@@ -180,10 +180,12 @@ jobs:
           run: |
             apk add --no-cache python3 py3-pip gcc musl-dev zlib-dev \
               linux-headers libusb-dev tk tk-dev
-            pip3 install --break-system-packages pyinstaller pyusb libusb-package
+            pip3 install --break-system-packages pyinstaller pyusb libusb-package staticx patchelf
             pyinstaller vpid_viewer.spec --clean --noconfirm
+            # 使用 staticx 将动态链接的 musl/so 全部打包进二进制，产生真正静态的 ELF
+            staticx dist/vpid_viewer dist/vpid_viewer.tmp
             # 在容器内完成重命名，避免宿主机权限问题
-            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+            mv dist/vpid_viewer.tmp dist/vpid_viewer_${{ matrix.platform_id }}
 
       # Windows: 在宿主机上重命名产物
       - name: Rename artifact (Windows)
