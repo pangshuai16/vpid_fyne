@@ -12,7 +12,6 @@ jobs:
         include:
           - os: windows-latest
             arch: x86
-            python: "3.8.20"
             platform_id: windows_x86
             ext: .exe
 
@@ -20,7 +19,7 @@ jobs:
             arch: amd64
             platform_id: linux_amd64
             ext: ""
-            container: "alpine:3.19"
+            container: "quay.io/pypa/manylinux2014_x86_64:latest"
 
     runs-on: ${{ matrix.os }}
 
@@ -95,22 +94,19 @@ jobs:
               exit 1
           }
 
-      # Linux AMD64: Alpine + staticx 构建（真正静态链接，零外部依赖）
-      - name: Build Linux AMD64 (staticx)
+      # Linux AMD64: manylinux2014 构建（glibc 2.17 兼容）
+      - name: Build Linux AMD64 (manylinux)
         if: contains(matrix.platform_id, 'linux')
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.container }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            apk add --no-cache python3 py3-pip gcc musl-dev zlib-dev \
-              linux-headers libusb-dev tk tk-dev
-            pip3 install --break-system-packages pyinstaller pyusb libusb-package staticx patchelf
-            pyinstaller vpid_viewer.spec --clean --noconfirm
-            # 使用 staticx 将动态链接的 musl/so 全部打包进二进制，产生真正静态的 ELF
-            staticx dist/vpid_viewer dist/vpid_viewer.tmp
-            # 在容器内完成重命名，避免宿主机权限问题
-            mv dist/vpid_viewer.tmp dist/vpid_viewer_${{ matrix.platform_id }}
+            /opt/python/cp311-cp311/bin/python -m pip install --upgrade pip
+            /opt/python/cp311-cp311/bin/pip install -r requirements.txt
+            /opt/python/cp311-cp311/bin/pip install pyinstaller
+            /opt/python/cp311-cp311/bin/pyinstaller vpid_viewer.spec --clean --noconfirm
+            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Rename artifact
         if: contains(matrix.platform_id, 'windows')
