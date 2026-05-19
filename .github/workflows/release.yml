@@ -24,13 +24,13 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-          # Linux (manylinux2014, glibc 2.17 compatible)
+          # Linux (Ubuntu 18.04, glibc 2.27 compatible)
           - os: ubuntu-latest
             platform_id: linux_amd64
             ext: ""
             python: "3.11"
             pyinstaller: "6.11.0"
-            container: quay.io/pypa/manylinux2014_x86_64
+            container: ubuntu:18.04
             arch: amd64
 
           - os: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
             runner: ubuntu-latest-24.04-arm
-            container: quay.io/pypa/manylinux2014_aarch64
+            container: ubuntu:18.04
             arch: arm64
 
           # Linux LoongArch64 (暂不支持，因为没有官方 runner)
@@ -153,21 +153,35 @@ jobs:
         run: |
           pyinstaller vpid_viewer.spec --clean --noconfirm
 
-      # Linux: manylinux2014 容器内构建
-      - name: Build Linux in manylinux2014 container
+      # Linux: Ubuntu 18.04 容器内构建
+      - name: Build Linux in Ubuntu 18.04 container
         if: startsWith(matrix.platform_id, 'linux_')
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.container }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # 使用 manylinux2014 预编译的 Python 3.11
-            export PATH="/opt/python/cp311-cp311/bin:$PATH"
+            # 更新 apt 源
+            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
+                libreadline-dev libsqlite3-dev wget llvm libncurses5-dev \
+                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
+            # 安装 Python 3.11（从 deadsnakes PPA）
+            apt-get install -y software-properties-common
+            add-apt-repository -y ppa:deadsnakes/ppa
+            apt-get update
+            apt-get install -y python3.11 python3.11-dev python3.11-distutils
+            # 安装 pip
+            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+            python3.11 get-pip.py
+            # 设置 python3 和 pip3 为 3.11
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+            update-alternatives --install /usr/bin/pip3 pip3 /usr/local/bin/pip3.11 1
             python3 --version
             pip3 --version
-            # 安装编译工具
-            yum install -y gcc git make binutils patchelf
-            # 安装依赖
+            # 检查 Python 共享库
+            ldconfig -p | grep python3.11
+            # 安装项目依赖
             pip3 install --upgrade pip
             pip3 install -r requirements.txt
             pip3 install pyinstaller==${{ matrix.pyinstaller }}
