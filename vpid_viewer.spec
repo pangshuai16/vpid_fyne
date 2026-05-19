@@ -66,12 +66,13 @@ if sys.platform == 'darwin':
         strip=False,
         upx=True,
         console=False,
-        icon=None,
+        icon='assets/app-icon.icns',
     )
     app = BUNDLE(
         exe,
         name='vpid_viewer.app',
         bundle_identifier='com.usbmanager.vpidviewer',
+        icon='assets/app-icon.icns',
     )
 else:
     exe = EXE(
