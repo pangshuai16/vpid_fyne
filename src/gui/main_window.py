@@ -319,28 +319,43 @@ class MainWindow(tk.Tk):
         - 扫描结果直接显示在"全部USB设备"
         - 与基准列表比对，新增显示在"新增设备"，减少显示在"移除设备"
         - 首次扫描自动设为基准
+        - 仅当设备数据发生变化时才刷新UI，避免无意义的重绘
         """
         prev_count = len(self.devices)
-        self.devices = devices
 
         if not self.baseline_devices:
             self.baseline_devices = list(devices)
             self._update_baseline_status()
 
         added, removed = compare_devices(self.baseline_devices, devices)
-        self.device_list.update_devices(devices)
-        self.device_change.update_changes(added, removed)
 
-        count = len(devices)
-        ts = datetime.now().strftime("%H:%M:%S")
-        change = ""
-        if added:
-            change += " (+{})".format(len(added))
-        if removed:
-            change += " (-{})".format(len(removed))
+        # 检查数据是否真正发生变化
+        current_keys = {d.get_unique_key() for d in self.devices}
+        new_keys = {d.get_unique_key() for d in devices}
+        has_changed = current_keys != new_keys
 
-        self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change))
-        self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(ts, prev_count, count))
+        # 更新内部数据
+        self.devices = devices
+
+        # 仅当数据变化时才刷新UI
+        if has_changed:
+            self.device_list.update_devices(devices)
+            self.device_change.update_changes(added, removed)
+
+            count = len(devices)
+            ts = datetime.now().strftime("%H:%M:%S")
+            change = ""
+            if added:
+                change += " (+{})".format(len(added))
+            if removed:
+                change += " (-{})".format(len(removed))
+
+            self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change))
+            self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(ts, prev_count, count))
+        else:
+            # 数据无变化，仅更新状态栏时间戳
+            ts = datetime.now().strftime("%H:%M:%S")
+            self._update_status("最后刷新: {0} | 设备数: {1} (无变化)".format(ts, len(devices)))
 
     # ---- 用户操作 ----
 
