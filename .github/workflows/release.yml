@@ -24,23 +24,25 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-          # Linux (manylinux2014, glibc 2.17 compatible)
-          - os: ubuntu-latest
+          # Linux (Ubuntu 20.04, glibc 2.31 compatible)
+          - os: ubuntu-20.04
             platform_id: linux_amd64
             ext: ""
-            container: "quay.io/pypa/manylinux2014_x86_64:latest"
+            python: "3.11"
+            pyinstaller: "6.11.0"
 
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-20.04
             platform_id: linux_arm64
             ext: ""
-            container: "quay.io/pypa/manylinux2014_aarch64:latest"
+            python: "3.11"
+            pyinstaller: "6.11.0"
+            runner: ubuntu-latest-24.04-arm
 
-          # Linux LoongArch64 (community QEMU + glibc container)
-          - os: ubuntu-latest
-            platform_id: linux_loong64
-            ext: ""
-            container: "loongsonos/loongnix:20"
-            qemu: true
+          # Linux LoongArch64 (暂不支持，因为没有官方 runner)
+          # - os: ubuntu-latest
+          #   platform_id: linux_loong64
+          #   ext: ""
+          #   qemu: true
 
           # macOS
           - os: macos-13
@@ -55,7 +57,7 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner || matrix.os }}
 
     steps:
       - name: Checkout code
@@ -129,82 +131,34 @@ jobs:
           }
 
       # Windows ARM64: 原生构建
-      - name: Set up Python (Windows ARM64)
-        if: matrix.platform_id == 'windows_arm64'
+      - name: Set up Python (Windows ARM64 / Linux / macOS)
+        if: matrix.platform_id != 'windows_x86'
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install dependencies (Windows ARM64)
-        if: matrix.platform_id == 'windows_arm64'
+      - name: Install dependencies (Windows ARM64 / Linux / macOS)
+        if: matrix.platform_id != 'windows_x86'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==${{ matrix.pyinstaller }}
 
-      - name: Build Windows ARM64
-        if: matrix.platform_id == 'windows_arm64'
-        run: pyinstaller vpid_viewer.spec --clean --noconfirm
-
-      # macOS: 原生构建
-      - name: Set up Python (macOS)
-        if: contains(matrix.platform_id, 'macos')
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install dependencies (macOS)
-        if: contains(matrix.platform_id, 'macos')
+      - name: Build Windows ARM64 / Linux / macOS
+        if: matrix.platform_id != 'windows_x86'
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller==${{ matrix.pyinstaller }}
+          pyinstaller vpid_viewer.spec --clean --noconfirm
 
-      - name: Build macOS
-        if: contains(matrix.platform_id, 'macos')
-        run: pyinstaller vpid_viewer.spec --clean --noconfirm
-
-      # Linux: manylinux2014 构建（glibc 2.17 兼容）
-      - name: Set up QEMU (LoongArch64)
-        if: matrix.qemu == true
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: loongarch64
-
-      - name: Build Linux (manylinux)
-        if: contains(matrix.platform_id, 'linux') && matrix.platform_id != 'linux_loong64'
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ${{ matrix.container }}
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
-          run: |
-            /opt/python/cp311-cp311/bin/python -m pip install --upgrade pip
-            /opt/python/cp311-cp311/bin/pip install -r requirements.txt
-            /opt/python/cp311-cp311/bin/pip install pyinstaller
-            /opt/python/cp311-cp311/bin/pyinstaller vpid_viewer.spec --clean --noconfirm
-            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
-
-      - name: Build Linux LoongArch64 (loongnix)
-        if: matrix.platform_id == 'linux_loong64'
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ${{ matrix.container }}
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
-          run: |
-            yum install -y python3 python3-pip python3-devel
-            pip3 install --upgrade pip
-            pip3 install -r requirements.txt
-            pip3 install pyinstaller
-            pyinstaller vpid_viewer.spec --clean --noconfirm
-            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
-
-      # Windows: 在宿主机上重命名产物
+      # 重命名产物
       - name: Rename artifact (Windows)
         if: contains(matrix.platform_id, 'windows')
         shell: bash
         run: mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
 
-      # macOS: 在宿主机上重命名产物
+      - name: Rename artifact (Linux)
+        if: contains(matrix.platform_id, 'linux')
+        run: mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+
       - name: Rename artifact (macOS)
         if: contains(matrix.platform_id, 'macos')
         run: mv dist/vpid_viewer.app dist/vpid_viewer_${{ matrix.platform_id }}.app
