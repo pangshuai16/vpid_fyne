@@ -27,12 +27,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Windows x86: 保持现有流程
-      - name: Set up Python (Windows)
+      # Windows x86: 使用 XP 兼容的 Python 3.8.20 社区版
+      - name: Download Python 3.8.20 (XP compatible)
         if: contains(matrix.platform_id, 'windows')
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
+        run: |
+          curl -L -o python-3.8.20.zip "https://github.com/adang1345/PythonWin7/raw/master/3.8.20/python-3.8.20-embed-win32.zip"
+          Expand-Archive -Path python-3.8.20.zip -DestinationPath "$env:RUNNER_TEMP\python3820"
+          "$env:RUNNER_TEMP\python3820" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install dependencies (Windows)
         if: contains(matrix.platform_id, 'windows')
@@ -57,15 +58,14 @@ jobs:
               linux-headers libusb-dev tk tk-dev
             pip3 install --break-system-packages pyinstaller pyusb libusb-package
             pyinstaller vpid_viewer.spec --clean --noconfirm
-
-      - name: Rename artifact
-        shell: bash
-        run: |
-          if [ "${{ matrix.ext }}" = ".exe" ]; then
-            mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
-          else
+            # 在容器内完成重命名，避免宿主机权限问题
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
-          fi
+
+      # Windows: 在宿主机上重命名产物
+      - name: Rename artifact (Windows)
+        if: contains(matrix.platform_id, 'windows')
+        shell: bash
+        run: mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

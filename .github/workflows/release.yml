@@ -10,13 +10,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows
+          # Windows x86 (XP compatible)
           - os: windows-latest
             platform_id: windows_x86
             ext: .exe
-            python: "3.8.20"
+            python_url: "https://github.com/adang1345/PythonWin7/raw/master/3.8.20/python-3.8.20-embed-win32.zip"
             pyinstaller: "4.10"
 
+          # Windows ARM64
           - os: windows-11-arm
             platform_id: windows_arm64
             ext: .exe
@@ -59,22 +60,59 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Windows / macOS: 原生构建
-      - name: Set up Python
-        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
+      # Windows x86: 使用 XP 兼容的 Python 3.8.20 社区版
+      - name: Download Python 3.8.20 (XP compatible)
+        if: matrix.python_url != ''
+        run: |
+          curl -L -o python-3.8.20.zip "${{ matrix.python_url }}"
+          Expand-Archive -Path python-3.8.20.zip -DestinationPath "$env:RUNNER_TEMP\python3820"
+          "$env:RUNNER_TEMP\python3820" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: Install dependencies (Native)
-        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+      - name: Install dependencies (Windows x86)
+        if: matrix.python_url != ''
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==${{ matrix.pyinstaller }}
 
-      - name: Build (Native)
-        if: contains(matrix.platform_id, 'windows') || contains(matrix.platform_id, 'macos')
+      - name: Build Windows x86
+        if: matrix.python_url != ''
+        run: pyinstaller vpid_viewer.spec --clean --noconfirm
+
+      # Windows ARM64: 原生构建
+      - name: Set up Python (Windows ARM64)
+        if: contains(matrix.platform_id, 'windows') && matrix.python_url == ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies (Windows ARM64)
+        if: contains(matrix.platform_id, 'windows') && matrix.python_url == ''
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==${{ matrix.pyinstaller }}
+
+      - name: Build Windows ARM64
+        if: contains(matrix.platform_id, 'windows') && matrix.python_url == ''
+        run: pyinstaller vpid_viewer.spec --clean --noconfirm
+
+      # macOS: 原生构建
+      - name: Set up Python (macOS)
+        if: contains(matrix.platform_id, 'macos')
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies (macOS)
+        if: contains(matrix.platform_id, 'macos')
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==${{ matrix.pyinstaller }}
+
+      - name: Build macOS
+        if: contains(matrix.platform_id, 'macos')
         run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
       # Linux: Alpine + musl 容器构建（零 glibc 依赖）
@@ -95,17 +133,23 @@ jobs:
               linux-headers libusb-dev tk tk-dev
             pip3 install --break-system-packages pyinstaller pyusb libusb-package
             pyinstaller vpid_viewer.spec --clean --noconfirm
+            # 在容器内完成重命名，避免宿主机权限问题
+            if [ "${{ matrix.platform_id }}" = "macos_amd64" ] || [ "${{ matrix.platform_id }}" = "macos_arm64" ]; then
+              mv dist/vpid_viewer.app dist/vpid_viewer_${{ matrix.platform_id }}.app
+            else
+              mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+            fi
 
-      - name: Rename artifact
+      # Windows: 在宿主机上重命名产物
+      - name: Rename artifact (Windows)
+        if: contains(matrix.platform_id, 'windows')
         shell: bash
-        run: |
-          if [ "${{ matrix.ext }}" = ".exe" ]; then
-            mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
-          elif [ "${{ matrix.platform_id }}" = "macos_amd64" ] || [ "${{ matrix.platform_id }}" = "macos_arm64" ]; then
-            mv dist/vpid_viewer.app dist/vpid_viewer_${{ matrix.platform_id }}.app
-          else
-            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
-          fi
+        run: mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
+
+      # macOS: 在宿主机上重命名产物
+      - name: Rename artifact (macOS)
+        if: contains(matrix.platform_id, 'macos')
+        run: mv dist/vpid_viewer.app dist/vpid_viewer_${{ matrix.platform_id }}.app
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
