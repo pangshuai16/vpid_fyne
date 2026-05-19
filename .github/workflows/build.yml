@@ -19,7 +19,7 @@ jobs:
             arch: amd64
             platform_id: linux_amd64
             ext: ""
-            container: "ubuntu:18.04"
+            container: "ubuntu:16.04"
 
     runs-on: ${{ matrix.os }}
 
@@ -94,8 +94,8 @@ jobs:
               exit 1
           }
 
-      # Linux AMD64: Ubuntu 18.04 容器构建（glibc 2.27 兼容）
-      - name: Build Linux in Ubuntu 18.04 container
+      # Linux AMD64: Ubuntu 16.04 容器构建（glibc 2.23 兼容）
+      - name: Build Linux in Ubuntu 16.04 container
         if: contains(matrix.platform_id, 'linux')
         uses: addnab/docker-run-action@v3
         with:
@@ -105,7 +105,7 @@ jobs:
             # 更新 apt 源并安装编译依赖
             apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
-                libreadline-dev libsqlite3-dev wget llvm libncurses5-dev \
+                libreadline-dev libsqlite3-dev wget libncurses5-dev \
                 libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
             # 从源码编译 Python 3.11（带共享库）
             cd /tmp
