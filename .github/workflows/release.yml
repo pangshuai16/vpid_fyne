@@ -119,24 +119,52 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Python build and pip packages
+        id: cache-linux
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/python-build
+            .cache/pip
+          key: ${{ runner.os }}-linux-amd64-${{ hashFiles('requirements.txt', '.python-version') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-amd64-
+
       - name: Build in Ubuntu 16.04 container
         uses: addnab/docker-run-action@v3
         with:
           image: ubuntu:16.04
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
+            # Set up cache directories
+            mkdir -p /workspace/.cache/python-build
+            mkdir -p /workspace/.cache/pip
+            export PIP_CACHE_DIR=/workspace/.cache/pip
+
             apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
                 libreadline-dev libsqlite3-dev wget libncurses5-dev \
                 libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
 
-            cd /tmp
-            curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
-            tar -xzf Python-3.8.20.tgz
-            cd Python-3.8.20
-            ./configure --enable-shared --enable-optimizations --with-ensurepip=install
-            make -j$(nproc)
-            make altinstall
+            # Check if Python is already cached
+            if [ -f /workspace/.cache/python-build/python3.8.installed ]; then
+                echo "Using cached Python 3.8"
+                tar -xzf /workspace/.cache/python-build/python3.8.tgz -C /
+            else
+                echo "Building Python 3.8 from source"
+                cd /tmp
+                curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
+                tar -xzf Python-3.8.20.tgz
+                cd Python-3.8.20
+                ./configure --enable-shared --enable-optimizations --with-ensurepip=install
+                make -j$(nproc)
+                make altinstall
+                
+                # Cache the Python installation
+                cd /usr/local
+                tar -czf /workspace/.cache/python-build/python3.8.tgz bin/python3.8 lib/libpython3.8* include/python3.8
+                touch /workspace/.cache/python-build/python3.8.installed
+            fi
 
             echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
             ldconfig
@@ -158,29 +186,65 @@ jobs:
           retention-days: 30
 
   build-linux-arm64:
-    runs-on: ubuntu-latest-arm64
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build in Ubuntu 16.04 container
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Python build and pip packages (ARM64)
+        id: cache-linux-arm64
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/python-build-arm64
+            .cache/pip-arm64
+          key: ${{ runner.os }}-linux-arm64-${{ hashFiles('requirements.txt', '.python-version') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-arm64-
+
+      - name: Build in Ubuntu 16.04 container (ARM64)
         uses: addnab/docker-run-action@v3
         with:
           image: ubuntu:16.04
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          options: --platform linux/arm64 -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
+            # Set up cache directories
+            mkdir -p /workspace/.cache/python-build-arm64
+            mkdir -p /workspace/.cache/pip-arm64
+            export PIP_CACHE_DIR=/workspace/.cache/pip-arm64
+
             apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
                 build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
                 libreadline-dev libsqlite3-dev wget libncurses5-dev \
                 libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
 
-            cd /tmp
-            curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
-            tar -xzf Python-3.8.20.tgz
-            cd Python-3.8.20
-            ./configure --enable-shared --enable-optimizations --with-ensurepip=install
-            make -j$(nproc)
-            make altinstall
+            # Check if Python is already cached
+            if [ -f /workspace/.cache/python-build-arm64/python3.8.installed ]; then
+                echo "Using cached Python 3.8 (ARM64)"
+                tar -xzf /workspace/.cache/python-build-arm64/python3.8.tgz -C /
+            else
+                echo "Building Python 3.8 from source (ARM64)"
+                cd /tmp
+                curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
+                tar -xzf Python-3.8.20.tgz
+                cd Python-3.8.20
+                ./configure --enable-shared --enable-optimizations --with-ensurepip=install
+                make -j$(nproc)
+                make altinstall
+                
+                # Cache the Python installation
+                cd /usr/local
+                tar -czf /workspace/.cache/python-build-arm64/python3.8.tgz bin/python3.8 lib/libpython3.8* include/python3.8
+                touch /workspace/.cache/python-build-arm64/python3.8.installed
+            fi
 
             echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
             ldconfig
