@@ -165,9 +165,29 @@ jobs:
           image: quay.io/pypa/manylinux2014_x86_64:latest
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Use Python 3.9 (available in manylinux2014)
+            # Debug: Look for libpython in manylinux
+            echo "=== Python directory ==="
+            ls -la /opt/python/cp39-cp39/
+            ls -la /opt/python/cp39-cp39/lib/
+            echo ""
+            echo "=== Looking for libpython ==="
+            find /opt/python/cp39-cp39/ -name "libpython*"
+            find / -name "libpython*" 2>/dev/null || true
+            echo ""
+            echo "=== Python 3.9 ==="
             export PYTHON=/opt/python/cp39-cp39/bin/python
             $PYTHON --version
+            # Try to find libpython and copy it
+            LIBPYTHON=$(find /opt/_internal/cpython-3.9.25/ -name "libpython*" 2>/dev/null || echo "")
+            if [ -n "$LIBPYTHON" ]; then
+              echo "Found libpython at: $LIBPYTHON"
+              LIB_DIR=$(dirname $LIBPYTHON)
+              echo "Copying libpython to /workspace/"
+              cp $LIBPYTHON /workspace/
+              ls -la /workspace/
+              # Set library path
+              export LD_LIBRARY_PATH="/workspace:$LD_LIBRARY_PATH"
+            fi
             $PYTHON -m ensurepip --upgrade
             $PYTHON -m pip install --upgrade pip setuptools wheel
             $PYTHON -m pip install -r requirements.txt
