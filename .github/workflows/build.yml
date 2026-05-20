@@ -12,7 +12,6 @@ jobs:
         include:
           - os: windows-latest
             arch: x86
-            python: "3.8.20"
             platform_id: windows_x86
             ext: .exe
 
@@ -20,7 +19,7 @@ jobs:
             arch: amd64
             platform_id: linux_amd64
             ext: ""
-            container: "alpine:3.19"
+            container: "ubuntu:16.04"
 
     runs-on: ${{ matrix.os }}
 
@@ -35,13 +34,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\Python38
-          key: python-3.8.20-xp-${{ runner.os }}-${{ runner.arch }}
+          key: python-3.8.20-xp-ryatian-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Python 3.8.20 (XP compatible, community patch)
         if: contains(matrix.platform_id, 'windows') && steps.cache-python.outputs.cache-hit != 'true'
         shell: powershell
         run: |
-          $url = "https://raw.githubusercontent.com/adang1345/PythonVista/master/3.8.20/python-3.8.20-full.exe"
+          $url = "https://github.com/R-YaTian/CPython3.8.20WinXP/releases/download/v3.8.20_final/python-3.8.20-full.exe"
           $installer = "$env:TEMP\python-3.8.20-full.exe"
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           Write-Host "Downloading Python 3.8.20 x86 (community XP patch)..."
@@ -95,19 +94,41 @@ jobs:
               exit 1
           }
 
-      # Linux AMD64: Alpine + musl 容器构建
-      - name: Build Linux AMD64 (Alpine musl)
+      # Linux AMD64: Ubuntu 16.04 容器构建（glibc 2.23 兼容）
+      - name: Build Linux in Ubuntu 16.04 container
         if: contains(matrix.platform_id, 'linux')
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.container }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            apk add --no-cache python3 py3-pip gcc musl-dev zlib-dev \
-              linux-headers libusb-dev tk tk-dev
-            pip3 install --break-system-packages pyinstaller pyusb libusb-package
-            pyinstaller vpid_viewer.spec --clean --noconfirm
-            # 在容器内完成重命名，避免宿主机权限问题
+            # 更新 apt 源并安装编译依赖
+            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
+                libreadline-dev libsqlite3-dev wget libncurses5-dev \
+                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
+            # 从源码编译 Python 3.8（带共享库）
+            cd /tmp
+            curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
+            tar -xzf Python-3.8.20.tgz
+            cd Python-3.8.20
+            ./configure --enable-shared --enable-optimizations --with-ensurepip=install
+            make -j$(nproc)
+            make altinstall
+            # 配置共享库路径
+            echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
+            ldconfig
+            # 验证 Python 和共享库
+            /usr/local/bin/python3.8 --version
+            ldconfig -p | grep python3.8
+            # 安装 pip 和依赖
+            /usr/local/bin/python3.8 -m ensurepip --upgrade
+            /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
+            # 构建项目
+            cd /workspace
+            /usr/local/bin/python3.8 -m pip install -r requirements.txt
+            /usr/local/bin/python3.8 -m pip install pyinstaller
+            /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Rename artifact

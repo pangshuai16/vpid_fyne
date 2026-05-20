@@ -24,23 +24,29 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-          # Linux (Alpine + musl, zero glibc dependency)
+          # Linux (Ubuntu 16.04, glibc 2.23 compatible)
           - os: ubuntu-latest
             platform_id: linux_amd64
             ext: ""
-            container: "alpine:3.19"
+            python: "3.8"
+            pyinstaller: "6.11.0"
+            container: ubuntu:16.04
+            arch: amd64
 
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-latest
             platform_id: linux_arm64
             ext: ""
-            container: "alpine:3.19"
+            python: "3.8"
+            pyinstaller: "6.11.0"
+            runner: ubuntu-latest-24.04-arm
+            container: ubuntu:16.04
+            arch: arm64
 
-          # Linux LoongArch64 (community QEMU + Alpine)
-          - os: ubuntu-latest
-            platform_id: linux_loong64
-            ext: ""
-            container: "ghcr.io/loong64/alpine:3.23"
-            qemu: true
+          # Linux LoongArch64 (暂不支持，因为没有官方 runner)
+          # - os: ubuntu-latest
+          #   platform_id: linux_loong64
+          #   ext: ""
+          #   qemu: true
 
           # macOS
           - os: macos-13
@@ -55,7 +61,7 @@ jobs:
             python: "3.11"
             pyinstaller: "6.11.0"
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner || matrix.os }}
 
     steps:
       - name: Checkout code
@@ -68,13 +74,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\Python38
-          key: python-3.8.20-xp-${{ runner.os }}-${{ runner.arch }}
+          key: python-3.8.20-xp-ryatian-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Python 3.8.20 (XP compatible, community patch)
         if: matrix.platform_id == 'windows_x86' && steps.cache-python.outputs.cache-hit != 'true'
         shell: powershell
         run: |
-          $url = "https://raw.githubusercontent.com/adang1345/PythonVista/master/3.8.20/python-3.8.20-full.exe"
+          $url = "https://github.com/R-YaTian/CPython3.8.20WinXP/releases/download/v3.8.20_final/python-3.8.20-full.exe"
           $installer = "$env:TEMP\python-3.8.20-full.exe"
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           Write-Host "Downloading Python 3.8.20 x86 (community XP patch)..."
@@ -128,70 +134,68 @@ jobs:
               exit 1
           }
 
-      # Windows ARM64: 原生构建
-      - name: Set up Python (Windows ARM64)
-        if: matrix.platform_id == 'windows_arm64'
+      # Windows ARM64 / macOS: 原生构建
+      - name: Set up Python (Windows ARM64 / macOS)
+        if: matrix.platform_id != 'windows_x86' && !startsWith(matrix.platform_id, 'linux_')
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install dependencies (Windows ARM64)
-        if: matrix.platform_id == 'windows_arm64'
+      - name: Install dependencies (Windows ARM64 / macOS)
+        if: matrix.platform_id != 'windows_x86' && !startsWith(matrix.platform_id, 'linux_')
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==${{ matrix.pyinstaller }}
 
-      - name: Build Windows ARM64
-        if: matrix.platform_id == 'windows_arm64'
-        run: pyinstaller vpid_viewer.spec --clean --noconfirm
-
-      # macOS: 原生构建
-      - name: Set up Python (macOS)
-        if: contains(matrix.platform_id, 'macos')
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install dependencies (macOS)
-        if: contains(matrix.platform_id, 'macos')
+      - name: Build Windows ARM64 / macOS
+        if: matrix.platform_id != 'windows_x86' && !startsWith(matrix.platform_id, 'linux_')
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller==${{ matrix.pyinstaller }}
+          pyinstaller vpid_viewer.spec --clean --noconfirm
 
-      - name: Build macOS
-        if: contains(matrix.platform_id, 'macos')
-        run: pyinstaller vpid_viewer.spec --clean --noconfirm
-
-      # Linux: Alpine + musl 容器构建（零 glibc 依赖）
-      - name: Set up QEMU (LoongArch64)
-        if: matrix.qemu == true
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: loongarch64
-
-      - name: Build Linux (Alpine musl)
-        if: contains(matrix.platform_id, 'linux')
+      # Linux: Ubuntu 16.04 容器内构建
+      - name: Build Linux in Ubuntu 16.04 container
+        if: startsWith(matrix.platform_id, 'linux_')
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.container }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            apk add --no-cache python3 py3-pip gcc musl-dev zlib-dev \
-              linux-headers libusb-dev tk tk-dev
-            pip3 install --break-system-packages pyinstaller pyusb libusb-package
-            pyinstaller vpid_viewer.spec --clean --noconfirm
-            # 在容器内完成重命名，避免宿主机权限问题
+            # 更新 apt 源并安装编译依赖
+            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
+                libreadline-dev libsqlite3-dev wget libncurses5-dev \
+                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
+            # 从源码编译 Python 3.8（带共享库）
+            cd /tmp
+            curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
+            tar -xzf Python-3.8.20.tgz
+            cd Python-3.8.20
+            ./configure --enable-shared --enable-optimizations --with-ensurepip=install
+            make -j$(nproc)
+            make altinstall
+            # 配置共享库路径
+            echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
+            ldconfig
+            # 验证 Python 和共享库
+            /usr/local/bin/python3.8 --version
+            ldconfig -p | grep python3.8
+            # 安装 pip 和依赖
+            /usr/local/bin/python3.8 -m ensurepip --upgrade
+            /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
+            # 构建项目
+            cd /workspace
+            /usr/local/bin/python3.8 -m pip install -r requirements.txt
+            /usr/local/bin/python3.8 -m pip install pyinstaller==${{ matrix.pyinstaller }}
+            /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
-      # Windows: 在宿主机上重命名产物
+      # 重命名产物
       - name: Rename artifact (Windows)
         if: contains(matrix.platform_id, 'windows')
         shell: bash
         run: mv dist/vpid_viewer${{ matrix.ext }} dist/vpid_viewer_${{ matrix.platform_id }}${{ matrix.ext }}
 
-      # macOS: 在宿主机上重命名产物
       - name: Rename artifact (macOS)
         if: contains(matrix.platform_id, 'macos')
         run: mv dist/vpid_viewer.app dist/vpid_viewer_${{ matrix.platform_id }}.app
