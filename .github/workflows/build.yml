@@ -112,8 +112,23 @@ jobs:
           image: ${{ matrix.image }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Find Python 3.8 in manylinux (usually in /opt/python/)
-            export PYTHON=$(find /opt/python -name "cp38-*" -type d | head -n 1)/bin/python
+            # Debug: List available Python versions
+            echo "=== Available Python directories ==="
+            ls -la /opt/python/
+            echo ""
+            echo "=== Looking for Python 3.8 ==="
+            PYTHON_PATHS=$(ls -d /opt/python/cp38-* 2>/dev/null || echo "Not found")
+            echo "Found: $PYTHON_PATHS"
+            echo ""
+            if [ -d "/opt/python/cp38-cp38" ]; then
+              export PYTHON=/opt/python/cp38-cp38/bin/python
+            elif [ -d "/opt/python/cp38-cp38m" ]; then
+              export PYTHON=/opt/python/cp38-cp38m/bin/python
+            else
+              echo "ERROR: Python 3.8 not found in /opt/python/"
+              exit 1
+            fi
+            echo "Using Python: $PYTHON"
             $PYTHON --version
             $PYTHON -m ensurepip --upgrade
             $PYTHON -m pip install --upgrade pip setuptools wheel
