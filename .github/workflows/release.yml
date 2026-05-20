@@ -4,9 +4,12 @@ on:
   push:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-windows-x86:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -103,7 +106,7 @@ jobs:
           retention-days: 30
 
   build-windows-arm64:
-    runs-on: windows-11-arm
+    runs-on: windows-2022
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -156,21 +159,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache final build artifact
-        id: cache-artifact-linuxamd64
-        uses: actions/cache@v4
-        with:
-          path: dist/vpid_viewer_linux_amd64
-          key: ${{ runner.os }}-artifact-linuxamd64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
-          restore-keys: |
-            ${{ runner.os }}-artifact-linuxamd64-
-
-      - name: Skip build if artifact exists
-        if: steps.cache-artifact-linuxamd64.outputs.cache-hit == 'true'
-        run: echo "Using cached artifact, skipping build"
-
       - name: Cache Python build and pip packages
-        if: steps.cache-artifact-linuxamd64.outputs.cache-hit != 'true'
         id: cache-linux
         uses: actions/cache@v4
         with:
@@ -182,7 +171,6 @@ jobs:
             ${{ runner.os }}-linux-amd64-
 
       - name: Build in Ubuntu 16.04 container
-        if: steps.cache-artifact-linuxamd64.outputs.cache-hit != 'true'
         uses: addnab/docker-run-action@v3
         with:
           image: ubuntu:16.04
@@ -243,31 +231,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache final build artifact
-        id: cache-artifact-linuxarm64
-        uses: actions/cache@v4
-        with:
-          path: dist/vpid_viewer_linux_arm64
-          key: ${{ runner.os }}-artifact-linuxarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
-          restore-keys: |
-            ${{ runner.os }}-artifact-linuxarm64-
-
-      - name: Skip build if artifact exists
-        if: steps.cache-artifact-linuxarm64.outputs.cache-hit == 'true'
-        run: echo "Using cached artifact, skipping build"
-
       - name: Set up QEMU for ARM64 emulation
-        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
 
       - name: Set up Docker Buildx
-        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Cache Python build and pip packages (ARM64)
-        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         id: cache-linux-arm64
         uses: actions/cache@v4
         with:
@@ -279,7 +251,6 @@ jobs:
             ${{ runner.os }}-linux-arm64-
 
       - name: Build in Ubuntu 16.04 container (ARM64)
-        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         uses: addnab/docker-run-action@v3
         with:
           image: ubuntu:16.04
