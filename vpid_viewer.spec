@@ -46,11 +46,17 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=['runtime_hook.py'],
-    excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6'],
+    excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'fontconfig'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
 )
+
+# Exclude fontconfig-related libraries to use system ones on Linux
+if sys.platform.startswith('linux'):
+    a.binaries = [x for x in a.binaries if not x[0].startswith('libfontconfig')]
+    a.binaries = [x for x in a.binaries if not x[0].startswith('libfreetype')]
+    a.binaries = [x for x in a.binaries if not x[0].startswith('libexpat')]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
