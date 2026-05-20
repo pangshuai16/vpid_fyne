@@ -165,23 +165,8 @@ jobs:
           image: quay.io/pypa/manylinux2014_x86_64:latest
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Debug: List available Python versions
-            echo "=== Available Python directories ==="
-            ls -la /opt/python/
-            echo ""
-            echo "=== Looking for Python 3.8 ==="
-            PYTHON_PATHS=$(ls -d /opt/python/cp38-* 2>/dev/null || echo "Not found")
-            echo "Found: $PYTHON_PATHS"
-            echo ""
-            if [ -d "/opt/python/cp38-cp38" ]; then
-              export PYTHON=/opt/python/cp38-cp38/bin/python
-            elif [ -d "/opt/python/cp38-cp38m" ]; then
-              export PYTHON=/opt/python/cp38-cp38m/bin/python
-            else
-              echo "ERROR: Python 3.8 not found in /opt/python/"
-              exit 1
-            fi
-            echo "Using Python: $PYTHON"
+            # Use Python 3.9 (available in manylinux2014)
+            export PYTHON=/opt/python/cp39-cp39/bin/python
             $PYTHON --version
             $PYTHON -m ensurepip --upgrade
             $PYTHON -m pip install --upgrade pip setuptools wheel
@@ -214,23 +199,8 @@ jobs:
           image: quay.io/pypa/manylinux2014_aarch64:latest
           options: --platform linux/arm64 -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Debug: List available Python versions
-            echo "=== Available Python directories ==="
-            ls -la /opt/python/
-            echo ""
-            echo "=== Looking for Python 3.8 ==="
-            PYTHON_PATHS=$(ls -d /opt/python/cp38-* 2>/dev/null || echo "Not found")
-            echo "Found: $PYTHON_PATHS"
-            echo ""
-            if [ -d "/opt/python/cp38-cp38" ]; then
-              export PYTHON=/opt/python/cp38-cp38/bin/python
-            elif [ -d "/opt/python/cp38-cp38m" ]; then
-              export PYTHON=/opt/python/cp38-cp38m/bin/python
-            else
-              echo "ERROR: Python 3.8 not found in /opt/python/"
-              exit 1
-            fi
-            echo "Using Python: $PYTHON"
+            # Use Python 3.9 (available in manylinux2014)
+            export PYTHON=/opt/python/cp39-cp39/bin/python
             $PYTHON --version
             $PYTHON -m ensurepip --upgrade
             $PYTHON -m pip install --upgrade pip setuptools wheel
