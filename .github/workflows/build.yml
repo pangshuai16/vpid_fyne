@@ -91,7 +91,6 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
-    container: ubuntu:16.04
     strategy:
       matrix:
         include:
@@ -103,40 +102,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-              build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
-              libreadline-dev libsqlite3-dev wget libncurses5-dev \
-              libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
+      - name: Build in Ubuntu 16.04 container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ubuntu:16.04
+          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          run: |
+            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
+                libreadline-dev libsqlite3-dev wget libncurses5-dev \
+                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
 
-      - name: Compile Python 3.8 from source
-        run: |
-          cd /tmp
-          curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
-          tar -xzf Python-3.8.20.tgz
-          cd Python-3.8.20
-          ./configure --enable-shared --enable-optimizations --with-ensurepip=install
-          make -j$(nproc)
-          make altinstall
-          # Configure shared library path
-          echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
-          ldconfig
-          # Verify Python and shared library
-          /usr/local/bin/python3.8 --version
-          ldconfig -p | grep python3.8
+            cd /tmp
+            curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
+            tar -xzf Python-3.8.20.tgz
+            cd Python-3.8.20
+            ./configure --enable-shared --enable-optimizations --with-ensurepip=install
+            make -j$(nproc)
+            make altinstall
 
-      - name: Install pip and dependencies
-        run: |
-          /usr/local/bin/python3.8 -m ensurepip --upgrade
-          /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
-          /usr/local/bin/python3.8 -m pip install -r requirements.txt
-          /usr/local/bin/python3.8 -m pip install pyinstaller
+            echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
+            ldconfig
+            /usr/local/bin/python3.8 --version
 
-      - name: Build with PyInstaller
-        run: |
-          /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
-          mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
+            /usr/local/bin/python3.8 -m ensurepip --upgrade
+            /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
+            cd /workspace
+            /usr/local/bin/python3.8 -m pip install -r requirements.txt
+            /usr/local/bin/python3.8 -m pip install pyinstaller
+            /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
+            mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
