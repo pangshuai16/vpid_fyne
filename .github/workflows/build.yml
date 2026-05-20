@@ -100,26 +100,26 @@ jobs:
           - arch: amd64
             platform_id: linux_amd64
             ext: ""
-            image: quay.io/pypa/manylinux2014_x86_64:latest
+            image: quay.io/rockylinux/rockylinux:8
+            platform_arg: ""
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build in manylinux2014 container
+      - name: Build in Rocky Linux 8 container (glibc 2.28)
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.image }}
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          options: ${{ matrix.platform_arg }} -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Use Python 3.9 (available in manylinux2014)
-            export PYTHON=/opt/python/cp39-cp39/bin/python
-            $PYTHON --version
-            $PYTHON -m ensurepip --upgrade
-            $PYTHON -m pip install --upgrade pip setuptools wheel
-            $PYTHON -m pip install -r requirements.txt
-            $PYTHON -m pip install pyinstaller==6.11.0
-            $PYTHON -m PyInstaller vpid_viewer.spec --clean --noconfirm
+            # Use system Python 3.9 from Rocky Linux 8 (glibc 2.28)
+            dnf install -y python39 python39-pip python39-devel gcc git
+            python3.9 --version
+            python3.9 -m pip install --upgrade pip setuptools wheel
+            python3.9 -m pip install -r requirements.txt
+            python3.9 -m pip install pyinstaller==6.11.0
+            python3.9 -m PyInstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_${{ matrix.platform_id }}
 
       - name: Upload artifact
