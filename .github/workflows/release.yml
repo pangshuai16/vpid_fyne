@@ -11,7 +11,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache final build artifact
+        id: cache-artifact-winx86
+        uses: actions/cache@v4
+        with:
+          path: dist/vpid_viewer_windows_x86.exe
+          key: ${{ runner.os }}-artifact-winx86-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifact-winx86-
+
+      - name: Skip build if artifact exists
+        if: steps.cache-artifact-winx86.outputs.cache-hit == 'true'
+        run: echo "Using cached artifact, skipping build"
+
       - name: Cache Python 3.8.20 installation
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         id: cache-python
         uses: actions/cache@v4
         with:
@@ -19,7 +33,7 @@ jobs:
           key: python-3.8.20-xp-ryatian-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Python 3.8.20 (XP compatible, community patch)
-        if: steps.cache-python.outputs.cache-hit != 'true'
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true' && steps.cache-python.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           $url = "https://github.com/R-YaTian/CPython3.8.20WinXP/releases/download/v3.8.20_final/python-3.8.20-full.exe"
@@ -38,12 +52,14 @@ jobs:
           }
 
       - name: Add Python 3.8 to PATH
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           "C:\Python38" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "C:\Python38\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Cache pip dependencies
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: ~\AppData\Local\pip\Cache
@@ -52,14 +68,17 @@ jobs:
             pip-${{ runner.os }}-
 
       - name: Upgrade pip
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         run: python -m pip install --upgrade pip
 
       - name: Install dependencies
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         run: |
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller==4.10
 
       - name: Build executable with PyInstaller
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           pyinstaller vpid_viewer.spec --clean --noconfirm
@@ -72,6 +91,7 @@ jobs:
           }
 
       - name: Rename artifact
+        if: steps.cache-artifact-winx86.outputs.cache-hit != 'true'
         shell: bash
         run: mv dist/vpid_viewer.exe dist/vpid_viewer_windows_x86.exe
 
@@ -88,21 +108,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache final build artifact
+        id: cache-artifact-winarm64
+        uses: actions/cache@v4
+        with:
+          path: dist/vpid_viewer_windows_arm64.exe
+          key: ${{ runner.os }}-artifact-winarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifact-winarm64-
+
+      - name: Skip build if artifact exists
+        if: steps.cache-artifact-winarm64.outputs.cache-hit == 'true'
+        run: echo "Using cached artifact, skipping build"
+
       - name: Set up Python
+        if: steps.cache-artifact-winarm64.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
+        if: steps.cache-artifact-winarm64.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==6.11.0
 
       - name: Build with PyInstaller
+        if: steps.cache-artifact-winarm64.outputs.cache-hit != 'true'
         run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
       - name: Rename artifact
+        if: steps.cache-artifact-winarm64.outputs.cache-hit != 'true'
         shell: bash
         run: mv dist/vpid_viewer.exe dist/vpid_viewer_windows_arm64.exe
 
@@ -119,7 +156,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache final build artifact
+        id: cache-artifact-linuxamd64
+        uses: actions/cache@v4
+        with:
+          path: dist/vpid_viewer_linux_amd64
+          key: ${{ runner.os }}-artifact-linuxamd64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifact-linuxamd64-
+
+      - name: Skip build if artifact exists
+        if: steps.cache-artifact-linuxamd64.outputs.cache-hit == 'true'
+        run: echo "Using cached artifact, skipping build"
+
       - name: Cache Python build and pip packages
+        if: steps.cache-artifact-linuxamd64.outputs.cache-hit != 'true'
         id: cache-linux
         uses: actions/cache@v4
         with:
@@ -131,6 +182,7 @@ jobs:
             ${{ runner.os }}-linux-amd64-
 
       - name: Build in Ubuntu 16.04 container
+        if: steps.cache-artifact-linuxamd64.outputs.cache-hit != 'true'
         uses: addnab/docker-run-action@v3
         with:
           image: ubuntu:16.04
@@ -191,15 +243,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache final build artifact
+        id: cache-artifact-linuxarm64
+        uses: actions/cache@v4
+        with:
+          path: dist/vpid_viewer_linux_arm64
+          key: ${{ runner.os }}-artifact-linuxarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifact-linuxarm64-
+
+      - name: Skip build if artifact exists
+        if: steps.cache-artifact-linuxarm64.outputs.cache-hit == 'true'
+        run: echo "Using cached artifact, skipping build"
+
       - name: Set up QEMU for ARM64 emulation
+        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
 
       - name: Set up Docker Buildx
+        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Cache Python build and pip packages (ARM64)
+        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         id: cache-linux-arm64
         uses: actions/cache@v4
         with:
@@ -211,6 +279,7 @@ jobs:
             ${{ runner.os }}-linux-arm64-
 
       - name: Build in Ubuntu 16.04 container (ARM64)
+        if: steps.cache-artifact-linuxarm64.outputs.cache-hit != 'true'
         uses: addnab/docker-run-action@v3
         with:
           image: ubuntu:16.04
@@ -271,21 +340,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache final build artifact
+        id: cache-artifact-macosamd64
+        uses: actions/cache@v4
+        with:
+          path: dist/vpid_viewer_macos_amd64.app
+          key: ${{ runner.os }}-artifact-macosamd64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifact-macosamd64-
+
+      - name: Skip build if artifact exists
+        if: steps.cache-artifact-macosamd64.outputs.cache-hit == 'true'
+        run: echo "Using cached artifact, skipping build"
+
       - name: Set up Python
+        if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
+        if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==6.11.0
 
       - name: Build with PyInstaller
+        if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
         run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
       - name: Rename artifact
+        if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
         run: mv dist/vpid_viewer.app dist/vpid_viewer_macos_amd64.app
 
       - name: Upload artifact
@@ -301,21 +387,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache final build artifact
+        id: cache-artifact-macosarm64
+        uses: actions/cache@v4
+        with:
+          path: dist/vpid_viewer_macos_arm64.app
+          key: ${{ runner.os }}-artifact-macosarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifact-macosarm64-
+
+      - name: Skip build if artifact exists
+        if: steps.cache-artifact-macosarm64.outputs.cache-hit == 'true'
+        run: echo "Using cached artifact, skipping build"
+
       - name: Set up Python
+        if: steps.cache-artifact-macosarm64.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
+        if: steps.cache-artifact-macosarm64.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller==6.11.0
 
       - name: Build with PyInstaller
+        if: steps.cache-artifact-macosarm64.outputs.cache-hit != 'true'
         run: pyinstaller vpid_viewer.spec --clean --noconfirm
 
       - name: Rename artifact
+        if: steps.cache-artifact-macosarm64.outputs.cache-hit != 'true'
         run: mv dist/vpid_viewer.app dist/vpid_viewer_macos_arm64.app
 
       - name: Upload artifact
