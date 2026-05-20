@@ -159,63 +159,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache Python build and pip packages
-        id: cache-linux
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/python-build
-            .cache/pip
-          key: ${{ runner.os }}-linux-amd64-${{ hashFiles('requirements.txt', '.python-version') }}
-          restore-keys: |
-            ${{ runner.os }}-linux-amd64-
-
-      - name: Build in Ubuntu 16.04 container
+      - name: Build in manylinux2014 container (x86_64)
         uses: addnab/docker-run-action@v3
         with:
-          image: ubuntu:16.04
+          image: quay.io/pypa/manylinux2014_x86_64:latest
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Set up cache directories
-            mkdir -p /workspace/.cache/python-build
-            mkdir -p /workspace/.cache/pip
-            export PIP_CACHE_DIR=/workspace/.cache/pip
-
-            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
-                libreadline-dev libsqlite3-dev wget libncurses5-dev \
-                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
-
-            # Check if Python is already cached
-            if [ -f /workspace/.cache/python-build/python3.8.installed ]; then
-                echo "Using cached Python 3.8"
-                tar -xzf /workspace/.cache/python-build/python3.8.tgz -C /
-            else
-                echo "Building Python 3.8 from source"
-                cd /tmp
-                curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
-                tar -xzf Python-3.8.20.tgz
-                cd Python-3.8.20
-                ./configure --enable-shared --enable-optimizations --with-ensurepip=install
-                make -j$(nproc)
-                make altinstall
-                
-                # Cache the Python installation
-                cd /usr/local
-                tar -czf /workspace/.cache/python-build/python3.8.tgz bin/python3.8 lib/libpython3.8* include/python3.8
-                touch /workspace/.cache/python-build/python3.8.installed
-            fi
-
-            echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
-            ldconfig
-            /usr/local/bin/python3.8 --version
-
-            /usr/local/bin/python3.8 -m ensurepip --upgrade
-            /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
-            cd /workspace
-            /usr/local/bin/python3.8 -m pip install -r requirements.txt
-            /usr/local/bin/python3.8 -m pip install pyinstaller==6.11.0
-            /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
+            # Use pre-installed Python 3.8
+            export PYTHON=python3.8
+            $PYTHON --version
+            $PYTHON -m ensurepip --upgrade
+            $PYTHON -m pip install --upgrade pip setuptools wheel
+            $PYTHON -m pip install -r requirements.txt
+            $PYTHON -m pip install pyinstaller==6.11.0
+            $PYTHON -m PyInstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_linux_amd64
 
       - name: Upload artifact
@@ -236,66 +193,20 @@ jobs:
         with:
           platforms: arm64
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Python build and pip packages (ARM64)
-        id: cache-linux-arm64
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/python-build-arm64
-            .cache/pip-arm64
-          key: ${{ runner.os }}-linux-arm64-${{ hashFiles('requirements.txt', '.python-version') }}
-          restore-keys: |
-            ${{ runner.os }}-linux-arm64-
-
-      - name: Build in Ubuntu 16.04 container (ARM64)
+      - name: Build in manylinux2014 container (ARM64)
         uses: addnab/docker-run-action@v3
         with:
-          image: ubuntu:16.04
+          image: quay.io/pypa/manylinux2014_aarch64:latest
           options: --platform linux/arm64 -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Set up cache directories
-            mkdir -p /workspace/.cache/python-build-arm64
-            mkdir -p /workspace/.cache/pip-arm64
-            export PIP_CACHE_DIR=/workspace/.cache/pip-arm64
-
-            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-                build-essential git curl libssl-dev zlib1g-dev libbz2-dev \
-                libreadline-dev libsqlite3-dev wget libncurses5-dev \
-                libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev patchelf
-
-            # Check if Python is already cached
-            if [ -f /workspace/.cache/python-build-arm64/python3.8.installed ]; then
-                echo "Using cached Python 3.8 (ARM64)"
-                tar -xzf /workspace/.cache/python-build-arm64/python3.8.tgz -C /
-            else
-                echo "Building Python 3.8 from source (ARM64)"
-                cd /tmp
-                curl -O https://www.python.org/ftp/python/3.8.20/Python-3.8.20.tgz
-                tar -xzf Python-3.8.20.tgz
-                cd Python-3.8.20
-                ./configure --enable-shared --enable-optimizations --with-ensurepip=install
-                make -j$(nproc)
-                make altinstall
-                
-                # Cache the Python installation
-                cd /usr/local
-                tar -czf /workspace/.cache/python-build-arm64/python3.8.tgz bin/python3.8 lib/libpython3.8* include/python3.8
-                touch /workspace/.cache/python-build-arm64/python3.8.installed
-            fi
-
-            echo "/usr/local/lib" > /etc/ld.so.conf.d/python3.8.conf
-            ldconfig
-            /usr/local/bin/python3.8 --version
-
-            /usr/local/bin/python3.8 -m ensurepip --upgrade
-            /usr/local/bin/python3.8 -m pip install --upgrade pip setuptools wheel
-            cd /workspace
-            /usr/local/bin/python3.8 -m pip install -r requirements.txt
-            /usr/local/bin/python3.8 -m pip install pyinstaller==6.11.0
-            /usr/local/bin/python3.8 -m PyInstaller vpid_viewer.spec --clean --noconfirm
+            # Use pre-installed Python 3.8
+            export PYTHON=python3.8
+            $PYTHON --version
+            $PYTHON -m ensurepip --upgrade
+            $PYTHON -m pip install --upgrade pip setuptools wheel
+            $PYTHON -m pip install -r requirements.txt
+            $PYTHON -m pip install pyinstaller==6.11.0
+            $PYTHON -m PyInstaller vpid_viewer.spec --clean --noconfirm
             mv dist/vpid_viewer dist/vpid_viewer_linux_arm64
 
       - name: Upload artifact
