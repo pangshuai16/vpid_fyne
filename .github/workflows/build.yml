@@ -34,13 +34,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\Python38
-          key: python-3.8.20-xp-${{ runner.os }}-${{ runner.arch }}
+          key: python-3.8.20-xp-ryatian-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Python 3.8.20 (XP compatible, community patch)
         if: contains(matrix.platform_id, 'windows') && steps.cache-python.outputs.cache-hit != 'true'
         shell: powershell
         run: |
-          $url = "https://raw.githubusercontent.com/adang1345/PythonVista/master/3.8.20/python-3.8.20-full.exe"
+          $url = "https://github.com/R-YaTian/CPython3.8.20WinXP/releases/download/v3.8.20_final/python-3.8.20-full.exe"
           $installer = "$env:TEMP\python-3.8.20-full.exe"
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           Write-Host "Downloading Python 3.8.20 x86 (community XP patch)..."
