@@ -112,8 +112,8 @@ jobs:
           image: ${{ matrix.image }}
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Use pre-installed Python 3.8
-            export PYTHON=python3.8
+            # Find Python 3.8 in manylinux (usually in /opt/python/)
+            export PYTHON=$(find /opt/python -name "cp38-*" -type d | head -n 1)/bin/python
             $PYTHON --version
             $PYTHON -m ensurepip --upgrade
             $PYTHON -m pip install --upgrade pip setuptools wheel
