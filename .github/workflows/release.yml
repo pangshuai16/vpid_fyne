@@ -324,6 +324,7 @@ jobs:
         with:
           path: artifacts
           pattern: release-*
+          merge-multiple: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
