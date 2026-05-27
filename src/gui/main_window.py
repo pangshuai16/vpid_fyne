@@ -279,14 +279,14 @@ class MainWindow(tk.Tk):
     def _register_device_notifier(self):
         """注册 USB 设备插拔事件监听（跨平台）
 
-        Windows: 使用 RegisterDeviceNotification API
+        Windows: 使用 RegisterDeviceNotification API（独立隐藏窗口）
         Linux/macOS: 使用 libusb 热插拔回调 API
         """
         try:
             if sys.platform == 'win32':
                 from ..usb_scanner.device_notifier import WindowsDeviceNotifier
                 self._device_notifier = WindowsDeviceNotifier(
-                    self.winfo_id(),
+                    None,
                     self._on_usb_device_change,
                 )
             else:
