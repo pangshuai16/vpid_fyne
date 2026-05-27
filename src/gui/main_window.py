@@ -277,16 +277,25 @@ class MainWindow(tk.Tk):
         self.bind("<Control-C>", lambda e: self._on_copy())
 
     def _register_device_notifier(self):
-        """注册 USB 设备插拔事件监听（仅 Windows）"""
-        if sys.platform != 'win32':
-            return
+        """注册 USB 设备插拔事件监听（跨平台）
+
+        Windows: 使用 RegisterDeviceNotification API
+        Linux/macOS: 使用 libusb 热插拔回调 API
+        """
         try:
-            from ..usb_scanner.device_notifier import WindowsDeviceNotifier
-            self._device_notifier = WindowsDeviceNotifier(
-                self.winfo_id(),
-                self._on_usb_device_change,
-            )
-            logger.info("USB 设备事件监听已注册")
+            if sys.platform == 'win32':
+                from ..usb_scanner.device_notifier import WindowsDeviceNotifier
+                self._device_notifier = WindowsDeviceNotifier(
+                    self.winfo_id(),
+                    self._on_usb_device_change,
+                )
+            else:
+                from ..usb_scanner.device_notifier import LibUSBDeviceNotifier
+                self._device_notifier = LibUSBDeviceNotifier(
+                    None,
+                    self._on_usb_device_change,
+                )
+            logger.info("USB 设备事件监听已注册 (%s)", sys.platform)
         except Exception as e:
             logger.warning("注册 USB 设备事件监听失败: %s", e)
 
