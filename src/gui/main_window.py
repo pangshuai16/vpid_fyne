@@ -1,5 +1,6 @@
 """主窗口模块 - tkinter/ttk 实现"""
 import os
+import sys
 import logging
 import threading
 import queue
@@ -12,7 +13,6 @@ from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
 from .device_detail import DeviceChangePanel
 from ..constants import (
-    AUTO_REFRESH_INTERVAL_MS,
     DEFAULT_WINDOW_WIDTH,
     DEFAULT_WINDOW_HEIGHT,
     MIN_WINDOW_WIDTH,
@@ -110,9 +110,9 @@ class MainWindow(tk.Tk):
         self.devices = []
         self.baseline_devices = []
         self._scanning = False
-        self._auto_refresh_id = None
         self._result_queue = queue.Queue()
-        self.auto_refresh_var = tk.BooleanVar(value=True)
+        self._device_notifier = None
+        self._event_scan_pending = False
 
         self._apply_style()
         self._set_icon()
@@ -121,9 +121,9 @@ class MainWindow(tk.Tk):
         self._build_status_bar()
         self._build_menu()
 
+        self._register_device_notifier()
         self._start_scan()
         self._poll_scan_result()
-        self._schedule_auto_refresh()
 
     def _apply_style(self):
         """配置 ttk 主题样式"""
@@ -261,8 +261,6 @@ class MainWindow(tk.Tk):
         menubar.add_cascade(label="编辑", menu=edit_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label="停止自动刷新", command=self._on_stop_refresh)
-        view_menu.add_command(label="开启自动刷新", command=self._on_start_auto_refresh)
         view_menu.add_command(label="手动刷新", command=self._start_scan, accelerator="Ctrl+R")
         menubar.add_cascade(label="视图", menu=view_menu)
 
@@ -277,6 +275,28 @@ class MainWindow(tk.Tk):
         self.bind("<Control-R>", lambda e: self._start_scan())
         self.bind("<Control-c>", lambda e: self._on_copy())
         self.bind("<Control-C>", lambda e: self._on_copy())
+
+    def _register_device_notifier(self):
+        """注册 USB 设备插拔事件监听（仅 Windows）"""
+        if sys.platform != 'win32':
+            return
+        try:
+            from ..usb_scanner.device_notifier import WindowsDeviceNotifier
+            self._device_notifier = WindowsDeviceNotifier(
+                self.winfo_id(),
+                self._on_usb_device_change,
+            )
+            logger.info("USB 设备事件监听已注册")
+        except Exception as e:
+            logger.warning("注册 USB 设备事件监听失败: %s", e)
+
+    def _on_usb_device_change(self, event_type, device_name):
+        """USB 设备插拔事件回调（在 tkinter 主线程中执行）"""
+        if event_type in ('arrival', 'removal', 'devnodes_changed'):
+            if self._scanning:
+                self._event_scan_pending = True
+                return
+            self._start_scan()
 
     # ---- 扫描管理（线程安全） ----
 
@@ -306,6 +326,9 @@ class MainWindow(tk.Tk):
             if status == "ok":
                 self._update_device_list(devices)
             self._scanning = False
+            if self._event_scan_pending:
+                self._event_scan_pending = False
+                self._start_scan()
         except queue.Empty:
             pass
         self.after(50, self._poll_scan_result)
@@ -392,22 +415,18 @@ class MainWindow(tk.Tk):
         self._update_status("已复制 {0}: {1}".format(field.upper(), value))
 
     def _on_stop_refresh(self):
-        """停止自动刷新"""
-        self.auto_refresh_var.set(False)
-        self._cancel_auto_refresh()
+        """停止自动刷新（事件监听模式下无操作）"""
         self._update_refresh_buttons()
 
     def _on_start_auto_refresh(self):
-        """开启自动刷新"""
-        self.auto_refresh_var.set(True)
-        self._schedule_auto_refresh()
+        """开启自动刷新（事件监听模式下无操作）"""
         self._update_refresh_buttons()
 
     def _update_refresh_buttons(self):
         """根据自动刷新状态切换按钮显示
 
-        自动刷新开启: [停止刷新]  [设为基准]  ......  [复制]
-        自动刷新关闭: [自动刷新]  [手动刷新]  [设为基准]  ......  [复制]
+        事件监听模式下，隐藏自动刷新相关按钮，只显示手动刷新和设为基准：
+        [手动刷新]  [设为基准]  ......  [复制]
         """
         self.stop_refresh_btn.grid_forget()
         self.auto_refresh_btn.grid_forget()
@@ -415,14 +434,8 @@ class MainWindow(tk.Tk):
         self.baseline_btn.grid_forget()
         self.copy_btn.grid_forget()
 
-        if self.auto_refresh_var.get():
-            self.stop_refresh_btn.grid(row=0, column=1, padx=(0, 6))
-            self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
-        else:
-            self.auto_refresh_btn.grid(row=0, column=1, padx=(0, 6))
-            self.manual_refresh_btn.grid(row=0, column=2, padx=(0, 6))
-            self.baseline_btn.grid(row=0, column=3, padx=(0, 6))
-
+        self.manual_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+        self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
         self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
     def _set_scan_buttons_state(self, state):
@@ -430,30 +443,20 @@ class MainWindow(tk.Tk):
 
         注意：仅修改视觉状态（fg/cursor），不修改 bg，避免触发按钮的重绘效果。
         """
-        for btn in (self.stop_refresh_btn, self.auto_refresh_btn, self.manual_refresh_btn):
+        for btn in (self.manual_refresh_btn,):
             if state == tk.DISABLED:
                 btn.config(fg="#CCCCCC", cursor="no")
             else:
                 btn.config(fg=COLOR_WHITE, cursor="hand2")
 
-    def _schedule_auto_refresh(self):
-        """调度下一次自动刷新"""
-        self._cancel_auto_refresh()
-        self._auto_refresh_id = self.after(
-            AUTO_REFRESH_INTERVAL_MS, self._auto_refresh_tick
-        )
-
-    def _auto_refresh_tick(self):
-        """自动刷新定时器回调"""
-        self._start_scan()
-        if self.auto_refresh_var.get():
-            self._schedule_auto_refresh()
-
-    def _cancel_auto_refresh(self):
-        """取消自动刷新"""
-        if self._auto_refresh_id is not None:
-            self.after_cancel(self._auto_refresh_id)
-            self._auto_refresh_id = None
+    def destroy(self):
+        """清理资源并关闭窗口"""
+        if self._device_notifier:
+            try:
+                self._device_notifier.unregister()
+            except Exception:
+                pass
+        super(MainWindow, self).destroy()
 
     def _on_device_select(self, device):
         """左侧设备列表选中"""
@@ -501,14 +504,13 @@ class MainWindow(tk.Tk):
     def _show_about(self):
         messagebox.showinfo("关于",
             "{0} v{1}\n\n用于查看和管理系统中 USB 设备的详细信息\n\n"
-            "功能: 实时扫描 / VID-PID 显示 / 序列号追踪 / 自动刷新 / 基准比对\n\n"
+            "功能: 实时事件监听 / VID-PID 显示 / 序列号追踪 / 基准比对\n\n"
             "(C) 2025 {0}".format(APP_NAME, APP_VERSION),
             parent=self)
 
     def _show_help(self):
         messagebox.showinfo("使用帮助",
-            "【自动刷新】默认开启，每 0.5 秒自动更新设备列表\n"
-            "【停止刷新】暂停自动刷新，显示手动刷新按钮\n"
+            "【实时监听】自动检测 USB 设备插拔，无需手动刷新\n"
             "【手动刷新】点击一次立即刷新设备列表\n"
             "【设为基准】将当前列表设为基准，后续刷新自动比对\n"
             "【复制】选中设备后 Ctrl+C 复制完整信息\n"

@@ -27,38 +27,21 @@ class WindowsScanner(BaseScanner):
     def scan(self):
         """扫描系统中当前真实连接的 USB 设备
 
-        扫描策略：合并 SetupAPI + WMI 结果并去重。
-        - SetupAPI（DIGCF_PRESENT）和 WMI（ConfigManagerErrorCode==0）
-          都有可靠的连接状态检查，合并后不会引入幽灵设备。
-        - 注册表仅在前两者都失败时作为最后手段使用。
+        扫描策略：优先使用 SetupAPI，失败时 fallback 到注册表。
+        - SetupAPI（DIGCF_PRESENT）是最可靠的扫描方式，返回真实连接的设备。
+        - 注册表仅作为最后手段使用。
 
         Returns:
             List[USBDevice]: 当前连接的设备列表
         """
-        devices = []
-
-        devices_setupapi = self._scan_via_setupapi()
-        if devices_setupapi:
-            devices.extend(devices_setupapi)
-            logger.debug(
-                "SetupAPI 扫描找到 %d 个已连接设备", len(devices_setupapi)
-            )
-
-        devices_wmi = self._scan_via_wmi()
-        if devices_wmi:
-            devices.extend(devices_wmi)
-            logger.debug("WMI 扫描找到 %d 个已连接设备", len(devices_wmi))
-
+        devices = self._scan_via_setupapi()
         if devices:
-            result = self._deduplicate_devices(devices)
-            logger.debug("合并去重后共 %d 个已连接 USB 设备", len(result))
-            return result
+            logger.debug("SetupAPI 扫描找到 %d 个已连接 USB 设备", len(devices))
+            return devices
 
         devices_reg = self._scan_via_registry()
         if devices_reg:
-            logger.debug(
-                "注册表扫描找到 %d 个已连接设备", len(devices_reg)
-            )
+            logger.debug("注册表扫描找到 %d 个已连接设备", len(devices_reg))
             return devices_reg
 
         logger.warning("所有扫描方法均未找到设备")
