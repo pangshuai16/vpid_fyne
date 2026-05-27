@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 # ==================== Windows 实现 ====================
 
 if sys.platform == 'win32':
+    import atexit
+
     WM_DEVICECHANGE = 0x0219
     DBT_DEVICEARRIVAL = 0x8000
     DBT_DEVICEREMOVECOMPLETE = 0x8004
@@ -22,11 +24,6 @@ if sys.platform == 'win32':
     DBT_DEVTYP_DEVICEINTERFACE = 5
     DEVICE_NOTIFY_WINDOW_HANDLE = 0
     GWLP_WNDPROC = -4
-
-    CS_HREDRAW = 0x0002
-    CS_VREDRAW = 0x0001
-    COLOR_WINDOW = 5
-    CW_USEDEFAULT = 0x80000000
 
     GUID_DEVINTERFACE_USB_DEVICE = (
         0xA5DCBF10, 0x6530, 0x11D2,
@@ -57,101 +54,36 @@ if sys.platform == 'win32':
             ('dbcc_name', ctypes.c_wchar),
         ]
 
-    class _MSG(ctypes.Structure):
-        _fields_ = [
-            ('hwnd', ctypes.c_void_p),
-            ('message', ctypes.c_uint),
-            ('wParam', ctypes.c_void_p),
-            ('lParam', ctypes.c_void_p),
-            ('time', ctypes.c_ulong),
-            ('pt_x', ctypes.c_long),
-            ('pt_y', ctypes.c_long),
-        ]
-
-    class _WNDCLASS(ctypes.Structure):
-        _fields_ = [
-            ('style', ctypes.c_uint),
-            ('lpfnWndProc', ctypes.c_void_p),
-            ('cbClsExtra', ctypes.c_int),
-            ('cbWndExtra', ctypes.c_int),
-            ('hInstance', ctypes.c_void_p),
-            ('hIcon', ctypes.c_void_p),
-            ('hCursor', ctypes.c_void_p),
-            ('hbrBackground', ctypes.c_void_p),
-            ('lpszMenuName', ctypes.c_wchar_p),
-            ('lpszClassName', ctypes.c_wchar_p),
-        ]
-
-    WNDPROC = ctypes.WINFUNCTYPE(
-        ctypes.c_long, ctypes.c_void_p, ctypes.c_uint,
-        ctypes.c_void_p, ctypes.c_void_p
-    )
-
     class WindowsDeviceNotifier:
         """Windows USB 设备通知器
 
-        创建隐藏窗口接收 WM_DEVICECHANGE 消息，避免与 tkinter 冲突。
+        在 tkinter 主窗口上注册 RegisterDeviceNotification，
+        并通过 SetWindowLongPtrW 子类化窗口过程来拦截 WM_DEVICECHANGE。
         """
+
+        _instances = {}
 
         def __init__(self, hwnd, on_device_change):
             self._hwnd = hwnd
             self._on_device_change = on_device_change
             self._hdevnotify = None
-            self._hidden_hwnd = None
-            self._running = False
-            self._msg_thread = None
+            self._old_proc = None
+            self._new_proc = None
             self._registered = False
+            self._user32 = None
 
             self._register()
 
         def _register(self):
             try:
-                user32 = ctypes.windll.user32
-                kernel32 = ctypes.windll.kernel32
+                self._user32 = ctypes.windll.user32
             except (OSError, AttributeError):
                 logger.error("user32.dll 不可用")
                 return
 
-            window_proc = WNDPROC(self._hidden_window_proc)
-            ctypes.pythonapi.Py_INCREF(window_proc)
-
-            wc = _WNDCLASS()
-            wc.style = CS_HREDRAW | CS_VREDRAW
-            wc.lpfnWndProc = ctypes.cast(window_proc, ctypes.c_void_p)
-            wc.cbClsExtra = 0
-            wc.cbWndExtra = 0
-            wc.hInstance = ctypes.c_void_p(kernel32.GetModuleHandleW(None))
-            wc.hIcon = None
-            wc.hCursor = None
-            wc.hbrBackground = ctypes.c_void_p(COLOR_WINDOW + 1)
-            wc.lpszMenuName = None
-            wc.lpszClassName = "UsbDeviceNotifierHiddenWindow"
-
-            atom = user32.RegisterClassW(ctypes.byref(wc))
-            if not atom:
-                logger.warning("RegisterClass 失败 (error=%d)", ctypes.GetLastError())
+            if not self._hwnd:
+                logger.error("窗口句柄为 None，无法注册 USB 设备通知")
                 return
-
-            hidden_hwnd = user32.CreateWindowExW(
-                0,
-                wc.lpszClassName,
-                "UsbDeviceNotifier",
-                0,
-                CW_USEDEFAULT, CW_USEDEFAULT,
-                1, 1,
-                None,
-                None,
-                wc.hInstance,
-                None,
-            )
-
-            if not hidden_hwnd:
-                logger.warning("CreateWindowEx 失败 (error=%d)", ctypes.GetLastError())
-                user32.UnregisterClassW(wc.lpszClassName)
-                return
-
-            self._hidden_hwnd = hidden_hwnd
-            self._window_proc_ref = window_proc
 
             guid = _GUID()
             guid.Data1 = GUID_DEVINTERFACE_USB_DEVICE[0]
@@ -164,8 +96,8 @@ if sys.platform == 'win32':
             dev_broadcast.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE
             dev_broadcast.dbcc_classguid = guid
 
-            self._hdevnotify = user32.RegisterDeviceNotificationW(
-                ctypes.c_void_p(hidden_hwnd),
+            self._hdevnotify = self._user32.RegisterDeviceNotificationW(
+                ctypes.c_void_p(self._hwnd),
                 ctypes.byref(dev_broadcast),
                 DEVICE_NOTIFY_WINDOW_HANDLE,
             )
@@ -173,47 +105,72 @@ if sys.platform == 'win32':
             if not self._hdevnotify:
                 error = ctypes.GetLastError()
                 logger.warning("RegisterDeviceNotification 失败 (error=%d)", error)
-                user32.DestroyWindow(ctypes.c_void_p(hidden_hwnd))
                 return
 
-            self._running = True
-            self._registered = True
-            self._msg_thread = threading.Thread(target=self._msg_loop, daemon=True)
-            self._msg_thread.start()
+            logger.info("RegisterDeviceNotification 成功 (hwnd=%s)", self._hwnd)
 
-            logger.info("USB 设备通知已注册 (hidden_hwnd=%s)", hidden_hwnd)
-
-        def _hidden_window_proc(self, hwnd, msg, wparam, lparam):
-            if msg == WM_DEVICECHANGE:
-                event_type = wparam
-                if event_type == DBT_DEVICEARRIVAL:
-                    try:
-                        device_name = self._parse_device_info(lparam)
-                        logger.debug("USB 设备插入: %s", device_name or "(未知)")
-                        self._on_device_change('arrival', device_name)
-                    except Exception as e:
-                        logger.debug("解析设备通知消息失败: %s", e)
-                    return 0
-                elif event_type == DBT_DEVICEREMOVECOMPLETE:
-                    try:
-                        device_name = self._parse_device_info(lparam)
-                        logger.debug("USB 设备拔出: %s", device_name or "(未知)")
-                        self._on_device_change('removal', device_name)
-                    except Exception as e:
-                        logger.debug("解析设备通知消息失败: %s", e)
-                    return 0
-                elif event_type == DBT_DEVNODES_CHANGED:
-                    logger.debug("DBT_DEVNODES_CHANGED 收到")
-                    self._on_device_change('devnodes_changed', '')
-                    return 0
-
-            user32 = ctypes.windll.user32
-            return user32.DefWindowProcW(
-                ctypes.c_void_p(hwnd),
-                ctypes.c_uint(msg),
-                ctypes.c_void_p(wparam),
-                ctypes.c_void_p(lparam),
+            WNDPROC = ctypes.WINFUNCTYPE(
+                ctypes.c_long,
+                ctypes.c_void_p,
+                ctypes.c_uint,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
             )
+
+            notifier = self
+            WindowsDeviceNotifier._instances[self._hwnd] = notifier
+
+            @WNDPROC
+            def new_window_proc(hwnd, msg, wparam, lparam):
+                if msg == WM_DEVICECHANGE:
+                    event_type = wparam
+                    if event_type == DBT_DEVICEARRIVAL:
+                        try:
+                            device_name = WindowsDeviceNotifier._parse_device_info(lparam)
+                            logger.debug("USB 设备插入: %s", device_name or "(未知)")
+                            notifier._on_device_change('arrival', device_name)
+                        except Exception as e:
+                            logger.debug("解析设备通知失败: %s", e)
+                        return 0
+                    elif event_type == DBT_DEVICEREMOVECOMPLETE:
+                        try:
+                            device_name = WindowsDeviceNotifier._parse_device_info(lparam)
+                            logger.debug("USB 设备拔出: %s", device_name or "(未知)")
+                            notifier._on_device_change('removal', device_name)
+                        except Exception as e:
+                            logger.debug("解析设备通知失败: %s", e)
+                        return 0
+                    elif event_type == DBT_DEVNODES_CHANGED:
+                        logger.debug("DBT_DEVNODES_CHANGED 收到")
+                        notifier._on_device_change('devnodes_changed', '')
+                        return 0
+
+                return notifier._user32.CallWindowProcW(
+                    notifier._old_proc,
+                    ctypes.c_void_p(hwnd),
+                    ctypes.c_uint(msg),
+                    ctypes.c_void_p(wparam),
+                    ctypes.c_void_p(lparam),
+                )
+
+            self._new_proc = new_window_proc
+
+            old_proc = self._user32.SetWindowLongPtrW(
+                ctypes.c_void_p(self._hwnd),
+                GWLP_WNDPROC,
+                ctypes.cast(new_window_proc, ctypes.c_void_p),
+            )
+            if old_proc == 0:
+                error = ctypes.GetLastError()
+                logger.warning("SetWindowLongPtrW 失败 (error=%d)", error)
+                self._user32.UnregisterDeviceNotification(self._hdevnotify)
+                self._hdevnotify = None
+                del WindowsDeviceNotifier._instances[self._hwnd]
+                return
+
+            self._old_proc = old_proc
+            self._registered = True
+            logger.info("窗口子类化成功，USB 设备通知已注册")
 
         @staticmethod
         def _parse_device_info(lparam):
@@ -226,44 +183,25 @@ if sys.platform == 'win32':
                 pass
             return ""
 
-        def _msg_loop(self):
-            user32 = ctypes.windll.user32
-            msg = _MSG()
-
-            while self._running:
-                ret = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-                if ret <= 0:
-                    if ret == -1:
-                        logger.error("GetMessage 返回错误")
-                    break
-                user32.TranslateMessage(ctypes.byref(msg))
-                user32.DispatchMessageW(ctypes.byref(msg))
-
         def unregister(self):
             if not self._registered:
                 return
 
-            self._running = False
-
-            user32 = ctypes.windll.user32
-            if self._hdevnotify:
-                user32.UnregisterDeviceNotification(self._hdevnotify)
-                self._hdevnotify = None
-
-            if self._hidden_hwnd:
-                user32.PostMessageW(
-                    ctypes.c_void_p(self._hidden_hwnd),
-                    0x0012,
-                    0,
-                    0,
-                )
-                if self._msg_thread and self._msg_thread.is_alive():
-                    self._msg_thread.join(timeout=1.0)
-
-            user32.DestroyWindow(ctypes.c_void_p(self._hidden_hwnd))
-            self._hidden_hwnd = None
-            self._registered = False
-            logger.debug("USB 设备通知已取消注册")
+            try:
+                if self._old_proc and self._user32:
+                    self._user32.SetWindowLongPtrW(
+                        ctypes.c_void_p(self._hwnd),
+                        GWLP_WNDPROC,
+                        self._old_proc,
+                    )
+                if self._hdevnotify and self._user32:
+                    self._user32.UnregisterDeviceNotification(self._hdevnotify)
+                self._registered = False
+                if self._hwnd in WindowsDeviceNotifier._instances:
+                    del WindowsDeviceNotifier._instances[self._hwnd]
+                logger.info("USB 设备通知已取消注册")
+            except Exception as e:
+                logger.error("取消注册设备通知失败: %s", e)
 
         def is_registered(self):
             return self._registered
