@@ -322,20 +322,25 @@ else:
                     'libusb-1.0.so.0',
                     '/usr/lib/x86_64-linux-gnu/libusb-1.0.so.0',
                     '/usr/lib/aarch64-linux-gnu/libusb-1.0.so.0',
+                    '/lib/x86_64-linux-gnu/libusb-1.0.so.0',
+                    '/lib/aarch64-linux-gnu/libusb-1.0.so.0',
                 ]
             elif system == 'Darwin':
                 candidates = [
                     'libusb-1.0.dylib',
-                    '/usr/local/lib/libusb-1.0.dylib',
                     '/opt/homebrew/lib/libusb-1.0.dylib',
+                    '/usr/local/lib/libusb-1.0.dylib',
+                    '/opt/local/lib/libusb-1.0.dylib',
+                    '/usr/lib/libusb-1.0.dylib',
                 ]
             else:
                 candidates = ['libusb-1.0.so']
 
             for candidate in candidates:
                 try:
-                    ctypes.CDLL(candidate)
-                    return candidate
+                    handle = ctypes.CDLL(candidate)
+                    if hasattr(handle, 'libusb_hotplug_register_callback'):
+                        return candidate
                 except OSError:
                     continue
 
@@ -356,12 +361,14 @@ else:
 
             if not hasattr(self._lib, 'libusb_hotplug_register_callback'):
                 logger.warning("libusb 版本不支持热插拔回调")
+                self._lib = None
                 return
 
             ctx = ctypes.c_void_p()
             rc = self._lib.libusb_init(ctypes.byref(ctx))
             if rc != 0:
                 logger.error("libusb_init 失败: %d", rc)
+                self._lib = None
                 return
             self._ctx = ctx
 
@@ -389,6 +396,8 @@ else:
             if rc != 0:
                 logger.error("libusb_hotplug_register_callback 失败: %d", rc)
                 self._lib.libusb_exit(self._ctx)
+                self._ctx = None
+                self._lib = None
                 return
 
             self._hotplug_cb_handle = cb_handle
@@ -422,9 +431,9 @@ else:
         def _event_loop(self):
             """libusb 事件循环（运行在后台线程中）"""
             timeout = ctypes.c_int(100)
-            completed = ctypes.c_int(0)
 
             while self._running:
+                completed = ctypes.c_int(0)
                 rc = self._lib.libusb_handle_events_timeout_completed(
                     self._ctx,
                     ctypes.byref(timeout),
@@ -459,12 +468,14 @@ else:
             if self._event_thread and self._event_thread.is_alive():
                 self._event_thread.join(timeout=1.0)
 
-            if self._lib:
+            if self._lib and self._ctx:
                 try:
                     self._lib.libusb_exit(self._ctx)
                 except Exception:
                     pass
 
+            self._ctx = None
+            self._lib = None
             self._registered = False
             logger.debug("libusb 热插拔事件监听已取消注册")
 
