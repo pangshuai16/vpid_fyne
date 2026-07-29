@@ -38,6 +38,20 @@ else:
 
 binaries = []
 
+# excludes：跳过项目用不到的标准库/三方库，减小打包体积、加快 PyInstaller 分析与启动期 zip 解包
+# 风险提示：以下模块确认未被本项目直接 import；如后续引入新依赖请同步维护本列表
+excludes = [
+    'PyQt5', 'PyQt6', 'PySide2', 'PySide6',
+    'fontconfig',
+    'numpy', 'scipy', 'pandas',
+    'matplotlib', 'PIL', 'cv2',
+    'pytest', 'pytest_asyncio',
+    'setuptools', 'pip', 'wheel', 'pkg_resources',
+    'lib2to3', 'pydoc_data',
+    'test', 'tests',
+    'email', 'html', 'http', 'xml', 'xmlrpc',
+]
+
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -46,10 +60,12 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=['runtime_hook.py'],
-    excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'fontconfig'],
+    excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
+    # 加快启动：noarchive=False 让 onefile 在解压后保留 PYZ，加快二次冷启动
+    noarchive=False,
 )
 
 # Exclude fontconfig-related libraries to use system ones on Linux

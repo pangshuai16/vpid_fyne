@@ -4,9 +4,8 @@
 """
 import sys
 import logging
-from typing import List, Tuple
 
-from ..device_info import USBDevice
+from ..device_info import USBDevice  # noqa: F401  保留供外部使用
 
 logger = logging.getLogger(__name__)
 
