@@ -1,6 +1,10 @@
-"""主窗口模块 - tkinter/ttk 实现"""
-import os
-import sys
+"""主窗口模块 - tkinter/ttk 实现
+
+启动期优化要点：
+- `__init__` 中仅构建最小窗口骨架，尽快调用 mainloop() 让首帧上屏
+- 窗口图标（512x512 PNG）解码开销较大，延后到主循环启动后异步加载
+- 首次扫描在后台线程中触发，不阻塞 UI
+"""
 import logging
 import threading
 import queue
@@ -115,13 +119,14 @@ class MainWindow(tk.Tk):
         self._event_scan_pending = False
 
         self._apply_style()
-        self._set_icon()
         self._build_toolbar()
         self._build_content()
         self._build_status_bar()
         self._build_menu()
 
-        self._register_device_notifier()
+        # 启动后台任务：图标加载（I/O + PNG 解码）+ 首次扫描
+        # 延后到事件循环空闲时执行，避免阻塞首帧绘制
+        self.after_idle(self._set_icon)
         self._start_scan()
         self._poll_scan_result()
 
@@ -149,7 +154,8 @@ class MainWindow(tk.Tk):
                   foreground=[("selected", COLOR_PRIMARY)])
 
     def _set_icon(self):
-        """设置窗口图标"""
+        """设置窗口图标（PNG 解码延后到事件循环空闲时执行）"""
+        import os
         try:
             base_dir = os.path.dirname(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

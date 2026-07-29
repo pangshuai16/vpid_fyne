@@ -1,7 +1,7 @@
 """设备列表面板 - 显示全部 USB 设备"""
 import tkinter as tk
 from tkinter import ttk
-from typing import List, Callable, Optional
+from typing import Callable
 
 from ..device_info import USBDevice
 from ..constants import COLOR_PRIMARY, COLOR_TEXT, COLOR_BG, COLOR_WHITE

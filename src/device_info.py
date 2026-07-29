@@ -1,5 +1,4 @@
 """USB 设备信息数据模型"""
-from typing import Dict, Tuple
 
 
 class USBDevice(object):

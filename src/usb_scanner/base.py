@@ -1,7 +1,6 @@
 """USB 扫描器抽象基类"""
 import re
 from abc import ABC, abstractmethod
-from typing import List, Tuple
 
 from ..constants import VID_PATTERN, PID_PATTERN
 
