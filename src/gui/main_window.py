@@ -23,6 +23,7 @@ from ..constants import (
     MIN_WINDOW_HEIGHT,
     APP_NAME,
     APP_VERSION,
+    AUTO_REFRESH_INTERVAL_MS,
     COLOR_PRIMARY,
     COLOR_SUCCESS,
     COLOR_DANGER,
@@ -117,6 +118,8 @@ class MainWindow(tk.Tk):
         self._result_queue = queue.Queue()
         self._device_notifier = None
         self._event_scan_pending = False
+        self._auto_refresh_enabled = True
+        self._auto_refresh_timer = None
 
         self._apply_style()
         self._build_toolbar()
@@ -129,6 +132,8 @@ class MainWindow(tk.Tk):
         self.after_idle(self._set_icon)
         self._start_scan()
         self._poll_scan_result()
+        if self._auto_refresh_enabled:
+            self._schedule_auto_refresh()
 
     def _apply_style(self):
         """配置 ttk 主题样式"""
@@ -430,18 +435,49 @@ class MainWindow(tk.Tk):
         self._update_status("已复制 {0}: {1}".format(field.upper(), value))
 
     def _on_stop_refresh(self):
-        """停止自动刷新（事件监听模式下无操作）"""
+        """停止自动刷新（轮询模式）"""
+        self._auto_refresh_enabled = False
+        if self._auto_refresh_timer is not None:
+            try:
+                self.after_cancel(self._auto_refresh_timer)
+            except Exception:
+                pass
+            self._auto_refresh_timer = None
         self._update_refresh_buttons()
+        self._update_status("自动刷新已停止")
 
     def _on_start_auto_refresh(self):
-        """开启自动刷新（事件监听模式下无操作）"""
+        """开启自动刷新（轮询模式）"""
+        if self._auto_refresh_enabled:
+            self._update_refresh_buttons()
+            return
+        self._auto_refresh_enabled = True
+        self._schedule_auto_refresh()
         self._update_refresh_buttons()
+        self._update_status("自动刷新已开启（间隔 {0} ms）".format(AUTO_REFRESH_INTERVAL_MS))
+
+    def _schedule_auto_refresh(self):
+        """注册下一次自动刷新 tick"""
+        if not self._auto_refresh_enabled:
+            return
+        self._auto_refresh_timer = self.after(
+            AUTO_REFRESH_INTERVAL_MS, self._auto_refresh_tick
+        )
+
+    def _auto_refresh_tick(self):
+        """定时器回调：触发一次扫描并续约"""
+        if not self._auto_refresh_enabled:
+            return
+        if not self._scanning:
+            self._start_scan()
+        self._schedule_auto_refresh()
 
     def _update_refresh_buttons(self):
         """根据自动刷新状态切换按钮显示
 
-        事件监听模式下，隐藏自动刷新相关按钮，只显示手动刷新和设为基准：
-        [手动刷新]  [设为基准]  ......  [复制]
+        轮询模式下，按钮随状态切换：
+        - 自动刷新开启时：显示 [停止刷新]  [手动刷新]  [设为基准]  ......  [复制]
+        - 自动刷新关闭时：显示 [自动刷新]  [手动刷新]  [设为基准]  ......  [复制]
         """
         self.stop_refresh_btn.grid_forget()
         self.auto_refresh_btn.grid_forget()
@@ -449,8 +485,12 @@ class MainWindow(tk.Tk):
         self.baseline_btn.grid_forget()
         self.copy_btn.grid_forget()
 
-        self.manual_refresh_btn.grid(row=0, column=1, padx=(0, 6))
-        self.baseline_btn.grid(row=0, column=2, padx=(0, 6))
+        if self._auto_refresh_enabled:
+            self.stop_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+        else:
+            self.auto_refresh_btn.grid(row=0, column=1, padx=(0, 6))
+        self.manual_refresh_btn.grid(row=0, column=2, padx=(0, 6))
+        self.baseline_btn.grid(row=0, column=3, padx=(0, 6))
         self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
     def _set_scan_buttons_state(self, state):
@@ -466,6 +506,13 @@ class MainWindow(tk.Tk):
 
     def destroy(self):
         """清理资源并关闭窗口"""
+        if self._auto_refresh_timer is not None:
+            try:
+                self.after_cancel(self._auto_refresh_timer)
+            except Exception:
+                pass
+            self._auto_refresh_timer = None
+        self._auto_refresh_enabled = False
         if self._device_notifier:
             try:
                 self._device_notifier.unregister()
@@ -519,13 +566,13 @@ class MainWindow(tk.Tk):
     def _show_about(self):
         messagebox.showinfo("关于",
             "{0} v{1}\n\n用于查看和管理系统中 USB 设备的详细信息\n\n"
-            "功能: 实时事件监听 / VID-PID 显示 / 序列号追踪 / 基准比对\n\n"
+            "功能: 定时轮询刷新 / VID-PID 显示 / 序列号追踪 / 基准比对\n\n"
             "(C) 2025 {0}".format(APP_NAME, APP_VERSION),
             parent=self)
 
     def _show_help(self):
         messagebox.showinfo("使用帮助",
-            "【实时监听】自动检测 USB 设备插拔，无需手动刷新\n"
+            "【自动刷新】按固定间隔自动扫描 USB 设备，可点击【停止刷新】暂停\n"
             "【手动刷新】点击一次立即刷新设备列表\n"
             "【设为基准】将当前列表设为基准，后续刷新自动比对\n"
             "【复制】选中设备后 Ctrl+C 复制完整信息\n"
