@@ -9,6 +9,7 @@ import logging
 import threading
 import queue
 from datetime import datetime
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -117,7 +118,8 @@ class MainWindow(tk.Tk):
         self._scanning = False
         self._result_queue = queue.Queue()
         self._device_notifier = None
-        self._event_scan_pending = False
+        self._event_scan_pending_count = 0
+        self._scan_start_time = 0.0
         self._auto_refresh_enabled = True
         self._auto_refresh_timer = None
 
@@ -131,7 +133,6 @@ class MainWindow(tk.Tk):
         # 延后到事件循环空闲时执行，避免阻塞首帧绘制
         self.after_idle(self._set_icon)
         self._start_scan()
-        self._poll_scan_result()
         if self._auto_refresh_enabled:
             self._schedule_auto_refresh()
 
@@ -314,7 +315,7 @@ class MainWindow(tk.Tk):
         """USB 设备插拔事件回调（在 tkinter 主线程中执行）"""
         if event_type in ('arrival', 'removal', 'devnodes_changed'):
             if self._scanning:
-                self._event_scan_pending = True
+                self._event_scan_pending_count += 1
                 return
             self._start_scan()
 
@@ -325,7 +326,9 @@ class MainWindow(tk.Tk):
         if self._scanning:
             return
         self._scanning = True
+        self._scan_start_time = time.time()
         self._update_status("正在扫描 USB 设备...")
+        self._poll_scan_result()
 
         thread = threading.Thread(target=self._scan_worker, daemon=True)
         thread.start()
@@ -340,18 +343,27 @@ class MainWindow(tk.Tk):
             self._result_queue.put(("error", []))
 
     def _poll_scan_result(self):
-        """主线程轮询扫描结果（线程安全）"""
+        """主线程轮询扫描结果（线程安全）
+
+        仅在扫描进行时由 _start_scan 启动轮询，
+        结果到达后自动停止，避免空轮询浪费。
+        """
         try:
             status, devices = self._result_queue.get_nowait()
             if status == "ok":
                 self._update_device_list(devices)
             self._scanning = False
-            if self._event_scan_pending:
-                self._event_scan_pending = False
+            if self._event_scan_pending_count > 0:
+                self._event_scan_pending_count -= 1
                 self._start_scan()
         except queue.Empty:
-            pass
-        self.after(50, self._poll_scan_result)
+            # 扫描超时保护（10秒无响应自动重置）
+            if time.time() - self._scan_start_time > 10:
+                logger.error("扫描超时，重置扫描状态")
+                self._scanning = False
+                self._update_status("扫描超时，请重试")
+                return
+            self.after(50, self._poll_scan_result)
 
     def _update_device_list(self, devices):
         """更新设备列表显示
@@ -393,10 +405,6 @@ class MainWindow(tk.Tk):
 
             self.device_count_label.config(text="{0} 个设备已连接{1}".format(count, change))
             self._update_status("最后刷新: {0} | 设备数: {1} → {2}".format(ts, prev_count, count))
-        else:
-            # 数据无变化，仅更新状态栏时间戳
-            ts = datetime.now().strftime("%H:%M:%S")
-            self._update_status("最后刷新: {0} | 设备数: {1} (无变化)".format(ts, len(devices)))
 
     # ---- 用户操作 ----
 
