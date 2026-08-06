@@ -70,14 +70,22 @@ class _ChangeSection(ttk.Frame):
         self.count_label.config(text=str(len(self.devices)))
 
     def _populate(self):
+        # 保存当前选中设备的唯一标识
+        selected = self.get_selected_device()
+        selected_key = selected.get_unique_key() if selected else None
+
         for item in self.tree.get_children():
             self.tree.delete(item)
         for device in self.devices:
-            self.tree.insert("", tk.END, values=(
+            item_id = self.tree.insert("", tk.END, values=(
                 device.get_formatted_vid(),
                 device.get_formatted_pid(),
                 device.get_display_name(),
             ))
+            # 恢复之前的选中状态
+            if selected_key and device.get_unique_key() == selected_key:
+                self.tree.selection_set(item_id)
+                self.tree.see(item_id)
 
     def get_selected_device(self):
         sel = self.tree.selection()

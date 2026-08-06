@@ -6,6 +6,7 @@
 - 首次扫描在后台线程中触发，不阻塞 UI
 """
 import logging
+import sys
 import threading
 import queue
 from datetime import datetime
@@ -327,7 +328,9 @@ class MainWindow(tk.Tk):
             return
         self._scanning = True
         self._scan_start_time = time.time()
-        self._update_status("正在扫描 USB 设备...")
+        # 仅在非自动刷新时更新状态栏，避免 100ms 间隔下状态栏高频闪烁
+        if not self._auto_refresh_enabled or not self.devices:
+            self._update_status("正在扫描 USB 设备...")
         self._poll_scan_result()
 
         thread = threading.Thread(target=self._scan_worker, daemon=True)
