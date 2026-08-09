@@ -12,7 +12,7 @@ class DeviceListPanel(ttk.Frame):
 
     COLUMNS = ("vid", "pid", "name", "path")
     HEADERS = ("VID", "PID", "设备名称", "路径")
-    WIDTHS = (70, 70, 200, 300)
+    WIDTHS = (55, 55, 180, 300)
 
     def __init__(self, parent, on_select=None):
         super(DeviceListPanel, self).__init__(parent)
@@ -46,7 +46,8 @@ class DeviceListPanel(ttk.Frame):
         for col, heading, width in zip(self.COLUMNS, self.HEADERS, self.WIDTHS):
             self.tree.heading(col, text=heading)
             stretch = tk.YES if col in ("name", "path") else tk.NO
-            self.tree.column(col, width=width, minwidth=50, stretch=stretch)
+            anchor = tk.CENTER if col in ("vid", "pid") else tk.W
+            self.tree.column(col, width=width, minwidth=50, stretch=stretch, anchor=anchor)
 
         vsb = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -63,8 +64,8 @@ class DeviceListPanel(ttk.Frame):
 
     def update_devices(self, devices):
         self.devices = sorted(devices, key=lambda d: (
-            d.get_formatted_vid(),
             d.get_formatted_pid(),
+            d.get_formatted_vid(),
             d.get_display_name(),
         ))
         self._populate()
