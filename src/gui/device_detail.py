@@ -1,12 +1,10 @@
 """设备变化面板 - 显示新增和移除的设备"""
 import tkinter as tk
 from tkinter import ttk
-from typing import List, Callable, Optional
 
-from ..device_info import USBDevice
 from ..constants import (
     COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_DANGER, COLOR_DANGER_BG,
-    COLOR_PRIMARY, COLOR_TEXT, COLOR_BORDER, COLOR_WHITE,
+    COLOR_BORDER, COLOR_WHITE, MONOSPACE_FONT_FAMILY,
 )
 
 
@@ -29,12 +27,12 @@ class _ChangeSection(ttk.Frame):
 
         tk.Label(
             header_frame, text=title,
-            font=("Segoe UI", 9, "bold"), fg=text_color, bg=header_bg
+            font=(MONOSPACE_FONT_FAMILY, 9, "bold"), fg=text_color, bg=header_bg
         ).pack(side=tk.LEFT, padx=6, pady=3)
 
         self.count_label = tk.Label(
             header_frame, text="0",
-            font=("Segoe UI", 9, "bold"), fg=text_color, bg=header_bg
+            font=(MONOSPACE_FONT_FAMILY, 9, "bold"), fg=text_color, bg=header_bg
         )
         self.count_label.pack(side=tk.RIGHT, padx=6, pady=3)
 
