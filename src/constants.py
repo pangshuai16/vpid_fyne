@@ -1,7 +1,7 @@
 """应用程序常量配置"""
 import os
 
-APP_NAME = "USB 设备管理器"
+APP_NAME = "USB设备ID查看"
 APP_VERSION = "2.0.0"
 APP_AUTHOR = "USB Manager"
 

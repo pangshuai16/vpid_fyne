@@ -128,7 +128,7 @@ class MainWindow(tk.Tk):
         self._build_toolbar()
         self._build_content()
         self._build_status_bar()
-        self._build_menu()
+        self._bind_shortcuts()
 
         # 启动后台任务：图标加载（I/O + PNG 解码）+ 首次扫描
         # 延后到事件循环空闲时执行，避免阻塞首帧绘制
@@ -256,34 +256,8 @@ class MainWindow(tk.Tk):
         )
         self.baseline_status_label.pack(side=tk.RIGHT)
 
-    def _build_menu(self):
-        """构建菜单栏"""
-        menubar = tk.Menu(self)
-
-        file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="刷新设备列表", command=self._start_scan, accelerator="Ctrl+R")
-        file_menu.add_command(label="设为基准", command=self._on_set_baseline)
-        file_menu.add_separator()
-        file_menu.add_command(label="退出", command=self.destroy)
-        menubar.add_cascade(label="文件", menu=file_menu)
-
-        edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="复制设备信息", command=self._on_copy, accelerator="Ctrl+C")
-        edit_menu.add_command(label="复制 VID", command=lambda: self._copy_field("vid"))
-        edit_menu.add_command(label="复制 PID", command=lambda: self._copy_field("pid"))
-        menubar.add_cascade(label="编辑", menu=edit_menu)
-
-        view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label="手动刷新", command=self._start_scan, accelerator="Ctrl+R")
-        menubar.add_cascade(label="视图", menu=view_menu)
-
-        help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="使用帮助", command=self._show_help)
-        help_menu.add_command(label="关于", command=self._show_about)
-        menubar.add_cascade(label="帮助", menu=help_menu)
-
-        self.config(menu=menubar)
-
+    def _bind_shortcuts(self):
+        """绑定键盘快捷键（不创建菜单栏）"""
         self.bind("<Control-r>", lambda e: self._start_scan())
         self.bind("<Control-R>", lambda e: self._start_scan())
         self.bind("<Control-c>", lambda e: self._on_copy())
