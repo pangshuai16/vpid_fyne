@@ -6,7 +6,6 @@
 - 首次扫描在后台线程中触发，不阻塞 UI
 """
 import logging
-import sys
 import threading
 import queue
 from datetime import datetime
@@ -14,7 +13,6 @@ import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from ..device_info import USBDevice
 from ..usb_scanner import scan_usb_devices, compare_devices
 from .device_list import DeviceListPanel
 from .device_detail import DeviceChangePanel
@@ -34,11 +32,13 @@ from ..constants import (
     COLOR_BORDER,
     COLOR_BG,
     COLOR_WHITE,
+    UI_FONT_FAMILY,
+    MONOSPACE_FONT_FAMILY,
 )
 
 logger = logging.getLogger(__name__)
 
-_BTN_FONT = ("Segoe UI", 9, "bold")
+_BTN_FONT = (UI_FONT_FAMILY, 9, "bold")
 _BTN_PADX = 14
 _BTN_PADY = 4
 
@@ -151,11 +151,11 @@ class MainWindow(tk.Tk):
                         foreground=COLOR_TEXT,
                         fieldbackground=COLOR_WHITE,
                         rowheight=26,
-                        font=("Segoe UI", 10))
+                        font=(MONOSPACE_FONT_FAMILY, 10))
         style.configure("Treeview.Heading",
                         background=COLOR_BG,
                         foreground=COLOR_TEXT,
-                        font=("Segoe UI", 9, "bold"))
+                        font=(UI_FONT_FAMILY, 9, "bold"))
         style.map("Treeview",
                   background=[("selected", "#E3F2FD")],
                   foreground=[("selected", COLOR_PRIMARY)])
@@ -194,7 +194,7 @@ class MainWindow(tk.Tk):
 
         self.device_count_label = tk.Label(
             toolbar, text="0 个设备已连接",
-            font=("Segoe UI", 11, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
+            font=(UI_FONT_FAMILY, 11, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
         )
         self.device_count_label.grid(row=0, column=0, padx=(0, 12))
 
@@ -244,14 +244,14 @@ class MainWindow(tk.Tk):
 
         self.status_label = tk.Label(
             status_frame, text="就绪",
-            font=("Segoe UI", 9), fg=COLOR_TEXT_SECONDARY, bg=COLOR_WHITE,
+            font=(UI_FONT_FAMILY, 9), fg=COLOR_TEXT_SECONDARY, bg=COLOR_WHITE,
             anchor=tk.W
         )
         self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         self.baseline_status_label = tk.Label(
             status_frame, text="",
-            font=("Segoe UI", 9), fg=COLOR_TEXT_SECONDARY, bg=COLOR_WHITE,
+            font=(UI_FONT_FAMILY, 9), fg=COLOR_TEXT_SECONDARY, bg=COLOR_WHITE,
             anchor=tk.E
         )
         self.baseline_status_label.pack(side=tk.RIGHT)
@@ -262,29 +262,6 @@ class MainWindow(tk.Tk):
         self.bind("<Control-R>", lambda e: self._start_scan())
         self.bind("<Control-c>", lambda e: self._on_copy())
         self.bind("<Control-C>", lambda e: self._on_copy())
-
-    def _register_device_notifier(self):
-        """注册 USB 设备插拔事件监听（跨平台）
-
-        Windows: 使用 RegisterDeviceNotification API（独立隐藏窗口）
-        Linux/macOS: 使用 libusb 热插拔回调 API
-        """
-        try:
-            if sys.platform == 'win32':
-                from ..usb_scanner.device_notifier import WindowsDeviceNotifier
-                self._device_notifier = WindowsDeviceNotifier(
-                    None,
-                    self._on_usb_device_change,
-                )
-            else:
-                from ..usb_scanner.device_notifier import LibUSBDeviceNotifier
-                self._device_notifier = LibUSBDeviceNotifier(
-                    None,
-                    self._on_usb_device_change,
-                )
-            logger.info("USB 设备事件监听已注册 (%s)", sys.platform)
-        except Exception as e:
-            logger.warning("注册 USB 设备事件监听失败: %s", e)
 
     def _on_usb_device_change(self, event_type, device_name):
         """USB 设备插拔事件回调（在 tkinter 主线程中执行）"""
@@ -408,17 +385,6 @@ class MainWindow(tk.Tk):
         else:
             messagebox.showinfo("提示", "请先选择一个设备", parent=self)
 
-    def _copy_field(self, field):
-        """复制特定字段"""
-        device = self._get_selected_device()
-        if not device:
-            return
-        mapping = {"vid": device.get_formatted_vid, "pid": device.get_formatted_pid}
-        value = mapping.get(field, lambda: "N/A")()
-        self.clipboard_clear()
-        self.clipboard_append(value)
-        self._update_status("已复制 {0}: {1}".format(field.upper(), value))
-
     def _on_stop_refresh(self):
         """停止自动刷新（轮询模式）"""
         self._auto_refresh_enabled = False
@@ -478,17 +444,6 @@ class MainWindow(tk.Tk):
         self.baseline_btn.grid(row=0, column=3, padx=(0, 6))
         self.copy_btn.grid(row=0, column=5, padx=(0, 6))
 
-    def _set_scan_buttons_state(self, state):
-        """设置扫描相关按钮的启用/禁用状态
-
-        注意：仅修改视觉状态（fg/cursor），不修改 bg，避免触发按钮的重绘效果。
-        """
-        for btn in (self.manual_refresh_btn,):
-            if state == tk.DISABLED:
-                btn.config(fg="#CCCCCC", cursor="no")
-            else:
-                btn.config(fg=COLOR_WHITE, cursor="hand2")
-
     def destroy(self):
         """清理资源并关闭窗口"""
         if self._auto_refresh_timer is not None:
@@ -547,19 +502,3 @@ class MainWindow(tk.Tk):
     def _update_status(self, message):
         """更新状态栏"""
         self.status_label.config(text=message)
-
-    def _show_about(self):
-        messagebox.showinfo("关于",
-            "{0} v{1}\n\n用于查看和管理系统中 USB 设备的详细信息\n\n"
-            "功能: 定时轮询刷新 / VID-PID 显示 / 序列号追踪 / 基准比对\n\n"
-            "(C) 2025 {0}".format(APP_NAME, APP_VERSION),
-            parent=self)
-
-    def _show_help(self):
-        messagebox.showinfo("使用帮助",
-            "【自动刷新】按固定间隔自动扫描 USB 设备，可点击【停止刷新】暂停\n"
-            "【手动刷新】点击一次立即刷新设备列表\n"
-            "【设为基准】将当前列表设为基准，后续刷新自动比对\n"
-            "【复制】选中设备后 Ctrl+C 复制完整信息\n"
-            "【设备变化】左侧=全部设备，右侧上方=新增(绿)，右侧下方=移除(红)",
-            parent=self)

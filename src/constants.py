@@ -1,5 +1,6 @@
 """应用程序常量配置"""
 import os
+import sys
 
 APP_NAME = "USB设备ID查看"
 APP_VERSION = "2.0.0"
@@ -31,3 +32,20 @@ COLOR_TEXT_SECONDARY = "#909399"
 COLOR_BORDER = "#DCDFE6"
 COLOR_BG = "#F5F7FA"
 COLOR_WHITE = "#FFFFFF"
+
+# 跨平台字体族：等宽字体，用于 VID/PID 等数据展示
+# 按优先级列出各平台最佳等宽字体，tkinter 会自动 fallback 到可用字体
+if sys.platform == "darwin":
+    MONOSPACE_FONT_FAMILY = "Menlo"
+elif sys.platform == "win32":
+    MONOSPACE_FONT_FAMILY = "Consolas"
+else:
+    MONOSPACE_FONT_FAMILY = "DejaVu Sans Mono"
+
+# 跨平台 UI 字体族
+if sys.platform == "darwin":
+    UI_FONT_FAMILY = ".AppleSystemUIFont"
+elif sys.platform == "win32":
+    UI_FONT_FAMILY = "Segoe UI"
+else:
+    UI_FONT_FAMILY = "sans-serif"

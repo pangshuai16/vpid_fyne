@@ -50,6 +50,11 @@ excludes = [
     'lib2to3', 'pydoc_data',
     'test', 'tests',
     'email', 'html', 'http', 'xml', 'xmlrpc',
+    'sqlite3', 'dbm',  # 数据库相关
+    'socket', 'ssl',  # 网络相关（项目不需要）
+    'concurrent', 'asyncio',  # 并发相关
+    'curses', 'readline',  # 终端交互
+    'unittest', 'doctest',  # 测试相关
 ]
 
 a = Analysis(
@@ -85,7 +90,7 @@ if sys.platform == 'darwin':
         a.datas,
         name='vpid_viewer',
         debug=False,
-        strip=False,
+        strip=True,
         upx=True,
         console=False,
         icon='assets/app-icon.icns',
@@ -119,7 +124,7 @@ else:
         a.datas,
         name='vpid_viewer',
         debug=False,
-        strip=False,
+        strip=True,
         upx=True,
         console=False,
         icon='assets/app-icon-linux.png',

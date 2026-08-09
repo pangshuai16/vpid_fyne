@@ -1,10 +1,8 @@
 """设备列表面板 - 显示全部 USB 设备"""
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable
 
-from ..device_info import USBDevice
-from ..constants import COLOR_PRIMARY, COLOR_TEXT, COLOR_BG, COLOR_WHITE
+from ..constants import COLOR_PRIMARY, COLOR_TEXT, COLOR_BG, COLOR_WHITE, MONOSPACE_FONT_FAMILY
 
 
 class DeviceListPanel(ttk.Frame):
@@ -26,12 +24,12 @@ class DeviceListPanel(ttk.Frame):
 
         tk.Label(
             header_frame, text="全部 USB 设备",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
+            font=(MONOSPACE_FONT_FAMILY, 10, "bold"), fg=COLOR_TEXT, bg=COLOR_WHITE
         ).pack(side=tk.LEFT)
 
         self.count_label = tk.Label(
             header_frame, text="0",
-            font=("Segoe UI", 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_WHITE
+            font=(MONOSPACE_FONT_FAMILY, 10, "bold"), fg=COLOR_PRIMARY, bg=COLOR_WHITE
         )
         self.count_label.pack(side=tk.RIGHT)
 
