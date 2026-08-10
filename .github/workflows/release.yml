@@ -215,7 +215,7 @@ jobs:
           retention-days: 30
 
   build-macos-amd64:
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -239,16 +239,23 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Rosetta 2 and create x86_64 venv
         if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller==6.11.0
+          softwareupdate --install-rosetta --agree-to-license || true
+          arch -x86_64 python3.11 -m venv venv-x86_64
+          echo "$PWD/venv-x86_64/bin" >> $GITHUB_PATH
 
-      - name: Build with PyInstaller
+      - name: Install dependencies (x86_64)
         if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
-        run: pyinstaller vpid_viewer.spec --clean --noconfirm
+        run: |
+          arch -x86_64 pip install --upgrade pip
+          arch -x86_64 pip install -r requirements.txt
+          arch -x86_64 pip install pyinstaller==6.11.0
+
+      - name: Build with PyInstaller (x86_64)
+        if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
+        run: arch -x86_64 pyinstaller vpid_viewer.spec --clean --noconfirm
 
       - name: Rename artifact
         if: steps.cache-artifact-macosamd64.outputs.cache-hit != 'true'
