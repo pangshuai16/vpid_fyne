@@ -38,24 +38,9 @@ else:
 
 binaries = []
 
-# excludes：跳过项目用不到的标准库/三方库，减小打包体积、加快 PyInstaller 分析与启动期 zip 解包
-# 风险提示：以下模块确认未被本项目直接 import；如后续引入新依赖请同步维护本列表
-excludes = [
-    'PyQt5', 'PyQt6', 'PySide2', 'PySide6',
-    'fontconfig',
-    'numpy', 'scipy', 'pandas',
-    'matplotlib', 'PIL', 'cv2',
-    'pytest', 'pytest_asyncio',
-    'setuptools', 'pip', 'wheel', 'pkg_resources',
-    'lib2to3', 'pydoc_data',
-    'test', 'tests',
-    'email', 'html', 'http', 'xml', 'xmlrpc',
-    'sqlite3', 'dbm',  # 数据库相关
-    'socket', 'ssl',  # 网络相关（项目不需要）
-    'concurrent', 'asyncio',  # 并发相关
-    'curses', 'readline',  # 终端交互
-    'unittest', 'doctest',  # 测试相关
-]
+# 不排除任何依赖项，确保程序完整性
+# 体积压缩通过 UPX 和 strip 实现，不以牺牲功能为代价
+excludes = []
 
 a = Analysis(
     ['main.py'],
@@ -72,12 +57,6 @@ a = Analysis(
     # 加快启动：noarchive=False 让 onefile 在解压后保留 PYZ，加快二次冷启动
     noarchive=False,
 )
-
-# Exclude fontconfig-related libraries to use system ones on Linux
-if sys.platform.startswith('linux'):
-    a.binaries = [x for x in a.binaries if not x[0].startswith('libfontconfig')]
-    a.binaries = [x for x in a.binaries if not x[0].startswith('libfreetype')]
-    a.binaries = [x for x in a.binaries if not x[0].startswith('libexpat')]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
