@@ -19,7 +19,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist/vpid_viewer_windows_x86.exe
-          key: ${{ runner.os }}-artifact-winx86-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          key: ${{ runner.os }}-artifact-winx86-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'assets/**') }}
           restore-keys: |
             ${{ runner.os }}-artifact-winx86-
 
@@ -116,7 +116,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist/vpid_viewer_windows_arm64.exe
-          key: ${{ runner.os }}-artifact-winarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          key: ${{ runner.os }}-artifact-winarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'assets/**') }}
           restore-keys: |
             ${{ runner.os }}-artifact-winarm64-
 
@@ -225,7 +225,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist/vpid_viewer_macos_amd64.app
-          key: ${{ runner.os }}-artifact-macosamd64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          key: ${{ runner.os }}-artifact-macosamd64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'assets/**') }}
           restore-keys: |
             ${{ runner.os }}-artifact-macosamd64-
 
@@ -274,7 +274,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist/vpid_viewer_macos_arm64.app
-          key: ${{ runner.os }}-artifact-macosarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'icons/**') }}
+          key: ${{ runner.os }}-artifact-macosarm64-${{ hashFiles('src/**', 'vpid_viewer.spec', 'requirements.txt', '.python-version', 'assets/**') }}
           restore-keys: |
             ${{ runner.os }}-artifact-macosarm64-
 
