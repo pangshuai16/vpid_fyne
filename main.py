@@ -31,6 +31,31 @@ def _setup_logging():
     )
 
 
+def _create_splash():
+    """创建启动闪屏，尽量早地反馈「正在加载」状态"""
+    from src.gui.splash_screen import SplashScreen
+    splash = SplashScreen()
+    splash.set_message("正在加载依赖库...")
+    return splash
+
+
+def _show_fatal_error(exc):
+    """展示致命的启动失败错误；闪屏已创建时先关闭它再弹错"""
+    import traceback
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror(
+            "Fatal Error",
+            "应用程序启动失败\n\n{0}".format(traceback.format_exc())
+        )
+        root.destroy()
+    except Exception:
+        sys.stderr.write("Fatal error: {0}\n{1}\n".format(str(exc), traceback.format_exc()))
+
+
 def main():
     """应用主入口"""
     # PyInstaller 打包后必须尽早调用，否则 Windows 下多进程会无限重启
@@ -41,26 +66,26 @@ def main():
     _ensure_path()
     _setup_logging()
 
+    splash = None
     try:
+        # 先显示闪屏，再加载重型依赖，缩短「运行 → 看到界面」的空白等待期
+        splash = _create_splash()
         from src.gui.main_window import MainWindow
-        from src.constants import APP_NAME  # noqa: F401  保留以便未来引用
+        splash.set_message("正在初始化界面...")
+
+        # 必须关闭闪屏后再创建主窗口，避免双 Tk root 冲突
+        splash.close()
+        splash = None
 
         app = MainWindow()
         app.mainloop()
     except Exception as e:
-        import traceback
-        try:
-            import tkinter as tk
-            from tkinter import messagebox
-            root = tk.Tk()
-            root.withdraw()
-            messagebox.showerror(
-                "Fatal Error",
-                "应用程序启动失败\n\n{0}".format(traceback.format_exc())
-            )
-            root.destroy()
-        except Exception:
-            sys.stderr.write("Fatal error: {0}\n{1}\n".format(str(e), traceback.format_exc()))
+        if splash is not None:
+            try:
+                splash.close()
+            except Exception:
+                pass
+        _show_fatal_error(e)
         sys.exit(1)
 
 
