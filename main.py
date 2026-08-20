@@ -7,6 +7,14 @@
 """
 import sys
 
+# PyInstaller 启动加载屏（bootloader splash）：
+# 仅在打包时配置了 splash 的 exe 里才能导入；源码运行会 ImportError。
+# logo 图片在「点击 exe 的瞬间」即由引导程序展示，覆盖解压/初始化阶段。
+try:
+    import pyi_splash
+except ImportError:
+    pyi_splash = None
+
 
 def _ensure_path():
     """确保项目根目录在 sys.path 中（仅源码运行场景需要）"""
@@ -43,12 +51,19 @@ def main():
 
     try:
         from src.gui.main_window import MainWindow
-        from src.constants import APP_NAME  # noqa: F401  保留以便未来引用
 
         app = MainWindow()
+        # 主窗口已就绪，关闭 bootloader 加载屏，直接进入主界面
+        if pyi_splash is not None:
+            pyi_splash.close()
         app.mainloop()
     except Exception as e:
         import traceback
+        if pyi_splash is not None:
+            try:
+                pyi_splash.close()
+            except Exception:
+                pass
         try:
             import tkinter as tk
             from tkinter import messagebox
