@@ -63,22 +63,35 @@ a = Analysis(
 # 启动加载屏：在「双击 exe 的瞬间」由引导程序展示 assets/splash.png，
 # 覆盖 PyInstaller 解压与 Python/Tk 初始化这一真正耗时的阶段。
 # 主窗口就绪后在 main.py 中通过 pyi_splash.close() 关闭。
-splash = Splash(
+def _tkinter_available():
+    """Splash 需要 Tcl/Tk；构建环境缺 tkinter 时退化为不启用加载屏，避免整条构建失败"""
+    try:
+        import tkinter  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+config_splash = Splash(
     'assets/splash.png',
     binaries=a.binaries,
     datas=a.datas,
     always_on_top=True,
-)
+) if _tkinter_available() else None
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# EXE 将 Splash 对象作为【位置参数】嵌入 TOC（4.10 走 Target 分支、6.11 走 Splash 分支），
+# splash= 关键字参数会被忽略。仅当加载屏可用时才传入，空则完全不带 splash，
+# 兼容缺失 tkinter 的构建环境。
+_exe_args = [pyz]
+if config_splash is not None:
+    _exe_args.append(config_splash)
+_exe_args += [a.scripts, a.binaries, a.zipfiles, a.datas]
+
 if sys.platform == 'darwin':
     exe = EXE(
-        pyz,
-        a.scripts,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
+        *_exe_args,
         name='vpid_viewer',
         debug=False,
         strip=True,
@@ -94,31 +107,21 @@ if sys.platform == 'darwin':
     )
 elif sys.platform == 'win32':
     exe = EXE(
-        pyz,
-        a.scripts,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
+        *_exe_args,
         name='vpid_viewer',
         debug=False,
         strip=False,
         upx=True,
         console=False,
-        splash=splash,
         icon='assets/app-icon.ico',
     )
 else:
     exe = EXE(
-        pyz,
-        a.scripts,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
+        *_exe_args,
         name='vpid_viewer',
         debug=False,
         strip=True,
         upx=True,
         console=False,
-        splash=splash,
         icon='assets/app-icon-linux.png',
     )
