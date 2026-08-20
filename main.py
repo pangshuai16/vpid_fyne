@@ -32,11 +32,9 @@ def _setup_logging():
 
 
 def _create_splash():
-    """创建启动闪屏，尽量早地反馈「正在加载」状态"""
+    """创建启动闪屏，极速显示「正在启动中...」提示"""
     from src.gui.splash_screen import SplashScreen
-    splash = SplashScreen()
-    splash.set_message("正在加载依赖库...")
-    return splash
+    return SplashScreen()
 
 
 def _show_fatal_error(exc):
@@ -71,7 +69,6 @@ def main():
         # 先显示闪屏，再加载重型依赖，缩短「运行 → 看到界面」的空白等待期
         splash = _create_splash()
         from src.gui.main_window import MainWindow
-        splash.set_message("正在初始化界面...")
 
         # 必须关闭闪屏后再创建主窗口，避免双 Tk root 冲突
         splash.close()

@@ -82,7 +82,7 @@ class SplashScreen(tk.Tk):
         self._progress.pack(fill="x")
         self._progress.start(12)
 
-        self.set_message("正在启动...")
+        self.set_message("正在启动中...")
 
     def set_message(self, text):
         """更新加载提示文本并立即重绘（在 import 阻塞期间也能刷新）"""
