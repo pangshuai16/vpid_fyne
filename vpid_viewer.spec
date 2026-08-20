@@ -1,6 +1,8 @@
 import sys
 import os
 
+from PyInstaller.building.splash import Splash
+
 block_cipher = None
 
 datas = [
@@ -58,6 +60,16 @@ a = Analysis(
     noarchive=False,
 )
 
+# 启动加载屏：在「双击 exe 的瞬间」由引导程序展示 assets/splash.png，
+# 覆盖 PyInstaller 解压与 Python/Tk 初始化这一真正耗时的阶段。
+# 主窗口就绪后在 main.py 中通过 pyi_splash.close() 关闭。
+splash = Splash(
+    'assets/splash.png',
+    binaries=a.binaries,
+    datas=a.datas,
+    always_on_top=True,
+)
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 if sys.platform == 'darwin':
@@ -92,6 +104,7 @@ elif sys.platform == 'win32':
         strip=False,
         upx=True,
         console=False,
+        splash=splash,
         icon='assets/app-icon.ico',
     )
 else:
@@ -106,5 +119,6 @@ else:
         strip=True,
         upx=True,
         console=False,
+        splash=splash,
         icon='assets/app-icon-linux.png',
     )
