@@ -70,11 +70,12 @@ def main():
         splash = _create_splash()
         from src.gui.main_window import MainWindow
 
-        # 必须关闭闪屏后再创建主窗口，避免双 Tk root 冲突
+        # 主窗口构建往往占用启动的大部分时间。
+        # 关键点：在关闭闪屏【之前】构建主窗口，让闪屏覆盖整个构建期，
+        # 避免「闪屏关闭 → 主窗口上屏」之间的空白等待。
+        app = MainWindow()
         splash.close()
         splash = None
-
-        app = MainWindow()
         app.mainloop()
     except Exception as e:
         if splash is not None:
