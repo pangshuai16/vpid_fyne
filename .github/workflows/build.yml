@@ -114,6 +114,7 @@ jobs:
           options: ${{ matrix.platform_arg }} -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
             # Use system Python 3.9 from Rocky Linux 8 (glibc 2.28)
+            # 注：不装 upx —— PyInstaller 6.x 在非 Windows 平台禁用 UPX；Windows 为兼容 WinXP 也不启用
             dnf install -y python39 python39-pip python39-devel python39-tkinter gcc git
             python3.9 --version
             python3.9 -m pip install --upgrade pip setuptools wheel

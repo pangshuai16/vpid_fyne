@@ -40,9 +40,18 @@ else:
 
 binaries = []
 
-# 不排除任何依赖项，确保程序完整性
-# 体积压缩通过 UPX 和 strip 实现，不以牺牲功能为代价
-excludes = []
+# 排除运行期不需要的标准库模块以减小归档体积。
+# 注：UPX 实际不生效 —— PyInstaller 6.x 在非 Windows 禁用 UPX，Windows 为兼容 WinXP 不启用；
+# 有效压缩来自这里的 excludes + Linux 的 strip。
+excludes = [
+    'tkinter.test',  # Tkinter 自带测试套件，体积大且运行期不需要
+    'unittest',
+    'doctest',
+    'pydoc',
+    'pydoc_data',
+    'lib2to3',
+    'sqlite3',
+]
 
 a = Analysis(
     ['main.py'],
