@@ -35,14 +35,21 @@ if(WIN32)
   # 核心符号链接期 undefined。这里从 include dir 反推 gcc_lib 目录并补上主库。
   list(GET wxWidgets_INCLUDE_DIRS 0 _wxInc0)
   get_filename_component(_wxLibDir "${_wxInc0}" DIRECTORY)
-  find_library(VPID_WX_MONO NAMES wxmsw31u libwxmsw31u HINTS "${_wxLibDir}")
-  if(VPID_WX_MONO)
-    set(wxWidgets_LIBRARIES ${VPID_WX_MONO} ${wxWidgets_LIBRARIES})
-    message(STATUS ">>> linked monolithic wx core lib: ${VPID_WX_MONO}")
-  else()
-    message(FATAL_ERROR "Could not find monolithic libwxmsw31u in ${_wxLibDir}")
+  # 静态 monolithic 安装把所有 .a 放在 <root>/lib/gcc_lib。FindwxWidgets 经
+  # wx-config 只解析出辅助库（png/tiff/jpeg/zlib/regex/expat），漏掉核心库，
+  # 导致 wxApp/wxFrame 等链接期 undefined。这里改为收集 gcc_lib 下的全部 .a
+  # 并按名称排序（核心库如 libwxbase/libwxmsw 字母序在辅助库之前），既补上
+  # 核心库又保证静态链接顺序正确。
+  file(GLOB _wxStaticAll "${_wxLibDir}/*.a")
+  if(NOT _wxStaticAll)
+    message(FATAL_ERROR "No static .a libraries found in ${_wxLibDir}")
   endif()
-  message(STATUS ">>> WIN32 wxWidgets_LIBRARIES: ${wxWidgets_LIBRARIES}")
+  list(SORT _wxStaticAll)
+  foreach(_l ${_wxStaticAll})
+    message(STATUS ">>> wx static lib: ${_l}")
+  endforeach()
+  set(wxWidgets_LIBRARIES ${_wxStaticAll} ${wxWidgets_LIBRARIES})
+  message(STATUS ">>> final WIN32 wxWidgets_LIBRARIES: ${wxWidgets_LIBRARIES}")
   target_sources(vpid_viewer PRIVATE
     src/core/windows_scanner.cpp
   )
