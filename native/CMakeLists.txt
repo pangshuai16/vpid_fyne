@@ -29,9 +29,20 @@ add_executable(vpid_viewer WIN32 MACOSX_BUNDLE ${BASE_SOURCES}) # WIN32: GUI 子
 if(WIN32)
   find_package(wxWidgets REQUIRED COMPONENTS core base)
   include(${wxWidgets_USE_FILE})
+  # 自编译的 wxWidgets 是静态 monolithic 构建，安装布局为 <root>/lib/gcc_lib。
+  # FindwxWidgets 经 wx-config 解析出的库列表只含辅助库（png/tiff/jpeg/zlib/
+  # regex/expat），漏掉了 monolithic 主库 libwxmsw31u.a，导致 wxApp/wxFrame 等
+  # 核心符号链接期 undefined。这里从 include dir 反推 gcc_lib 目录并补上主库。
+  list(GET wxWidgets_INCLUDE_DIRS 0 _wxInc0)
+  get_filename_component(_wxLibDir "${_wxInc0}" DIRECTORY)
+  find_library(VPID_WX_MONO NAMES wxmsw31u libwxmsw31u HINTS "${_wxLibDir}")
+  if(VPID_WX_MONO)
+    set(wxWidgets_LIBRARIES ${VPID_WX_MONO} ${wxWidgets_LIBRARIES})
+    message(STATUS ">>> linked monolithic wx core lib: ${VPID_WX_MONO}")
+  else()
+    message(FATAL_ERROR "Could not find monolithic libwxmsw31u in ${_wxLibDir}")
+  endif()
   message(STATUS ">>> WIN32 wxWidgets_LIBRARIES: ${wxWidgets_LIBRARIES}")
-  message(STATUS ">>> WIN32 wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
-  message(STATUS ">>> WIN32 wxWidgets_CONFIGURATION: ${wxWidgets_CONFIGURATION}")
   target_sources(vpid_viewer PRIVATE
     src/core/windows_scanner.cpp
   )
