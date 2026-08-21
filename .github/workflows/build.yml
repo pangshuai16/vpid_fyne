@@ -50,9 +50,12 @@ jobs:
           fi
           cd "wxWidgets-$ver"
           rm -rf build-static && mkdir -p build-static && cd build-static
+          # 修复 CMake 4.x 对旧 cmake_minimum_required 的兼容（wxWidgets 3.x 仍声明 CMake>=2.x）
+          sed -i 's/^cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.10)/' ../CMakeLists.txt
           # 静态、monolithic，锁定 NT5.1 (XP) API 集
           cmake .. \
             -G "MinGW Makefiles" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$prefix" \
             -DwxBUILD_SHARED=OFF \
@@ -99,7 +102,7 @@ jobs:
           image: quay.io/rockylinux/rockylinux:8
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel libX11-devel pkgconfig
+            dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel wxGTK3-devel libX11-devel pkgconfig
             cd native
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
             cmake --build build -j"$(nproc)"
