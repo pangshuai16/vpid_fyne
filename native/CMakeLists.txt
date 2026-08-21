@@ -31,13 +31,14 @@ if(WIN32)
     src/core/windows_scanner.cpp
   )
   target_include_directories(vpid_viewer PRIVATE src)
-  # 仅系统库（MinGW 自带），无需 wx/libusb
+  # 仅系统库（MinGW 自带），无需 wx/libusb；-municode 让 CRT 以 wWinMain 为入口
   target_link_libraries(vpid_viewer PRIVATE
     setupapi   # SetupAPI 设备枚举
     advapi32   # 注册表兜底扫描
     comctl32   # Common Controls（ListView）
     user32 gdi32
   )
+  target_link_options(vpid_viewer PRIVATE -municode)
   # XP 兼容：锁定 NT 5.1 API 集 + Win 层 API 集
   target_compile_definitions(vpid_viewer PRIVATE _WIN32_WINNT=0x0501 WINVER=0x0501 _WIN32_IE=0x0501)
 else()
@@ -50,6 +51,6 @@ else()
     src/core/linux_scanner.cpp
   )
   target_include_directories(vpid_viewer PRIVATE src ${GTK3_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
-  target_compile_definitions(vpid_viewer PRIVATE ${GTK3_CFLAGS_OTHER} ${LIBUSB_CFLAGS_OTHER})
+  target_compile_options(vpid_viewer PRIVATE ${GTK3_CFLAGS_OTHER} ${LIBUSB_CFLAGS_OTHER})
   target_link_libraries(vpid_viewer PRIVATE ${GTK3_LIBRARIES} ${LIBUSB_LIBRARIES})
 endif()

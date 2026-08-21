@@ -338,16 +338,16 @@ static void buildUi(App& a) {
     a.btnCopy = makeButton(" 复制 ", onCopy);
 
     GdkRGBA c;
-    theme::danger(); gtk_widget_override_background_color(a.btnStop, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white();  gtk_widget_override_color(a.btnStop, GTK_STATE_FLAG_NORMAL, &c);
-    theme::success();gtk_widget_override_background_color(a.btnAuto, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white();  gtk_widget_override_color(a.btnAuto, GTK_STATE_FLAG_NORMAL, &c);
-    theme::primary();gtk_widget_override_background_color(a.btnManual, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white();  gtk_widget_override_color(a.btnManual, GTK_STATE_FLAG_NORMAL, &c);
-    theme::success();gtk_widget_override_background_color(a.btnBaseline, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white();  gtk_widget_override_color(a.btnBaseline, GTK_STATE_FLAG_NORMAL, &c);
-    theme::primary();gtk_widget_override_background_color(a.btnCopy, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white();  gtk_widget_override_color(a.btnCopy, GTK_STATE_FLAG_NORMAL, &c);
+    theme::danger(c); gtk_widget_override_background_color(a.btnStop, GTK_STATE_FLAG_NORMAL, &c);
+    theme::white(c);  gtk_widget_override_color(a.btnStop, GTK_STATE_FLAG_NORMAL, &c);
+    theme::success(c);gtk_widget_override_background_color(a.btnAuto, GTK_STATE_FLAG_NORMAL, &c);
+    theme::white(c);  gtk_widget_override_color(a.btnAuto, GTK_STATE_FLAG_NORMAL, &c);
+    theme::primary(c);gtk_widget_override_background_color(a.btnManual, GTK_STATE_FLAG_NORMAL, &c);
+    theme::white(c);  gtk_widget_override_color(a.btnManual, GTK_STATE_FLAG_NORMAL, &c);
+    theme::success(c);gtk_widget_override_background_color(a.btnBaseline, GTK_STATE_FLAG_NORMAL, &c);
+    theme::white(c);  gtk_widget_override_color(a.btnBaseline, GTK_STATE_FLAG_NORMAL, &c);
+    theme::primary(c);gtk_widget_override_background_color(a.btnCopy, GTK_STATE_FLAG_NORMAL, &c);
+    theme::white(c);  gtk_widget_override_color(a.btnCopy, GTK_STATE_FLAG_NORMAL, &c);
 
     gtk_box_pack_start(GTK_BOX(tb), a.btnStop, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(tb), a.btnAuto, FALSE, FALSE, 0);
@@ -374,15 +374,15 @@ static void buildUi(App& a) {
     GtkWidget* right = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     const gchar* colsChg[] = { "VID", "PID", "设备名称" };
     a.headerAdded = gtk_label_new("+ 新增设备  0");
-    theme::successBg(); gtk_widget_override_background_color(a.headerAdded, GTK_STATE_FLAG_NORMAL, &c);
-    theme::success();  gtk_widget_override_color(a.headerAdded, GTK_STATE_FLAG_NORMAL, &c);
+    theme::successBg(c); gtk_widget_override_background_color(a.headerAdded, GTK_STATE_FLAG_NORMAL, &c);
+    theme::success(c);  gtk_widget_override_color(a.headerAdded, GTK_STATE_FLAG_NORMAL, &c);
     a.treeAdded = makeList(colsChg, 3, &a.storeAdded);
     GtkWidget* scAdded = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_container_add(GTK_CONTAINER(scAdded), a.treeAdded);
 
     a.headerRemoved = gtk_label_new("- 移除设备  0");
-    theme::dangerBg(); gtk_widget_override_background_color(a.headerRemoved, GTK_STATE_FLAG_NORMAL, &c);
-    theme::danger();  gtk_widget_override_color(a.headerRemoved, GTK_STATE_FLAG_NORMAL, &c);
+    theme::dangerBg(c); gtk_widget_override_background_color(a.headerRemoved, GTK_STATE_FLAG_NORMAL, &c);
+    theme::danger(c);  gtk_widget_override_color(a.headerRemoved, GTK_STATE_FLAG_NORMAL, &c);
     a.treeRemoved = makeList(colsChg, 3, &a.storeRemoved);
     GtkWidget* scRemoved = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_container_add(GTK_CONTAINER(scRemoved), a.treeRemoved);
