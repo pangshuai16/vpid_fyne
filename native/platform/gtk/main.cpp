@@ -18,50 +18,49 @@
 
 namespace vpid {
 
-// 全局 GTK3 CSS：卡其风面板 + 圆角彩色按钮(hover/按下/禁用) + 信息 chip + 精致列表
+// 全局 GTK3 CSS：现代化简约风 —— 扁平、留白、克制配色
 static void applyCss() {
     static const char* css =
-        "#vpid-main { background-color:#f0f2f5; }"
+        "#vpid-main { background-color:#f7f8fa; }"
         /* ---- 顶栏标题 / 状态 ---- */
-        "#vpid-main label.app-title { font-size:15pt; font-weight:700; color:#1f2329; }"
-        "#vpid-main label.status  { color:#8a9099; font-size:9pt; }"
-        "#vpid-main toolbar, #vpid-main .appbar { background-color:#ffffff; }"
-        /* ---- 按钮：阴影 + 圆角 + 交互态 ---- */
+        "#vpid-main label.app-title { font-size:14pt; font-weight:600; color:#1f2329; }"
+        "#vpid-main label.status  { color:#90949c; font-size:9pt; }"
+        /* ---- 按钮：扁平圆角，无阴影 ---- */
         "#vpid-main button {"
-        "  border:0; border-radius:6px; padding:3px 16px 2px; font-weight:600;"
-        "  background-image:none; background-color:#f4f5f7; color:#3b3f45;"
-        "  text-shadow:none; min-height:30px;"
-        "  box-shadow:0 1px 2px rgba(0,0,0,0.12); }"
-        "#vpid-main button:hover { box-shadow:0 2px 5px rgba(0,0,0,0.18); }"
-        "#vpid-main button:active { box-shadow:none; }"
-        "#vpid-main button:disabled { opacity:0.55; box-shadow:none; }"
-        "#vpid-main button.accent-blue  { background-color:#2775b6; color:#fff; border:1px solid #2168a2; }"
-        "#vpid-main button.accent-blue:hover  { background-color:#3a8fd0; }"
-        "#vpid-main button.accent-blue:active { background-color:#1e5e94; }"
-        "#vpid-main button.accent-green { background-color:#1ba784; color:#fff; border:1px solid #179672; }"
-        "#vpid-main button.accent-green:hover { background-color:#23c19a; }"
-        "#vpid-main button.accent-green:active{ background-color:#148a6d; }"
-        "#vpid-main button.accent-red   { background-color:#ed3321; color:#fff; border:1px solid #d92d1d; }"
-        "#vpid-main button.accent-red:hover   { background-color:#f05040; }"
-        "#vpid-main button.accent-red:active  { background-color:#cc291a; }"
-        "#vpid-main button:focus { outline:2px solid rgba(39,117,182,0.6); outline-offset:1px; }"
-        /* ---- 信息 chip ---- */
-        "#vpid-main label.chip { padding:3px 12px; border-radius:12px; font-weight:700; font-size:9.5pt; }"
-        "#vpid-main label.chip-green { background-color:#e3f7f1; color:#12a178; border:1px solid #bfeadd; }"
-        "#vpid-main label.chip-red   { background-color:#fdecea; color:#e02d1c; border:1px solid #f7cdc7; }"
-        /* ---- 列表：白底 + 斑马纹 + hover/选中 ---- */
+        "  border:1px solid #d9dce1; border-radius:6px; padding:4px 16px 3px; font-weight:600;"
+        "  background-image:none; background-color:#ffffff; color:#3b3f45;"
+        "  text-shadow:none; min-height:28px; box-shadow:none; }"
+        "#vpid-main button:hover  { background-color:#f2f3f5; border-color:#c6cbd2; }"
+        "#vpid-main button:active { background-color:#e8eaed; }"
+        "#vpid-main button:disabled { opacity:0.5; }"
+        "#vpid-main button.accent-blue, #vpid-main button.accent-green, #vpid-main button.accent-red {"
+        "  border:none; color:#fff; }"
+        "#vpid-main button.accent-blue  { background-color:#3a7bd5; }"
+        "#vpid-main button.accent-blue:hover  { background-color:#2f6cc2; }"
+        "#vpid-main button.accent-blue:active { background-color:#2a5fb0; }"
+        "#vpid-main button.accent-green { background-color:#16a085; }"
+        "#vpid-main button.accent-green:hover { background-color:#129071; }"
+        "#vpid-main button.accent-green:active{ background-color:#0f7d63; }"
+        "#vpid-main button.accent-red   { background-color:#e74c3c; }"
+        "#vpid-main button.accent-red:hover   { background-color:#d94334; }"
+        "#vpid-main button.accent-red:active  { background-color:#c93a2c; }"
+        /* ---- 信息 chip：浅底 + 语义字色 ---- */
+        "#vpid-main label.chip { padding:3px 12px; border-radius:12px; font-weight:600; font-size:9.5pt; }"
+        "#vpid-main label.chip-green { background-color:#e7f6f1; color:#0f8a70; }"
+        "#vpid-main label.chip-red   { background-color:#fdeeed; color:#d33125; }"
+        /* ---- 列表：白底 + 细表头 + 简约选中 ---- */
         "#vpid-main treeview { font-size:10pt; color:#303133; }"
         "#vpid-main treeview.view { background-color:#ffffff; }"
         "#vpid-main treeview.view:selected, #vpid-main treeview.view:selected:focus,"
-        "#vpid-main treeview.view:selected:hover { background-color:#2775b6; color:#ffffff; }"
-        "#vpid-main treeview.view:not(:selected):hover { background-color:#f0f6fb; }"
-        "#vpid-main treeview header button { background-color:#f7f8fa; color:#5b6169; font-weight:700;"
-        "  padding-top:5px; padding-bottom:5px; border:0; border-bottom:1px solid #e1e4e8; box-shadow:none; }"
-        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #eef0f3; }"
-        "#vpid-main treeview header button:hover { background-color:#eef1f5; }"
-        /* ---- 面板卡片 ---- */
-        "#vpid-main scrolledwindow { border:1px solid #dfe2e8; border-radius:8px;"
-        "  background-color:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.06); }"
+        "#vpid-main treeview.view:selected:hover { background-color:#3a7bd5; color:#ffffff; }"
+        "#vpid-main treeview.view:not(:selected):hover { background-color:#f5f7fa; }"
+        "#vpid-main treeview header button { background-color:#fafbfc; color:#5c6269; font-weight:600;"
+        "  padding-top:5px; padding-bottom:5px; border:0; border-bottom:1px solid #e6e8ec; box-shadow:none; }"
+        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #f0f1f4; }"
+        "#vpid-main treeview header button:hover { background-color:#f0f2f5; }"
+        /* ---- 面板：圆角浅边，轻投影 ---- */
+        "#vpid-main scrolledwindow { border:1px solid #e2e5ea; border-radius:8px;"
+        "  background-color:#ffffff; box-shadow:0 1px 2px rgba(31,35,41,0.05); }"
         "#vpid-main paned > separator { background-color:#e6e9ef; min-width:1px; }"
         "#vpid-main scrolledwindow undershoot, #vpid-main scrolledwindow overshoot { background:none; }";
     GtkCssProvider* p = gtk_css_provider_new();
@@ -145,8 +144,18 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
     g_object_unref(store); // view 持有引用
     for (int i = 0; i < n; ++i) {
         GtkCellRenderer* r = gtk_cell_renderer_text_new();
-        gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view), -1,
-            cols[i], r, "text", i, nullptr);
+        gtk_cell_renderer_set_padding(r, 6, 4);
+        bool isKey = (i <= 1); // VID / PID：固定 4 位 hex，窄列居中
+        if (isKey) gtk_cell_renderer_set_alignment(r, 0.5f, 0.5f);
+        GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
+        if (isKey) {
+            gtk_tree_view_column_set_sizing(col, GTK_TREE_VIEW_COLUMN_FIXED);
+            gtk_tree_view_column_set_fixed_width(col, 58);
+            gtk_tree_view_column_set_alignment(col, 0.5f);
+        } else {
+            gtk_tree_view_column_set_expand(GTK_TREE_VIEW_COLUMN(col), TRUE);
+        }
+        gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
     }
     gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(view), FALSE);
     GtkTreeSelection* sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));

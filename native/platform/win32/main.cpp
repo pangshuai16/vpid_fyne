@@ -62,19 +62,19 @@ const int kStatusB = 2104;
 static HINSTANCE g_hInst = nullptr;
 
 namespace theme {
-COLORREF primary(){ return RGB(0x27,0x75,0xb6); }
-COLORREF primaryHover(){ return RGB(0x3A,0x8F,0xD0); }
-COLORREF success(){ return RGB(0x1b,0xa7,0x84); }
-COLORREF successBg(){ return RGB(0xE8,0xF8,0xF3); }
-COLORREF danger(){ return RGB(0xed,0x33,0x21); }
-COLORREF dangerBg(){ return RGB(0xFE,0xF0,0xF0); }
+COLORREF primary(){ return RGB(0x3A,0x7B,0xD5); }
+COLORREF primaryHover(){ return RGB(0x2F,0x6C,0xC2); }
+COLORREF success(){ return RGB(0x16,0xA0,0x85); }
+COLORREF successBg(){ return RGB(0xE7,0xF6,0xF1); }
+COLORREF danger(){ return RGB(0xE7,0x4C,0x3C); }
+COLORREF dangerBg(){ return RGB(0xFD,0xEE,0xED); }
 COLORREF text(){ return RGB(0x30,0x31,0x33); }
-COLORREF textSecondary(){ return RGB(0x90,0x93,0x99); }
-COLORREF border(){ return RGB(0xDC,0xDF,0xE6); }
-COLORREF bg(){ return RGB(0xF5,0xF7,0xFA); }
+COLORREF textSecondary(){ return RGB(0x90,0x94,0x9C); }
+COLORREF border(){ return RGB(0xE2,0xE5,0xEA); }
+COLORREF bg(){ return RGB(0xF7,0xF8,0xFA); }
 COLORREF white(){ return RGB(0xFF,0xFF,0xFF); }
-COLORREF rowEven(){ return RGB(0xF8,0xFA,0xFC); }
-COLORREF primaryDark(){ return RGB(0x1E,0x5E,0x94); }
+COLORREF rowEven(){ return RGB(0xFB,0xFC,0xFD); }
+COLORREF primaryDark(){ return RGB(0x2A,0x5F,0xB0); }
 }
 
 namespace vpid {
@@ -134,10 +134,10 @@ static COLORREF btnFill(int id) {
 }
 static COLORREF btnBorder(int id) {
     switch (id) {
-        case ids::kBtnStopRefresh: return RGB(0xCC,0x29,0x1A);
+        case ids::kBtnStopRefresh: return RGB(0xC9,0x3A,0x2C);
         case ids::kBtnManualRefresh:
         case ids::kBtnCopy:        return theme::primaryDark();
-        default:                   return RGB(0x14,0x8A,0x6D);
+        default:                   return RGB(0x0F,0x7D,0x63);
     }
 }
 
@@ -439,10 +439,10 @@ static void createControls(HWND hwnd) {
         SetWindowLongPtrW(b, GWLP_USERDATA, (LONG_PTR)i);
     }
 
-    // 主列表列
+    // 主列表列（VID/PID 固定 4 位 hex，窄列 + 居中）
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 70, 70, 220, 400 };
+        int ws[4] = { 60, 60, 220, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
@@ -452,7 +452,7 @@ static void createControls(HWND hwnd) {
     SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 90, 90, 260 };
+        int ws[3] = { 68, 68, 240 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
@@ -627,31 +627,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SelectObject(dis->hDC, oldPen); DeleteObject(pen);
             SelectObject(dis->hDC, oldBr); DeleteObject(br);
 
-            if (pressed && !disabled) { // 内阴影：按下的立体感
-                HPEN sh = CreatePen(PS_SOLID, 1, shade(borderCol, -20));
-                HGDIOBJ oldSh = SelectObject(dis->hDC, sh);
-                HBRUSH oldShBr = (HBRUSH)SelectObject(dis->hDC, GetStockObject(NULL_BRUSH));
-                RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 14, 14);
-                SelectObject(dis->hDC, oldSh); DeleteObject(sh);
-                SelectObject(dis->hDC, oldShBr);
-            }
-
             SetBkMode(dis->hDC, TRANSPARENT);
             SetTextColor(dis->hDC, textCol);
             HFONT old = (HFONT)SelectObject(dis->hDC, a.hFontBtns);
             DrawTextW(dis->hDC, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(dis->hDC, old);
-
-            if ((dis->itemState & ODS_FOCUS) && !disabled) { // 焦点虚线框
-                RECT f = dis->rcItem;
-                InflateRect(&f, -5, -5);
-                HBRUSH oldB = (HBRUSH)SelectObject(dis->hDC, GetStockObject(NULL_BRUSH));
-                HPEN fp = CreatePen(PS_DOT, 1, RGB(0xFF,0xFF,0xFF));
-                HGDIOBJ oldFp = SelectObject(dis->hDC, fp);
-                Rectangle(dis->hDC, f.left, f.top, f.right, f.bottom);
-                SelectObject(dis->hDC, oldFp); DeleteObject(fp);
-                SelectObject(dis->hDC, oldB);
-            }
             return TRUE;
         }
         return 0;
