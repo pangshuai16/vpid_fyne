@@ -18,14 +18,57 @@
 
 namespace vpid {
 
-namespace theme {
-static void rgba(GdkRGBA& c, const char* s){ gdk_rgba_parse(&c, s); }
-static void primary(GdkRGBA& c){ rgba(c,"#2775b6"); }
-static void success(GdkRGBA& c){ rgba(c,"#1ba784"); }
-static void successBg(GdkRGBA& c){ rgba(c,"#E8F8F3"); }
-static void danger(GdkRGBA& c){ rgba(c,"#ed3321"); }
-static void dangerBg(GdkRGBA& c){ rgba(c,"#FEF0F0"); }
-static void white(GdkRGBA& c){ rgba(c,"#FFFFFF"); }
+// 全局 GTK3 CSS：卡其风面板 + 圆角彩色按钮(hover/按下/禁用) + 信息 chip + 精致列表
+static void applyCss() {
+    static const char* css =
+        "#vpid-main { background-color:#f0f2f5; }"
+        /* ---- 顶栏标题 / 状态 ---- */
+        "#vpid-main label.app-title { font-size:15pt; font-weight:700; color:#1f2329; }"
+        "#vpid-main label.status  { color:#8a9099; font-size:9pt; }"
+        "#vpid-main toolbar, #vpid-main .appbar { background-color:#ffffff; }"
+        /* ---- 按钮：阴影 + 圆角 + 交互态 ---- */
+        "#vpid-main button {"
+        "  border:0; border-radius:6px; padding:3px 16px 2px; font-weight:600;"
+        "  background-image:none; background-color:#f4f5f7; color:#3b3f45;"
+        "  text-shadow:none; min-height:30px;"
+        "  box-shadow:0 1px 2px rgba(0,0,0,0.12); }"
+        "#vpid-main button:hover { box-shadow:0 2px 5px rgba(0,0,0,0.18); }"
+        "#vpid-main button:active { box-shadow:none; }"
+        "#vpid-main button:disabled { opacity:0.55; box-shadow:none; }"
+        "#vpid-main button.accent-blue  { background-color:#2775b6; color:#fff; border:1px solid #2168a2; }"
+        "#vpid-main button.accent-blue:hover  { background-color:#3a8fd0; }"
+        "#vpid-main button.accent-blue:active { background-color:#1e5e94; }"
+        "#vpid-main button.accent-green { background-color:#1ba784; color:#fff; border:1px solid #179672; }"
+        "#vpid-main button.accent-green:hover { background-color:#23c19a; }"
+        "#vpid-main button.accent-green:active{ background-color:#148a6d; }"
+        "#vpid-main button.accent-red   { background-color:#ed3321; color:#fff; border:1px solid #d92d1d; }"
+        "#vpid-main button.accent-red:hover   { background-color:#f05040; }"
+        "#vpid-main button.accent-red:active  { background-color:#cc291a; }"
+        "#vpid-main button:focus { outline:2px solid rgba(39,117,182,0.6); outline-offset:1px; }"
+        /* ---- 信息 chip ---- */
+        "#vpid-main label.chip { padding:3px 12px; border-radius:12px; font-weight:700; font-size:9.5pt; }"
+        "#vpid-main label.chip-green { background-color:#e3f7f1; color:#12a178; border:1px solid #bfeadd; }"
+        "#vpid-main label.chip-red   { background-color:#fdecea; color:#e02d1c; border:1px solid #f7cdc7; }"
+        /* ---- 列表：白底 + 斑马纹 + hover/选中 ---- */
+        "#vpid-main treeview { font-size:10pt; color:#303133; }"
+        "#vpid-main treeview.view { background-color:#ffffff; }"
+        "#vpid-main treeview.view:selected, #vpid-main treeview.view:selected:focus,"
+        "#vpid-main treeview.view:selected:hover { background-color:#2775b6; color:#ffffff; }"
+        "#vpid-main treeview.view:not(:selected):hover { background-color:#f0f6fb; }"
+        "#vpid-main treeview header button { background-color:#f7f8fa; color:#5b6169; font-weight:700;"
+        "  padding-top:5px; padding-bottom:5px; border:0; border-bottom:1px solid #e1e4e8; box-shadow:none; }"
+        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #eef0f3; }"
+        "#vpid-main treeview header button:hover { background-color:#eef1f5; }"
+        /* ---- 面板卡片 ---- */
+        "#vpid-main scrolledwindow { border:1px solid #dfe2e8; border-radius:8px;"
+        "  background-color:#ffffff; box-shadow:0 1px 3px rgba(0,0,0,0.06); }"
+        "#vpid-main paned > separator { background-color:#e6e9ef; min-width:1px; }"
+        "#vpid-main scrolledwindow undershoot, #vpid-main scrolledwindow overshoot { background:none; }";
+    GtkCssProvider* p = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(p, css, -1, nullptr);
+    gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(p), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(p);
 }
 
 struct App {
@@ -293,14 +336,20 @@ static gboolean onTimer(gpointer) {
 }
 
 // ---- UI 构建 ----
-static GtkWidget* makeButton(const char* text, void (*fn)(GtkWidget*, gpointer)) {
+static GtkWidget* makeButton(const char* text, void (*fn)(GtkWidget*, gpointer), const char* cls) {
     GtkWidget* b = gtk_button_new_with_label(text);
+    if (cls) gtk_style_context_add_class(gtk_widget_get_style_context(b), cls);
     g_signal_connect(b, "clicked", G_CALLBACK(fn), nullptr);
     return b;
 }
 
+static void addClass(GtkWidget* w, const char* cls) {
+    gtk_style_context_add_class(gtk_widget_get_style_context(w), cls);
+}
+
 static void buildUi(App& a) {
     a.win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_widget_set_name(a.win, "vpid-main");
     gtk_window_set_title(GTK_WINDOW(a.win), kAppName);
     gtk_window_set_default_size(GTK_WINDOW(a.win), kDefaultWindowWidth, kDefaultWindowHeight);
     gtk_window_set_geometry_hints(GTK_WINDOW(a.win), GTK_WIDGET(a.win),
@@ -329,25 +378,14 @@ static void buildUi(App& a) {
     gtk_box_pack_start(GTK_BOX(root), tb, FALSE, FALSE, 0);
 
     a.headerCount = gtk_label_new("0 个设备已连接");
+    addClass(a.headerCount, "app-title");
     gtk_box_pack_start(GTK_BOX(tb), a.headerCount, TRUE, TRUE, 0);
 
-    a.btnStop = makeButton("停止刷新", onStopRefresh);
-    a.btnAuto = makeButton("自动刷新", onAutoRefresh);
-    a.btnManual = makeButton("手动刷新", onManualRefresh);
-    a.btnBaseline = makeButton("设为基准", onBaseline);
-    a.btnCopy = makeButton(" 复制 ", onCopy);
-
-    GdkRGBA c;
-    theme::danger(c); gtk_widget_override_background_color(a.btnStop, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white(c);  gtk_widget_override_color(a.btnStop, GTK_STATE_FLAG_NORMAL, &c);
-    theme::success(c);gtk_widget_override_background_color(a.btnAuto, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white(c);  gtk_widget_override_color(a.btnAuto, GTK_STATE_FLAG_NORMAL, &c);
-    theme::primary(c);gtk_widget_override_background_color(a.btnManual, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white(c);  gtk_widget_override_color(a.btnManual, GTK_STATE_FLAG_NORMAL, &c);
-    theme::success(c);gtk_widget_override_background_color(a.btnBaseline, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white(c);  gtk_widget_override_color(a.btnBaseline, GTK_STATE_FLAG_NORMAL, &c);
-    theme::primary(c);gtk_widget_override_background_color(a.btnCopy, GTK_STATE_FLAG_NORMAL, &c);
-    theme::white(c);  gtk_widget_override_color(a.btnCopy, GTK_STATE_FLAG_NORMAL, &c);
+    a.btnStop = makeButton("停止刷新", onStopRefresh, "accent-red");
+    a.btnAuto = makeButton("自动刷新", onAutoRefresh, "accent-green");
+    a.btnManual = makeButton("手动刷新", onManualRefresh, "accent-blue");
+    a.btnBaseline = makeButton("设为基准", onBaseline, "accent-green");
+    a.btnCopy = makeButton(" 复制 ", onCopy, "accent-blue");
 
     gtk_box_pack_start(GTK_BOX(tb), a.btnStop, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(tb), a.btnAuto, FALSE, FALSE, 0);
@@ -374,15 +412,15 @@ static void buildUi(App& a) {
     GtkWidget* right = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     const gchar* colsChg[] = { "VID", "PID", "设备名称" };
     a.headerAdded = gtk_label_new("+ 新增设备  0");
-    theme::successBg(c); gtk_widget_override_background_color(a.headerAdded, GTK_STATE_FLAG_NORMAL, &c);
-    theme::success(c);  gtk_widget_override_color(a.headerAdded, GTK_STATE_FLAG_NORMAL, &c);
+    addClass(a.headerAdded, "chip");
+    addClass(a.headerAdded, "chip-green");
     a.treeAdded = makeList(colsChg, 3, &a.storeAdded);
     GtkWidget* scAdded = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_container_add(GTK_CONTAINER(scAdded), a.treeAdded);
 
     a.headerRemoved = gtk_label_new("- 移除设备  0");
-    theme::dangerBg(c); gtk_widget_override_background_color(a.headerRemoved, GTK_STATE_FLAG_NORMAL, &c);
-    theme::danger(c);  gtk_widget_override_color(a.headerRemoved, GTK_STATE_FLAG_NORMAL, &c);
+    addClass(a.headerRemoved, "chip");
+    addClass(a.headerRemoved, "chip-red");
     a.treeRemoved = makeList(colsChg, 3, &a.storeRemoved);
     GtkWidget* scRemoved = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_container_add(GTK_CONTAINER(scRemoved), a.treeRemoved);
@@ -407,6 +445,8 @@ static void buildUi(App& a) {
     gtk_widget_set_margin_bottom(GTK_WIDGET(sb), 4);
     a.statusA = gtk_label_new("");
     a.statusB = gtk_label_new("");
+    addClass(a.statusA, "status");
+    addClass(a.statusB, "status");
     gtk_box_pack_start(GTK_BOX(sb), a.statusA, TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(sb), a.statusB, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(root), sb, FALSE, FALSE, 0);
@@ -430,6 +470,7 @@ static void buildUi(App& a) {
 
 int main(int argc, char** argv) {
     gtk_init(&argc, &argv);
+    vpid::applyCss();
     vpid::App app;
     vpid::g = &app;
     vpid::buildUi(app);

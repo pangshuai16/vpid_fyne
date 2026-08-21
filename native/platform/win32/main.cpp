@@ -73,9 +73,29 @@ COLORREF textSecondary(){ return RGB(0x90,0x93,0x99); }
 COLORREF border(){ return RGB(0xDC,0xDF,0xE6); }
 COLORREF bg(){ return RGB(0xF5,0xF7,0xFA); }
 COLORREF white(){ return RGB(0xFF,0xFF,0xFF); }
+COLORREF rowEven(){ return RGB(0xF8,0xFA,0xFC); }
+COLORREF primaryDark(){ return RGB(0x1E,0x5E,0x94); }
 }
 
 namespace vpid {
+
+// 向白/黑方向偏移颜色（按钮 hover/press）
+static COLORREF shade(COLORREF c, int delta) {
+    int r = GetRValue(c) + delta, g = GetGValue(c) + delta, b = GetBValue(c) + delta;
+    r = r < 0 ? 0 : (r > 255 ? 255 : r);
+    g = g < 0 ? 0 : (g > 255 ? 255 : g);
+    b = b < 0 ? 0 : (b > 255 ? 255 : b);
+    return RGB((BYTE)r, (BYTE)g, (BYTE)b);
+}
+
+// Vista+ 高分屏锐化（XP 无此函数，探测失败则静默跳过）
+static void enableHighDPI() {
+    typedef BOOL (WINAPI *Fn)(void);
+    HMODULE m = GetModuleHandleW(L"user32.dll");
+    if (!m) return;
+    Fn f = (Fn)GetProcAddress(m, "SetProcessDPIAware");
+    if (f) f();
+}
 
 struct App;
 
@@ -112,6 +132,14 @@ static COLORREF btnFill(int id) {
         default:                   return theme::success();
     }
 }
+static COLORREF btnBorder(int id) {
+    switch (id) {
+        case ids::kBtnStopRefresh: return RGB(0xCC,0x29,0x1A);
+        case ids::kBtnManualRefresh:
+        case ids::kBtnCopy:        return theme::primaryDark();
+        default:                   return RGB(0x14,0x8A,0x6D);
+    }
+}
 
 // ---------- App 状态 ----------
 struct App {
@@ -119,6 +147,9 @@ struct App {
     HWND headerCount = 0;
     HWND cmdButtons[5] = {0};
     HFONT hFontBtns = 0;
+    HFONT hFontList = 0;
+    HFONT hFontTitle = 0;
+    bool btnHover[5] = {false};
     HWND listAll = 0;
     HWND headerAdded = 0, headerRemoved = 0;
     HWND listAdded = 0, listRemoved = 0;
@@ -138,6 +169,39 @@ struct App {
 };
 
 static App* g = nullptr;
+
+// 按钮子类化：实现悬停(WM_MOUSEMOVE/TrackMouseEvent)与离开(WM_MOUSELEAVE)
+static WNDPROC g_btnOldProc = nullptr;
+static void trackButtonEnter(HWND btn) {
+    TRACKMOUSEEVENT tme;
+    memset(&tme, 0, sizeof(tme));
+    tme.cbSize = sizeof(tme);
+    tme.dwFlags = TME_LEAVE;
+    tme.hwndTrack = btn;
+    _TrackMouseEvent(&tme);
+}
+static LRESULT CALLBACK ButtonProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    App& a = *g;
+    int idx = (int)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (idx >= 0 && idx < 5) {
+        switch (msg) {
+        case WM_MOUSEMOVE:
+            if (!a.btnHover[idx]) {
+                a.btnHover[idx] = true;
+                InvalidateRect(hwnd, nullptr, FALSE);
+            }
+            trackButtonEnter(hwnd);
+            break;
+        case WM_MOUSELEAVE:
+            if (a.btnHover[idx]) {
+                a.btnHover[idx] = false;
+                InvalidateRect(hwnd, nullptr, FALSE);
+            }
+            break;
+        }
+    }
+    return CallWindowProcW(g_btnOldProc, hwnd, msg, wp, lp);
+}
 
 // ---------- 列表 ----------
 static void initListColumns(HWND list, const wchar_t* cols[], int widths[], int n) {
@@ -346,43 +410,62 @@ static HWND makeList(HWND parent, int id) {
         WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_BORDER |
         LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
         0, 0, 0, 0, parent, (HMENU)(INT_PTR)id, g_hInst, nullptr);
-    ListView_SetExtendedListViewStyle(h, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
+    ListView_SetExtendedListViewStyle(h, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+    ListView_SetBkColor(h, theme::white());
+    ListView_SetTextBkColor(h, theme::white());
+    // 计入自定义绘制的交替行，背景色统一为画布色
     return h;
 }
 
 static void createControls(HWND hwnd) {
     App& a = *g;
 
-    // 按钮字体（加粗）
+    // 字体（XP 回退 Tahoma，现代系统用 Segoe UI 更清晰）
     a.hFontBtns = CreateFontW(-14, 0, 0, 0, FW_BOLD, 0, 0, 0,
-                              DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Tahoma");
+                              DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    a.hFontTitle = CreateFontW(-16, 0, 0, 0, FW_BOLD, 0, 0, 0,
+                               DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    a.hFontList = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0,
+                              DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
 
     a.headerCount = makeStatic(hwnd, ids::kHeaderDeviceCount, L"0 个设备已连接", 0);
-    SendMessageW(a.headerCount, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessageW(a.headerCount, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
 
     const wchar_t* labels[5] = { L"停止刷新", L"自动刷新", L"手动刷新", L"设为基准", L"复制" };
-    for (int i = 0; i < 5; ++i) a.cmdButtons[i] = makeCommand(hwnd, ids::kBtnStopRefresh + i, labels[i]);
+    for (int i = 0; i < 5; ++i) {
+        HWND b = makeCommand(hwnd, ids::kBtnStopRefresh + i, labels[i]);
+        a.cmdButtons[i] = b;
+        g_btnOldProc = (WNDPROC)SetWindowLongPtrW(b, GWLP_WNDPROC, (LONG_PTR)&ButtonProc);
+        SetWindowLongPtrW(b, GWLP_USERDATA, (LONG_PTR)i);
+    }
 
     // 主列表列
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 70, 70, 200, 340 };
+        int ws[4] = { 70, 70, 220, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
     a.headerAdded = makeStatic(hwnd, ids::kHeaderAdded, L"+ 新增设备  0", SS_LEFT);
     a.headerRemoved = makeStatic(hwnd, ids::kHeaderRemoved, L"- 移除设备  0", SS_LEFT);
+    SendMessageW(a.headerAdded, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
+    SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 80, 80, 220 };
+        int ws[3] = { 90, 90, 260 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
         initListColumns(a.listRemoved, cols, ws, 3);
     }
 
+    for (HWND lst : { a.listAll, a.listAdded, a.listRemoved })
+        SendMessageW(lst, WM_SETFONT, (WPARAM)a.hFontList, TRUE);
+
     a.statusA = makeStatic(hwnd, ids::kStatusA, L"", 0);
     a.statusB = makeStatic(hwnd, ids::kStatusB, L"", SS_RIGHT);
+    SendMessageW(a.statusA, WM_SETFONT, (WPARAM)a.hFontList, TRUE);
+    SendMessageW(a.statusB, WM_SETFONT, (WPARAM)a.hFontList, TRUE);
 
     a.brAddedBg = CreateSolidBrush(theme::successBg());
     a.brRemovedBg = CreateSolidBrush(theme::dangerBg());
@@ -471,6 +554,27 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
     case WM_NOTIFY: {
         LPNMHDR nm = (LPNMHDR)lp;
+
+        // 列表行自定义绘制：交替行 + 主色选中态
+        if (nm->code == NM_CUSTOMDRAW) {
+            LPNMLVCUSTOMDRAW lvcd = (LPNMLVCUSTOMDRAW)lp;
+            if (lvcd->nmcd.dwDrawStage == CDDS_PREPAINT)
+                return CDRF_NOTIFYITEMDRAW;
+            if (lvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
+                bool sel = (lvcd->nmcd.uItemState & CDIS_SELECTED) != 0;
+                if (sel) {
+                    lvcd->clrTextBk = theme::primary();
+                    lvcd->clrText = theme::white();
+                } else {
+                    lvcd->clrText = theme::text();
+                    lvcd->clrTextBk = (lvcd->nmcd.dwItemSpec % 2) == 0
+                                        ? theme::rowEven() : theme::white();
+                }
+                return CDRF_NEWFONT;
+            }
+            return CDRF_DODEFAULT;
+        }
+
         if (nm->code == LVN_ITEMCHANGED) {
             LPNMLISTVIEW lv = (LPNMLISTVIEW)lp;
             if (lv->uNewState & LVIS_SELECTED && !a.ignoreSelChange) {
@@ -501,18 +605,53 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (dis->CtlType == ODT_BUTTON) {
             wchar_t buf[64];
             GetWindowTextW(dis->hwndItem, buf, 64);
-            COLORREF fill = btnFill(dis->CtlID);
-            if (dis->itemState & ODS_SELECTED) fill = theme::primaryHover();
+            int idx = dis->CtlID - ids::kBtnStopRefresh;
+            bool disabled = (dis->itemState & ODS_DISABLED) != 0;
+            bool pressed  = (dis->itemState & ODS_SELECTED) != 0;
+            COLORREF base = disabled ? RGB(0xCF,0xD2,0xD8) : btnFill(dis->CtlID);
+            COLORREF fill = base;
+            if (!disabled) {
+                if (idx >= 0 && idx < 5 && a.btnHover[idx]) fill = shade(base, +22);
+                if (pressed) fill = shade(base, -36);
+            }
+            COLORREF textCol = disabled ? RGB(0xA5,0xA9,0xB0) : theme::white();
+            COLORREF borderCol = disabled ? base : btnBorder(dis->CtlID);
+
             RECT rc = dis->rcItem;
             InflateRect(&rc, -3, -3);
+            HPEN pen = CreatePen(PS_SOLID, 1, borderCol);
+            HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);
-            FillRect(dis->hDC, &rc, br);
-            DeleteObject(br);
+            HGDIOBJ oldBr = SelectObject(dis->hDC, br);
+            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 14, 14);
+            SelectObject(dis->hDC, oldPen); DeleteObject(pen);
+            SelectObject(dis->hDC, oldBr); DeleteObject(br);
+
+            if (pressed && !disabled) { // 内阴影：按下的立体感
+                HPEN sh = CreatePen(PS_SOLID, 1, shade(borderCol, -20));
+                HGDIOBJ oldSh = SelectObject(dis->hDC, sh);
+                HBRUSH oldShBr = (HBRUSH)SelectObject(dis->hDC, GetStockObject(NULL_BRUSH));
+                RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 14, 14);
+                SelectObject(dis->hDC, oldSh); DeleteObject(sh);
+                SelectObject(dis->hDC, oldShBr);
+            }
+
             SetBkMode(dis->hDC, TRANSPARENT);
-            SetTextColor(dis->hDC, theme::white());
+            SetTextColor(dis->hDC, textCol);
             HFONT old = (HFONT)SelectObject(dis->hDC, a.hFontBtns);
             DrawTextW(dis->hDC, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(dis->hDC, old);
+
+            if ((dis->itemState & ODS_FOCUS) && !disabled) { // 焦点虚线框
+                RECT f = dis->rcItem;
+                InflateRect(&f, -5, -5);
+                HBRUSH oldB = (HBRUSH)SelectObject(dis->hDC, GetStockObject(NULL_BRUSH));
+                HPEN fp = CreatePen(PS_DOT, 1, RGB(0xFF,0xFF,0xFF));
+                HGDIOBJ oldFp = SelectObject(dis->hDC, fp);
+                Rectangle(dis->hDC, f.left, f.top, f.right, f.bottom);
+                SelectObject(dis->hDC, oldFp); DeleteObject(fp);
+                SelectObject(dis->hDC, oldB);
+            }
             return TRUE;
         }
         return 0;
