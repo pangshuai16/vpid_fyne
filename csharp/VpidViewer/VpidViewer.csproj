@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows XP 兼容重构：
+    - 目标框架 .NET Framework 3.5（支持 Windows XP SP2+，兼容范围最广）
+    - 语言版本限制为 C# 3.0（.NET 3.5 官方编译器能力，无 async/await/插值等）
+    - UI 使用 WinForms（.NET Framework 自带，XP 原生支持）
+    - 通过 Microsoft.NETFramework.ReferenceAssemblies 实现 net35 参考程序集离线解析，
+      无需在构建机上安装完整老版 .NET SDK
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net35</TargetFramework>
+    <LangVersion>3</LangVersion>
+    <AssemblyName>vpid_viewer</AssemblyName>
+    <RootNamespace>VpidViewer</RootNamespace>
+    <StartupObject>VpidViewer.Program</StartupObject>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Product>USB设备ID查看</Product>
+    <Version>2.0.0</Version>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <!-- Windows-only；参考程序集在 linux/mac 上无需编译本工程 -->
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies"
+                      Version="1.0.3"
+                      PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
