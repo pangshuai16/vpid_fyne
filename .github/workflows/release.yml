@@ -29,18 +29,17 @@ jobs:
             make
             git
 
-      - name: Build vpid_viewer (i686, Win32 API, static)
+      - name: Build vpid_viewer (i686, Win32 API, fully static)
         shell: msys2 {0}
         run: |
           set -eux
           cd native
           rm -rf build && mkdir -p build
-          cmake -S . -B build -G "MinGW Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_FLAGS="-static-libgcc" \
-            -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++"
+          cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
           cmake --build build -j"$(nproc)"
           ls -lh build/vpid_viewer.exe
+          echo "=== imported DLLs (should be system libs only) ==="
+          objdump -p build/vpid_viewer.exe | grep -E 'DLL Name' || true
           cp build/vpid_viewer.exe build/vpid_viewer_windows_xp.exe
 
       - name: Upload artifact

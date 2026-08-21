@@ -38,7 +38,9 @@ if(WIN32)
     comctl32   # Common Controls（ListView）
     user32 gdi32
   )
-  target_link_options(vpid_viewer PRIVATE -municode)
+  # 完全静态链接（含 MinGW 运行库 libwinpthread/libgcc_s/libstdc++），
+  # 产出零 DLL 依赖、可独立运行在裸机 XP 的 exe
+  target_link_options(vpid_viewer PRIVATE -municode -static -static-libgcc -static-libstdc++)
   # XP 兼容：锁定 NT 5.1 API 集 + Win 层 API 集
   target_compile_definitions(vpid_viewer PRIVATE _WIN32_WINNT=0x0501 WINVER=0x0501 _WIN32_IE=0x0501)
 else()
