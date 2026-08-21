@@ -86,7 +86,7 @@ config_splash = Splash(
     binaries=a.binaries,
     datas=a.datas,
     always_on_top=True,
-) if _tkinter_available() else None
+) if _tkinter_available() and sys.platform != 'darwin' else None
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
