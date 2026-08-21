@@ -26,6 +26,7 @@ jobs:
             mingw-w64-i686-gcc
             mingw-w64-i686-cmake
             mingw-w64-i686-pkgconf
+            mingw-w64-i686-make
             make
             git
 
@@ -107,6 +108,7 @@ jobs:
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
             # Rocky 8 = glibc 2.28，在此编译即可兼容所有 >=2.28 的发行版
+            dnf install -y epel-release
             dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel wxGTK3-devel libX11-devel pkgconfig
             cd native
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release

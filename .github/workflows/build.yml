@@ -26,6 +26,7 @@ jobs:
             mingw-w64-i686-gcc
             mingw-w64-i686-cmake
             mingw-w64-i686-pkgconf
+            mingw-w64-i686-make
             make
             git
 
@@ -102,6 +103,7 @@ jobs:
           image: quay.io/rockylinux/rockylinux:8
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
+            dnf install -y epel-release
             dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel wxGTK3-devel libX11-devel pkgconfig
             cd native
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
