@@ -202,11 +202,11 @@ void MainFrame::updateDeviceList(const std::vector<USBDevice>& devices) {
         if (!added.empty()) change += wxString::Format(" (+%d)", (int)added.size());
         if (!removed.empty()) change += wxString::Format(" (-%d)", (int)removed.size());
 
-        m_deviceCount->SetLabel(wxString::Format("%d 个设备已连接%s", (int)devices.size(), change));
+        m_deviceCount->SetLabel(wxString::Format("%d 个设备已连接%s", (int)devices.size(), change.wc_str()));
 
         wxDateTime now = wxDateTime::Now();
         wxString ts = now.Format("%H:%M:%S");
-        setStatus(wxString::Format("最后刷新: %s | 设备数: %d -> %d", ts, (int)prevCount, (int)devices.size()));
+        setStatus(wxString::Format("最后刷新: %s | 设备数: %d -> %d", ts.wc_str(), (int)prevCount, (int)devices.size()));
     }
 }
 
@@ -232,11 +232,11 @@ void MainFrame::onCopy(wxCommandEvent&) {
         wxMessageBox("请先选择一个设备", "提示", wxOK | wxICON_INFORMATION, this);
         return;
     }
-    wxString text = wxString::FromUTF8(d->toClipboardText());
+    wxString text = wxString::FromUTF8(d->toClipboardText().c_str());
     if (wxTheClipboard->Open()) {
         wxTheClipboard->SetData(new wxTextDataObject(text));
         wxTheClipboard->Close();
-        setStatus("已复制: " + wxString::FromUTF8(d->getDisplayName()));
+        setStatus("已复制: " + wxString::FromUTF8(d->getDisplayName().c_str()));
     }
 }
 
@@ -280,7 +280,7 @@ void MainFrame::onRightSelect(wxListEvent&) {
     if (!d) return;
     m_list->clearSelection();
     const char* tag = m_change->addedContains(d->getUniqueKey()) ? "新增" : "移除";
-    setStatus(wxString::Format("[%s] %s", wxString::FromUTF8(tag), deviceInfoText(*d)));
+    setStatus(wxString::FromUTF8(tag) + "  " + deviceInfoText(*d));
 }
 
 // ==================== Windows 设备插拔拦截 ====================
@@ -310,7 +310,7 @@ void MainFrame::updateBaselineStatus() {
     if (m_baseline.empty()) return;
     wxDateTime now = wxDateTime::Now();
     wxString ts = now.Format("%H:%M:%S");
-    m_statusBar->SetStatusText(wxString::Format("基准: %d 个设备 (%s)", (int)m_baseline.size(), ts), 1);
+    m_statusBar->SetStatusText(wxString::Format("基准: %d 个设备 (%s)", (int)m_baseline.size(), ts.wc_str()), 1);
 }
 
 const USBDevice* MainFrame::getSelectedDevice() const {
@@ -320,10 +320,10 @@ const USBDevice* MainFrame::getSelectedDevice() const {
 
 wxString MainFrame::deviceInfoText(const USBDevice& d) {
     return wxString::Format("%s | VID: %s | PID: %s | 序列号: %s",
-                            wxString::FromUTF8(d.getDisplayName()),
-                            wxString::FromUTF8(d.getFormattedVid()),
-                            wxString::FromUTF8(d.getFormattedPid()),
-                            wxString::FromUTF8(d.serial.empty() ? std::string("N/A") : d.serial));
+                            wxString::FromUTF8(d.getDisplayName().c_str()),
+                            wxString::FromUTF8(d.getFormattedVid().c_str()),
+                            wxString::FromUTF8(d.getFormattedPid().c_str()),
+                            wxString::FromUTF8(d.serial.empty() ? "N/A" : d.serial.c_str()));
 }
 
 } // namespace vpid

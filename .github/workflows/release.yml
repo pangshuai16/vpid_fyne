@@ -62,8 +62,9 @@ jobs:
             -DwxBUILD_SHARED=OFF \
             -DwxBUILD_MONOLITHIC=ON \
             -DwxUSE_STD_CONTAINERS=ON \
+            -DwxUSE_GRAPHICS_CONTEXT=OFF \
             -DCMAKE_C_FLAGS="-D_WIN32_WINNT=0x0501 -DWINVER=0x0501" \
-            -DCMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x0501 -DWINVER=0x0501"
+            -DCMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -fpermissive"
           cmake --build . -j"$(nproc)"
           cmake --install .
 
