@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\wxmsys32
-          key: wx-static-i686-3.2.4-1
+          key: wx-static-i686-3.2.4-2
 
       - name: Build static wxWidgets 3.2 for Windows XP (i686, NT5.1)
         if: steps.cache-wx-xp.outputs.cache-hit != 'true'
@@ -75,6 +75,8 @@ jobs:
           cd native
           export WXROOT="/c/wxmsys32"
           export PATH="$WXROOT/bin:$PATH"
+          echo "=== wxWidgets install tree ==="
+          ls -la "$WXROOT/lib" || true
           rm -rf build && mkdir -p build
           cmake -S . -B build -G "MinGW Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \

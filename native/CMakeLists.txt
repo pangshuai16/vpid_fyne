@@ -29,6 +29,9 @@ add_executable(vpid_viewer WIN32 MACOSX_BUNDLE ${BASE_SOURCES}) # WIN32: GUI 子
 if(WIN32)
   find_package(wxWidgets REQUIRED COMPONENTS core base)
   include(${wxWidgets_USE_FILE})
+  message(STATUS ">>> WIN32 wxWidgets_LIBRARIES: ${wxWidgets_LIBRARIES}")
+  message(STATUS ">>> WIN32 wxWidgets_INCLUDE_DIRS: ${wxWidgets_INCLUDE_DIRS}")
+  message(STATUS ">>> WIN32 wxWidgets_CONFIGURATION: ${wxWidgets_CONFIGURATION}")
   target_sources(vpid_viewer PRIVATE
     src/core/windows_scanner.cpp
   )
