@@ -1,8 +1,8 @@
 name: Build
 
 # 非 main 分支：只构建，不发布
-# Windows XP x86: MinGW-w64 (i686) 静态链接，产出兼容 XP 的单文件 exe
-# Linux AMD64:   Rocky Linux 8 容器编译（glibc 2.28），静态合并链接
+# Windows XP x86 : MSYS2 MINGW32 (i686) + 静态 wxWidgets，产出自包含的 32 位 exe，兼容 XP
+# Linux AMD64   : Rocky Linux 8 容器编译（glibc 2.28）
 on:
   push:
     branches-ignore: [main]
@@ -17,23 +17,68 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install MinGW-w64 (i686) toolchain
-        shell: pwsh
-        run: choco install mingw -y --no-progress
+      - name: Set up MSYS2 MINGW32 (i686 toolchain)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: false
+          install: >-
+            mingw-w64-i686-gcc
+            mingw-w64-i686-cmake
+            mingw-w64-i686-pkgconf
+            make
+            git
 
-      - name: Build with CMake + MinGW
-        shell: pwsh
+      - name: Cache static wxWidgets (i686)
+        id: cache-wx-xp
+        uses: actions/cache@v4
+        with:
+          path: C:\wxmsys32
+          key: wx-static-i686-3.2.4-1
+
+      - name: Build static wxWidgets 3.2 for Windows XP (i686, NT5.1)
+        if: steps.cache-wx-xp.outputs.cache-hit != 'true'
+        shell: msys2 {0}
         run: |
+          set -eux
+          ver=3.2.4
+          prefix=/c/wxmsys32
+          mkdir -p /tmp/wxbuild && cd /tmp/wxbuild
+          if [ ! -d "wxWidgets-$ver" ]; then
+            curl -fsSLo wx.tar.bz2 "https://github.com/wxWidgets/wxWidgets/releases/download/v$ver/wxWidgets-$ver.tar.bz2"
+            tar -xjf wx.tar.bz2
+          fi
+          cd "wxWidgets-$ver"
+          rm -rf build-static && mkdir -p build-static && cd build-static
+          # 静态、monolithic，锁定 NT5.1 (XP) API 集
+          cmake .. \
+            -G "MinGW Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$prefix" \
+            -DwxBUILD_SHARED=OFF \
+            -DwxBUILD_MONOLITHIC=ON \
+            -DwxUSE_STD_CONTAINERS=ON \
+            -DCMAKE_C_FLAGS="-D_WIN32_WINNT=0x0501 -DWINVER=0x0501" \
+            -DCMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x0501 -DWINVER=0x0501"
+          cmake --build . -j"$(nproc)"
+          cmake --install .
+
+      - name: Build vpid_viewer (i686, static)
+        shell: msys2 {0}
+        run: |
+          set -eux
           cd native
-          cmake -G "MinGW Makefiles" -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
-          cmake --build build --config Release
-          if (Test-Path "build/vpid_viewer.exe") {
-              Write-Host "Build successful: build/vpid_viewer.exe"
-              Get-Item "build/vpid_viewer.exe" | Select-Object Name, Length, LastWriteTime
-          } else {
-              Write-Error "Build failed: exe not found in build/"
-              exit 1
-          }
+          export WXROOT="/c/wxmsys32"
+          export PATH="$WXROOT/bin:$PATH"
+          rm -rf build && mkdir -p build
+          cmake -S . -B build -G "MinGW Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DwxWidgets_ROOT_DIR="$WXROOT" \
+            -DCMAKE_C_FLAGS="-static-libgcc -D_WIN32_WINNT=0x0501 -DWINVER=0x0501" \
+            -DCMAKE_CXX_FLAGS="-static-libgcc -static-libstdc++ -D_WIN32_WINNT=0x0501 -DWINVER=0x0501"
+          cmake --build build -j"$(nproc)"
+          ls -lh build/vpid_viewer.exe
+          file build/vpid_viewer.exe || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -44,14 +89,6 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            platform_id: linux_amd64
-            image: quay.io/rockylinux/rockylinux:8
-            target: vpid_viewer
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -59,7 +96,7 @@ jobs:
       - name: Build in Rocky Linux 8 container (glibc 2.28)
         uses: addnab/docker-run-action@v3
         with:
-          image: ${{ matrix.image }}
+          image: quay.io/rockylinux/rockylinux:8
           options: -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
             dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel libX11-devel pkgconfig
@@ -71,6 +108,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vpid_viewer_${{ matrix.platform_id }}_${{ github.sha }}
+          name: vpid_viewer_linux_amd64_${{ github.sha }}
           path: native/build/vpid_viewer
           retention-days: 7
