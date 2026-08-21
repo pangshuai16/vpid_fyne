@@ -8,6 +8,11 @@
 #include <wx/clipbrd.h>
 #include <thread>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <dbt.h>
+#endif
+
 namespace vpid {
 
 wxDEFINE_EVENT(wxEVT_SCAN_RESULT, ScanResultEvent);
