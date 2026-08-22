@@ -18,50 +18,50 @@
 
 namespace vpid {
 
-// 全局 GTK3 CSS：现代化简约风 —— 扁平、留白、克制配色
+// 全局 GTK3 CSS：Fluent Design —— 扁平、灰阶分层、Windows 蓝
 static void applyCss() {
     static const char* css =
-        "#vpid-main { background-color:#f7f8fa; }"
+        "#vpid-main { background-color:#f3f3f3; }"
         /* ---- 顶栏标题 / 状态 ---- */
-        "#vpid-main label.app-title { font-size:14pt; font-weight:600; color:#1f2329; }"
-        "#vpid-main label.status  { color:#90949c; font-size:9pt; }"
-        /* ---- 按钮：扁平圆角，无阴影 ---- */
+        "#vpid-main label.app-title { font-size:14pt; font-weight:600; color:#242424; }"
+        "#vpid-main label.status  { color:#616161; font-size:9pt; }"
+        /* ---- 按钮：Fluent 扁平，小圆角，无阴影 ---- */
         "#vpid-main button {"
-        "  border:1px solid #d9dce1; border-radius:6px; padding:4px 16px 3px; font-weight:600;"
-        "  background-image:none; background-color:#ffffff; color:#3b3f45;"
+        "  border:1px solid #8a8886; border-radius:4px; padding:4px 16px 3px; font-weight:600;"
+        "  background-image:none; background-color:#f7f7f7; color:#242424;"
         "  text-shadow:none; min-height:28px; box-shadow:none; }"
-        "#vpid-main button:hover  { background-color:#f2f3f5; border-color:#c6cbd2; }"
-        "#vpid-main button:active { background-color:#e8eaed; }"
-        "#vpid-main button:disabled { opacity:0.5; }"
+        "#vpid-main button:hover  { background-color:#f0f0f0; border-color:#787674; }"
+        "#vpid-main button:active { background-color:#e5e5e5; }"
+        "#vpid-main button:disabled { opacity:0.4; }"
         "#vpid-main button.accent-blue, #vpid-main button.accent-green, #vpid-main button.accent-red {"
         "  border:none; color:#fff; }"
-        "#vpid-main button.accent-blue  { background-color:#3a7bd5; }"
-        "#vpid-main button.accent-blue:hover  { background-color:#2f6cc2; }"
-        "#vpid-main button.accent-blue:active { background-color:#2a5fb0; }"
-        "#vpid-main button.accent-green { background-color:#16a085; }"
-        "#vpid-main button.accent-green:hover { background-color:#129071; }"
-        "#vpid-main button.accent-green:active{ background-color:#0f7d63; }"
-        "#vpid-main button.accent-red   { background-color:#e74c3c; }"
-        "#vpid-main button.accent-red:hover   { background-color:#d94334; }"
-        "#vpid-main button.accent-red:active  { background-color:#c93a2c; }"
+        "#vpid-main button.accent-blue  { background-color:#0078d4; }"
+        "#vpid-main button.accent-blue:hover  { background-color:#106ebe; }"
+        "#vpid-main button.accent-blue:active { background-color:#005a9e; }"
+        "#vpid-main button.accent-green { background-color:#107c10; }"
+        "#vpid-main button.accent-green:hover { background-color:#128212; }"
+        "#vpid-main button.accent-green:active{ background-color:#0e6b0e; }"
+        "#vpid-main button.accent-red   { background-color:#c42b1c; }"
+        "#vpid-main button.accent-red:hover   { background-color:#b22416; }"
+        "#vpid-main button.accent-red:active  { background-color:#982422; }"
         /* ---- 信息 chip：浅底 + 语义字色 ---- */
-        "#vpid-main label.chip { padding:3px 12px; border-radius:12px; font-weight:600; font-size:9.5pt; }"
-        "#vpid-main label.chip-green { background-color:#e7f6f1; color:#0f8a70; }"
-        "#vpid-main label.chip-red   { background-color:#fdeeed; color:#d33125; }"
-        /* ---- 列表：白底 + 细表头 + 简约选中 ---- */
-        "#vpid-main treeview { font-size:10pt; color:#303133; }"
+        "#vpid-main label.chip { padding:3px 12px; border-radius:4px; font-weight:600; font-size:9.5pt; }"
+        "#vpid-main label.chip-green { background-color:#e6f4e7; color:#107c10; }"
+        "#vpid-main label.chip-red   { background-color:#fbeae8; color:#c42b1c; }"
+        /* ---- 列表：白底 + 细表头 + Fluent 选中蓝 ---- */
+        "#vpid-main treeview { font-size:10pt; color:#242424; }"
         "#vpid-main treeview.view { background-color:#ffffff; }"
         "#vpid-main treeview.view:selected, #vpid-main treeview.view:selected:focus,"
-        "#vpid-main treeview.view:selected:hover { background-color:#3a7bd5; color:#ffffff; }"
-        "#vpid-main treeview.view:not(:selected):hover { background-color:#f5f7fa; }"
-        "#vpid-main treeview header button { background-color:#fafbfc; color:#5c6269; font-weight:600;"
-        "  padding-top:5px; padding-bottom:5px; border:0; border-bottom:1px solid #e6e8ec; box-shadow:none; }"
-        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #f0f1f4; }"
-        "#vpid-main treeview header button:hover { background-color:#f0f2f5; }"
-        /* ---- 面板：圆角浅边，轻投影 ---- */
-        "#vpid-main scrolledwindow { border:1px solid #e2e5ea; border-radius:8px;"
-        "  background-color:#ffffff; box-shadow:0 1px 2px rgba(31,35,41,0.05); }"
-        "#vpid-main paned > separator { background-color:#e6e9ef; min-width:1px; }"
+        "#vpid-main treeview.view:selected:hover { background-color:#0078d4; color:#ffffff; }"
+        "#vpid-main treeview.view:not(:selected):hover { background-color:#f3f7fc; }"
+        "#vpid-main treeview header button { background-color:#f9f9f9; color:#616161; font-weight:600;"
+        "  padding-top:5px; padding-bottom:5px; border:0; border-bottom:1px solid #e6e6e6; box-shadow:none; }"
+        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #f0f0f0; }"
+        "#vpid-main treeview header button:hover { background-color:#eef0f2; }"
+        /* ---- 面板：圆角浅边，无重投影 ---- */
+        "#vpid-main scrolledwindow { border:1px solid #e0e0e0; border-radius:6px;"
+        "  background-color:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.05); }"
+        "#vpid-main paned > separator { background-color:#e0e0e0; min-width:1px; }"
         "#vpid-main scrolledwindow undershoot, #vpid-main scrolledwindow overshoot { background:none; }";
     GtkCssProvider* p = gtk_css_provider_new();
     gtk_css_provider_load_from_data(p, css, -1, nullptr);
@@ -210,6 +210,10 @@ static void refreshViews() {
     repopulate(g->storeAll, g->allDev, true);
     repopulate(g->storeAdded, g->addedDev, false);
     repopulate(g->storeRemoved, g->removedDev, false);
+    // 刷新后清除选中，避免“默认全选中”观感
+    gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(g->treeAll)));
+    gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(g->treeAdded)));
+    gtk_tree_selection_unselect_all(gtk_tree_view_get_selection(GTK_TREE_VIEW(g->treeRemoved)));
 
     char buf[96];
     snprintf(buf, sizeof(buf), "%zu 个设备已连接", g->allDev.size());

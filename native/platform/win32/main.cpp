@@ -62,19 +62,23 @@ const int kStatusB = 2104;
 static HINSTANCE g_hInst = nullptr;
 
 namespace theme {
-COLORREF primary(){ return RGB(0x3A,0x7B,0xD5); }
-COLORREF primaryHover(){ return RGB(0x2F,0x6C,0xC2); }
-COLORREF success(){ return RGB(0x16,0xA0,0x85); }
-COLORREF successBg(){ return RGB(0xE7,0xF6,0xF1); }
-COLORREF danger(){ return RGB(0xE7,0x4C,0x3C); }
-COLORREF dangerBg(){ return RGB(0xFD,0xEE,0xED); }
-COLORREF text(){ return RGB(0x30,0x31,0x33); }
-COLORREF textSecondary(){ return RGB(0x90,0x94,0x9C); }
-COLORREF border(){ return RGB(0xE2,0xE5,0xEA); }
-COLORREF bg(){ return RGB(0xF7,0xF8,0xFA); }
+// Fluent Design 色板
+COLORREF primary(){ return RGB(0x00,0x78,0xD4); }             // 主蓝 rest
+COLORREF primaryHover(){ return RGB(0x10,0x6E,0xBE); }        // hover
+COLORREF success(){ return RGB(0x10,0x7C,0x10); }             // 绿
+COLORREF successBg(){ return RGB(0xE6,0xF4,0xE7); }
+COLORREF danger(){ return RGB(0xC4,0x2B,0x1C); }              // 红
+COLORREF dangerBg(){ return RGB(0xFB,0xEA,0xE8); }
+COLORREF text(){ return RGB(0x24,0x24,0x24); }
+COLORREF textSecondary(){ return RGB(0x61,0x61,0x61); }
+COLORREF border(){ return RGB(0xE0,0xE0,0xE0); }
+COLORREF bg(){ return RGB(0xF3,0xF3,0xF3); }
 COLORREF white(){ return RGB(0xFF,0xFF,0xFF); }
-COLORREF rowEven(){ return RGB(0xFB,0xFC,0xFD); }
-COLORREF primaryDark(){ return RGB(0x2A,0x5F,0xB0); }
+COLORREF rowEven(){ return RGB(0xFB,0xFB,0xFB); }
+COLORREF primaryDark(){ return RGB(0x00,0x5A,0x9E); }          // active
+COLORREF controlFill(){ return RGB(0xF7,0xF7,0xF7); }          // 浅灰按钮 rest
+COLORREF controlBorder(){ return RGB(0x8A,0x88,0x86); }        // 按钮描边
+COLORREF controlHover(){ return RGB(0xF0,0xF0,0xF0); }
 }
 
 namespace vpid {
@@ -134,10 +138,10 @@ static COLORREF btnFill(int id) {
 }
 static COLORREF btnBorder(int id) {
     switch (id) {
-        case ids::kBtnStopRefresh: return RGB(0xC9,0x3A,0x2C);
+        case ids::kBtnStopRefresh: return RGB(0xA5,0x24,0x1B);
         case ids::kBtnManualRefresh:
         case ids::kBtnCopy:        return theme::primaryDark();
-        default:                   return RGB(0x0F,0x7D,0x63);
+        default:                   return RGB(0x0E,0x6B,0x0E);
     }
 }
 
@@ -218,9 +222,6 @@ static void initListColumns(HWND list, const wchar_t* cols[], int widths[], int 
 
 static void repopulateList(HWND list, const std::vector<USBDevice>& devs, bool withPath) {
     ListView_DeleteAllItems(list);
-    if (!devs.empty()) {
-        ListView_SetItemState(list, -1, 0, LVIS_SELECTED);
-    }
     for (size_t i = 0; i < devs.size(); ++i) {
         const USBDevice& d = devs[i];
         std::wstring v0 = toW(d.getFormattedVid());
@@ -239,6 +240,8 @@ static void repopulateList(HWND list, const std::vector<USBDevice>& devs, bool w
             ListView_SetItemText(list, idx, 3, (LPWSTR)v3.c_str());
         }
     }
+    // 刷新后清除所有残留选中/焦点，避免“默认全选中”
+    ListView_SetItemState(list, -1, 0, LVIS_SELECTED | LVIS_FOCUSED);
 }
 
 static int selectedRow(HWND list) { return ListView_GetNextItem(list, -1, LVNI_SELECTED); }
@@ -561,14 +564,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             if (lvcd->nmcd.dwDrawStage == CDDS_PREPAINT)
                 return CDRF_NOTIFYITEMDRAW;
             if (lvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) {
-                bool sel = (lvcd->nmcd.uItemState & CDIS_SELECTED) != 0;
+                // 用权威 API 判定真实选中，避免 nmcd.uItemState 在聚焦/无焦点状态下误报，
+                // 导致未选中行也显示选中背景（“默认全选中”）
+                int idx = (int)lvcd->nmcd.dwItemSpec;
+                bool sel = (ListView_GetItemState((HWND)lvcd->nmcd.hdr.hwndFrom,
+                                                  idx, LVIS_SELECTED) & LVIS_SELECTED) != 0;
                 if (sel) {
                     lvcd->clrTextBk = theme::primary();
                     lvcd->clrText = theme::white();
                 } else {
                     lvcd->clrText = theme::text();
-                    lvcd->clrTextBk = (lvcd->nmcd.dwItemSpec % 2) == 0
-                                        ? theme::rowEven() : theme::white();
+                    lvcd->clrTextBk = (idx % 2) == 0 ? theme::rowEven() : theme::white();
                 }
                 return CDRF_NEWFONT;
             }
@@ -608,14 +614,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             int idx = dis->CtlID - ids::kBtnStopRefresh;
             bool disabled = (dis->itemState & ODS_DISABLED) != 0;
             bool pressed  = (dis->itemState & ODS_SELECTED) != 0;
-            COLORREF base = disabled ? RGB(0xCF,0xD2,0xD8) : btnFill(dis->CtlID);
+            COLORREF base = disabled ? theme::controlFill() : btnFill(dis->CtlID);
             COLORREF fill = base;
             if (!disabled) {
                 if (idx >= 0 && idx < 5 && a.btnHover[idx]) fill = shade(base, +22);
                 if (pressed) fill = shade(base, -36);
             }
-            COLORREF textCol = disabled ? RGB(0xA5,0xA9,0xB0) : theme::white();
-            COLORREF borderCol = disabled ? base : btnBorder(dis->CtlID);
+            COLORREF textCol = disabled ? RGB(0xA5,0xA5,0xA5) : theme::white();
+            COLORREF borderCol = disabled ? theme::border() : btnBorder(dis->CtlID);
 
             RECT rc = dis->rcItem;
             InflateRect(&rc, -3, -3);
@@ -623,7 +629,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);
             HGDIOBJ oldBr = SelectObject(dis->hDC, br);
-            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 14, 14);
+            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 8, 8);
             SelectObject(dis->hDC, oldPen); DeleteObject(pen);
             SelectObject(dis->hDC, oldBr); DeleteObject(br);
 
