@@ -101,6 +101,25 @@ static void enableHighDPI() {
     if (f) f();
 }
 
+// 等宽字体：数据列（VID/PID 固定 4 位）用等宽更对齐。优先 Consolas，XP 不内置则回退 Courier New。
+static int CALLBACK monoEnumProc(const LOGFONTW*, const TEXTMETRICW*, DWORD, LPARAM lp) {
+    *(BOOL*)lp = TRUE; return 0; // 找到即停止
+}
+static bool fontExists(const wchar_t* name) {
+    LOGFONTW lf; memset(&lf, 0, sizeof(lf));
+    lf.lfCharSet = DEFAULT_CHARSET;
+    wcscpy(lf.lfFaceName, name);
+    BOOL found = FALSE;
+    HDC dc = GetDC(nullptr);
+    if (dc) { EnumFontFamiliesExW(dc, &lf, monoEnumProc, (LPARAM)&found, 0); ReleaseDC(nullptr, dc); }
+    return found != FALSE;
+}
+static HFONT makeMonoFont(int height) {
+    const wchar_t* face = fontExists(L"Consolas") ? L"Consolas" : L"Courier New";
+    return CreateFontW(height, 0, 0, 0, FW_NORMAL, 0, 0, 0,
+                       DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, face);
+}
+
 struct App;
 
 // ---------- 小工具 ----------
@@ -363,38 +382,50 @@ static void startScan() {
 static void layoutChildren(HWND hwnd) {
     RECT rc; GetClientRect(hwnd, &rc);
     int W = rc.right, H = rc.bottom;
-    const int toolbarH = 44, statusH = 22;
+    const int pad = 12;            // 窗口外边距
+    const int gap = 10;            // 面板间间距
+    const int toolbarH = 46, statusH = 22;
+    const int ctlH = 26;           // 工具栏内控件统一高度
+    int topY = (toolbarH - ctlH) / 2;
 
-    int x = 12;
-    MoveWindow(g->headerCount, x, 10, 200, 24, TRUE); x += 204;
+    // 左：标题（设备数）
+    int x = pad;
+    MoveWindow(g->headerCount, x, topY, 240, ctlH, TRUE);
 
-    const int btnW = 92, btnH = 26, gap = 8, topY = (toolbarH - btnH) / 2;
+    // 右：按钮右对齐（同一垂直中心线）
+    int btnW[5] = { 88, 88, 88, 88, 64 };
     bool showStop = g->autoRefresh;
-    ShowWindow(g->cmdButtons[0], showStop ? SW_SHOW : SW_HIDE);
-    ShowWindow(g->cmdButtons[1], showStop ? SW_HIDE : SW_SHOW);
+    bool show[5] = { showStop, !showStop, true, true, true };
+    ShowWindow(g->cmdButtons[0], show[0] ? SW_SHOW : SW_HIDE);
+    ShowWindow(g->cmdButtons[1], show[1] ? SW_SHOW : SW_HIDE);
+    int total = 0, ngap = 0;
+    for (int k = 0; k < 5; ++k) if (show[k]) { total += btnW[k]; ++ngap; }
+    total += (ngap - 1) * 8;       // 8 = 按钮间距
+    x = W - pad - total;
     for (int k = 0; k < 5; ++k) {
-        if (k == 0 && !showStop) continue;
-        if (k == 1 && showStop) continue;
-        int bw = (k == 4) ? 70 : btnW;
-        MoveWindow(g->cmdButtons[k], x, topY, bw, btnH, TRUE);
-        x += bw + gap;
+        if (!show[k]) continue;
+        MoveWindow(g->cmdButtons[k], x, topY, btnW[k], ctlH, TRUE);
+        x += btnW[k] + 8;
     }
 
-    int midX = (int)(W * 0.60);
-    int mainBt = H - statusH;
-    int rh = (mainBt - toolbarH) / 2;
+    // 主内容区：左列表 | 右两面板，顶部/底部对齐、边框对齐
+    int cTop = toolbarH + pad;
+    int cBot = H - statusH - pad;
+    int leftW = (int)((W - 2 * pad - gap) * 0.60);
+    int midX  = pad + leftW + gap;
+    int rightW = W - pad - midX;
+    int half = (cBot - cTop) / 2;               // 右侧上下两面板等高
+    int listH = half - 24;                      // 每个面板 chip(24) + 列表
 
-    RECT listRc{0, toolbarH, midX, mainBt};
-    MoveWindow(g->listAll, 0, toolbarH + 2, midX, mainBt - toolbarH - 2, TRUE);
+    MoveWindow(g->listAll, pad, cTop, leftW, cBot - cTop, TRUE);
 
-    MoveWindow(g->headerAdded, midX, toolbarH, W - midX, 24, TRUE);
-    MoveWindow(g->listAdded, midX, toolbarH + 24, W - midX, rh - 24 - 2, TRUE);
-    MoveWindow(g->headerRemoved, midX, toolbarH + rh, W - midX, 24, TRUE);
-    MoveWindow(g->listRemoved, midX, toolbarH + rh + 24, W - midX, mainBt - (toolbarH + rh + 24) - 2, TRUE);
+    MoveWindow(g->headerAdded, midX, cTop, rightW, 24, TRUE);
+    MoveWindow(g->listAdded, midX, cTop + 24, rightW, listH, TRUE);
+    MoveWindow(g->headerRemoved, midX, cTop + half, rightW, 24, TRUE);
+    MoveWindow(g->listRemoved, midX, cTop + half + 24, rightW, listH, TRUE);
 
-    MoveWindow(g->statusA, 8, mainBt + 3, W / 2 - 8, statusH, TRUE);
-    MoveWindow(g->statusB, W / 2, mainBt + 3, W / 2 - 8, statusH, TRUE);
-    (void)listRc;
+    MoveWindow(g->statusA, pad, H - statusH, W / 2 - pad, statusH, TRUE);
+    MoveWindow(g->statusB, W / 2, H - statusH, W / 2 - pad, statusH, TRUE);
 }
 
 // ---------- 控件创建 ----------
@@ -428,8 +459,7 @@ static void createControls(HWND hwnd) {
                               DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
     a.hFontTitle = CreateFontW(-16, 0, 0, 0, FW_BOLD, 0, 0, 0,
                                DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    a.hFontList = CreateFontW(-12, 0, 0, 0, FW_NORMAL, 0, 0, 0,
-                              DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+    a.hFontList = makeMonoFont(-12); // 数据列等宽（VID/PID 固定 4 位，对齐美观）
 
     a.headerCount = makeStatic(hwnd, ids::kHeaderDeviceCount, L"0 个设备已连接", 0);
     SendMessageW(a.headerCount, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
@@ -442,10 +472,10 @@ static void createControls(HWND hwnd) {
         SetWindowLongPtrW(b, GWLP_USERDATA, (LONG_PTR)i);
     }
 
-    // 主列表列（VID/PID 固定 4 位 hex，窄列 + 居中）
+    // 主列表列（VID/PID 固定 4 位 hex + 等宽，极小列宽 + 居中）
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 60, 60, 220, 400 };
+        int ws[4] = { 42, 42, 230, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
@@ -455,7 +485,7 @@ static void createControls(HWND hwnd) {
     SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 68, 68, 240 };
+        int ws[3] = { 50, 50, 240 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
@@ -629,7 +659,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);
             HGDIOBJ oldBr = SelectObject(dis->hDC, br);
-            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 8, 8);
+            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 6, 6);
             SelectObject(dis->hDC, oldPen); DeleteObject(pen);
             SelectObject(dis->hDC, oldBr); DeleteObject(br);
 

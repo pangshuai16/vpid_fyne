@@ -49,7 +49,7 @@ static void applyCss() {
         "#vpid-main label.chip-green { background-color:#e6f4e7; color:#107c10; }"
         "#vpid-main label.chip-red   { background-color:#fbeae8; color:#c42b1c; }"
         /* ---- 列表：白底 + 细表头 + Fluent 选中蓝 ---- */
-        "#vpid-main treeview { font-size:10pt; color:#242424; }"
+        "#vpid-main treeview, #vpid-main treeview.view { font-size:10pt; color:#242424; font-family:monospace; }"
         "#vpid-main treeview.view { background-color:#ffffff; }"
         "#vpid-main treeview.view:selected, #vpid-main treeview.view:selected:focus,"
         "#vpid-main treeview.view:selected:hover { background-color:#0078d4; color:#ffffff; }"
@@ -145,12 +145,12 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
     for (int i = 0; i < n; ++i) {
         GtkCellRenderer* r = gtk_cell_renderer_text_new();
         gtk_cell_renderer_set_padding(r, 6, 4);
-        bool isKey = (i <= 1); // VID / PID：固定 4 位 hex，窄列居中
+        bool isKey = (i <= 1); // VID / PID：固定 4 位 hex，等宽窄列居中
         if (isKey) gtk_cell_renderer_set_alignment(r, 0.5f, 0.5f);
         GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
         if (isKey) {
             gtk_tree_view_column_set_sizing(col, GTK_TREE_VIEW_COLUMN_FIXED);
-            gtk_tree_view_column_set_fixed_width(col, 58);
+            gtk_tree_view_column_set_fixed_width(col, 50);
             gtk_tree_view_column_set_alignment(col, 0.5f);
         } else {
             gtk_tree_view_column_set_expand(GTK_TREE_VIEW_COLUMN(col), TRUE);
@@ -400,17 +400,24 @@ static void buildUi(App& a) {
     a.btnBaseline = makeButton("设为基准", onBaseline, "accent-green");
     a.btnCopy = makeButton(" 复制 ", onCopy, "accent-blue");
 
-    gtk_box_pack_start(GTK_BOX(tb), a.btnStop, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(tb), a.btnAuto, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(tb), a.btnManual, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(tb), a.btnBaseline, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(tb), a.btnCopy, FALSE, FALSE, 0);
+    // 按钮整体右对齐（与 Windows Fluent 工具栏一致）
+    GtkWidget* btns = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_box_pack_start(GTK_BOX(btns), a.btnStop, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(btns), a.btnAuto, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(btns), a.btnManual, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(btns), a.btnBaseline, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(btns), a.btnCopy, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(tb), btns, FALSE, FALSE, 0);
 
-    // 主区分栏
+    // 主区分栏（左右留边对齐顶栏）
     GtkWidget* paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_set_hexpand(GTK_WIDGET(paned), TRUE);
     gtk_widget_set_vexpand(GTK_WIDGET(paned), TRUE);
-    gtk_box_pack_start(GTK_BOX(root), paned, TRUE, TRUE, 4);
+    gtk_widget_set_margin_start(GTK_WIDGET(paned), 10);
+    gtk_widget_set_margin_end(GTK_WIDGET(paned), 10);
+    gtk_widget_set_margin_top(GTK_WIDGET(paned), 2);
+    gtk_widget_set_margin_bottom(GTK_WIDGET(paned), 6);
+    gtk_box_pack_start(GTK_BOX(root), paned, TRUE, TRUE, 0);
 
     // 左列表
     GtkWidget* left = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
