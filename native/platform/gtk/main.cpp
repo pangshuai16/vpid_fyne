@@ -18,50 +18,54 @@
 
 namespace vpid {
 
-// 全局 GTK3 CSS：Fluent Design —— 扁平、灰阶分层、Windows 蓝
+// 全局 GTK3 CSS：Fluent 2 质感 —— 卡片分层、大圆角、阴影提升、充足留白
 static void applyCss() {
     static const char* css =
-        "#vpid-main { background-color:#f3f3f3; }"
-        /* ---- 顶栏标题 / 状态 ---- */
-        "#vpid-main label.app-title { font-size:14pt; font-weight:600; color:#242424; }"
-        "#vpid-main label.status  { color:#616161; font-size:9pt; }"
-        /* ---- 按钮：Fluent 扁平，小圆角，无阴影 ---- */
+        "#vpid-main { background-color:#f0f1f2; }"
+        /* ---- 顶栏：白色浮起卡片 ---- */
+        "#vpid-main box.toolbar { background-color:#ffffff; border-radius:12px;"
+        "  padding:12px 6px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }"
+        "#vpid-main label.app-title { font-size:17pt; font-weight:600; color:#242424; }"
+        "#vpid-main label.status  { color:#6f6f6f; font-size:10pt; }"
+        /* ---- 按钮：Fluent 高按钮、大圆角、悬浮轻提升 ---- */
         "#vpid-main button {"
-        "  border:1px solid #8a8886; border-radius:4px; padding:8px 20px 7px; font-weight:600;"
-        "  background-image:none; background-color:#f7f7f7; color:#242424;"
-        "  text-shadow:none; min-height:34px; box-shadow:none; }"
-        "#vpid-main button:hover  { background-color:#f0f0f0; border-color:#787674; }"
-        "#vpid-main button:active { background-color:#e5e5e5; }"
+        "  border:1px solid #8a8886; border-radius:8px; padding:10px 22px 9px; font-weight:600;"
+        "  background-image:none; background-color:#ffffff; color:#242424;"
+        "  text-shadow:none; min-height:38px; box-shadow:none; }"
+        "#vpid-main button:hover  { background-color:#f2f2f2; border-color:#787674;"
+        "  box-shadow:0 2px 4px rgba(0,0,0,0.12); }"
+        "#vpid-main button:active { background-color:#e6e6e6; box-shadow:none; }"
         "#vpid-main button:disabled { opacity:0.4; }"
         "#vpid-main button.accent-blue, #vpid-main button.accent-green, #vpid-main button.accent-red {"
-        "  border:none; color:#fff; }"
+        "  border:none; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.18); }"
         "#vpid-main button.accent-blue  { background-color:#0078d4; }"
-        "#vpid-main button.accent-blue:hover  { background-color:#106ebe; }"
-        "#vpid-main button.accent-blue:active { background-color:#005a9e; }"
+        "#vpid-main button.accent-blue:hover  { background-color:#106ebe; box-shadow:0 3px 8px rgba(0,120,212,0.35); }"
+        "#vpid-main button.accent-blue:active { background-color:#005a9e; box-shadow:none; }"
         "#vpid-main button.accent-green { background-color:#107c10; }"
-        "#vpid-main button.accent-green:hover { background-color:#128212; }"
-        "#vpid-main button.accent-green:active{ background-color:#0e6b0e; }"
+        "#vpid-main button.accent-green:hover { background-color:#128212; box-shadow:0 3px 8px rgba(16,124,16,0.3); }"
+        "#vpid-main button.accent-green:active{ background-color:#0e6b0e; box-shadow:none; }"
         "#vpid-main button.accent-red   { background-color:#c42b1c; }"
-        "#vpid-main button.accent-red:hover   { background-color:#b22416; }"
-        "#vpid-main button.accent-red:active  { background-color:#982422; }"
-        /* ---- 信息 chip：浅底 + 语义字色 ---- */
-        "#vpid-main label.chip { padding:3px 12px; border-radius:4px; font-weight:600; font-size:9.5pt; }"
+        "#vpid-main button.accent-red:hover   { background-color:#b22416; box-shadow:0 3px 8px rgba(196,43,28,0.3); }"
+        "#vpid-main button.accent-red:active  { background-color:#982422; box-shadow:none; }"
+        /* ---- 信息 chip：胶囊浅底 ---- */
+        "#vpid-main label.chip { padding:6px 16px; border-radius:10px; font-weight:600; font-size:10pt;"
+        "  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04); }"
         "#vpid-main label.chip-green { background-color:#e6f4e7; color:#107c10; }"
         "#vpid-main label.chip-red   { background-color:#fbeae8; color:#c42b1c; }"
-        /* ---- 列表：白底 + 细表头 + Fluent 选中蓝 ---- */
-        "#vpid-main treeview, #vpid-main treeview.view { font-size:10pt; color:#242424; font-family:monospace; }"
+        /* ---- 列表：白底 + 更高的行与表头 ---- */
+        "#vpid-main treeview, #vpid-main treeview.view { font-size:10.5pt; color:#242424; font-family:monospace; }"
         "#vpid-main treeview.view { background-color:#ffffff; }"
         "#vpid-main treeview.view:selected, #vpid-main treeview.view:selected:focus,"
         "#vpid-main treeview.view:selected:hover { background-color:#0078d4; color:#ffffff; }"
         "#vpid-main treeview.view:not(:selected):hover { background-color:#f3f7fc; }"
-        "#vpid-main treeview header button { background-color:#f9f9f9; color:#616161; font-weight:600;"
-        "  padding-top:5px; padding-bottom:5px; border:0; border-bottom:1px solid #e6e6e6; box-shadow:none; }"
-        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #f0f0f0; }"
-        "#vpid-main treeview header button:hover { background-color:#eef0f2; }"
-        /* ---- 面板：圆角浅边，无重投影 ---- */
-        "#vpid-main scrolledwindow { border:1px solid #e0e0e0; border-radius:6px;"
-        "  background-color:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.05); }"
-        "#vpid-main paned > separator { background-color:#e0e0e0; min-width:1px; }"
+        "#vpid-main treeview header button { background-color:#f7f7f7; color:#595959; font-weight:600;"
+        "  padding-top:9px; padding-bottom:9px; border:0; border-bottom:1px solid #ececec; box-shadow:none; }"
+        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #f2f2f2; }"
+        "#vpid-main treeview header button:hover { background-color:#edf0f3; }"
+        /* ---- 面板：白色圆角卡片 + 分层阴影 ---- */
+        "#vpid-main scrolledwindow.card { border:1px solid #e3e3e3; border-radius:12px;"
+        "  background-color:#ffffff; box-shadow:0 3px 12px rgba(0,0,0,0.07); }"
+        "#vpid-main paned > separator { background-color:transparent; min-width:16px; }"
         "#vpid-main scrolledwindow undershoot, #vpid-main scrolledwindow overshoot { background:none; }";
     GtkCssProvider* p = gtk_css_provider_new();
     gtk_css_provider_load_from_data(p, css, -1, nullptr);
@@ -144,7 +148,7 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
     g_object_unref(store); // view 持有引用
     for (int i = 0; i < n; ++i) {
         GtkCellRenderer* r = gtk_cell_renderer_text_new();
-        gtk_cell_renderer_set_padding(r, 8, 6);
+        gtk_cell_renderer_set_padding(r, 12, 10);
         bool isKey = (i <= 1); // VID / PID：固定 4 位 hex，等宽窄列居中
         if (isKey) gtk_cell_renderer_set_alignment(r, 0.5f, 0.5f);
         GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
@@ -382,12 +386,13 @@ static void buildUi(App& a) {
     GtkWidget* root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(a.win), root);
 
-    // 顶栏
-    GtkWidget* tb = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    gtk_widget_set_margin_start(GTK_WIDGET(tb), 10);
-    gtk_widget_set_margin_end(GTK_WIDGET(tb), 10);
-    gtk_widget_set_margin_top(GTK_WIDGET(tb), 8);
-    gtk_widget_set_margin_bottom(GTK_WIDGET(tb), 8);
+    // 顶栏（白色浮起卡片）
+    GtkWidget* tb = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    addClass(tb, "toolbar");
+    gtk_widget_set_margin_start(GTK_WIDGET(tb), 16);
+    gtk_widget_set_margin_end(GTK_WIDGET(tb), 16);
+    gtk_widget_set_margin_top(GTK_WIDGET(tb), 14);
+    gtk_widget_set_margin_bottom(GTK_WIDGET(tb), 6);
     gtk_box_pack_start(GTK_BOX(root), tb, FALSE, FALSE, 0);
 
     a.headerCount = gtk_label_new("0 个设备已连接");
@@ -413,10 +418,10 @@ static void buildUi(App& a) {
     GtkWidget* paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_set_hexpand(GTK_WIDGET(paned), TRUE);
     gtk_widget_set_vexpand(GTK_WIDGET(paned), TRUE);
-    gtk_widget_set_margin_start(GTK_WIDGET(paned), 10);
-    gtk_widget_set_margin_end(GTK_WIDGET(paned), 10);
-    gtk_widget_set_margin_top(GTK_WIDGET(paned), 2);
-    gtk_widget_set_margin_bottom(GTK_WIDGET(paned), 6);
+    gtk_widget_set_margin_start(GTK_WIDGET(paned), 16);
+    gtk_widget_set_margin_end(GTK_WIDGET(paned), 16);
+    gtk_widget_set_margin_top(GTK_WIDGET(paned), 6);
+    gtk_widget_set_margin_bottom(GTK_WIDGET(paned), 8);
     gtk_box_pack_start(GTK_BOX(root), paned, TRUE, TRUE, 0);
 
     // 左列表
@@ -424,6 +429,7 @@ static void buildUi(App& a) {
     const gchar* colsAll[] = { "VID", "PID", "设备名称", "路径" };
     a.treeAll = makeList(colsAll, 4, &a.storeAll);
     GtkWidget* scAll = gtk_scrolled_window_new(nullptr, nullptr);
+    addClass(GTK_WIDGET(scAll), "card");
     gtk_container_add(GTK_CONTAINER(scAll), a.treeAll);
     gtk_box_pack_start(GTK_BOX(left), scAll, TRUE, TRUE, 0);
     gtk_paned_pack1(GTK_PANED(paned), left, TRUE, FALSE);
@@ -436,6 +442,7 @@ static void buildUi(App& a) {
     addClass(a.headerAdded, "chip-green");
     a.treeAdded = makeList(colsChg, 3, &a.storeAdded);
     GtkWidget* scAdded = gtk_scrolled_window_new(nullptr, nullptr);
+    addClass(GTK_WIDGET(scAdded), "card");
     gtk_container_add(GTK_CONTAINER(scAdded), a.treeAdded);
 
     a.headerRemoved = gtk_label_new("- 移除设备  0");
@@ -443,14 +450,15 @@ static void buildUi(App& a) {
     addClass(a.headerRemoved, "chip-red");
     a.treeRemoved = makeList(colsChg, 3, &a.storeRemoved);
     GtkWidget* scRemoved = gtk_scrolled_window_new(nullptr, nullptr);
+    addClass(GTK_WIDGET(scRemoved), "card");
     gtk_container_add(GTK_CONTAINER(scRemoved), a.treeRemoved);
 
-    GtkWidget* rightTop = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    GtkWidget* rightTop = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_box_pack_start(GTK_BOX(rightTop), a.headerAdded, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(rightTop), scAdded, TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(right), rightTop, TRUE, TRUE, 0);
 
-    GtkWidget* rightBot = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    GtkWidget* rightBot = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_box_pack_start(GTK_BOX(rightBot), a.headerRemoved, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(rightBot), scRemoved, TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(right), rightBot, TRUE, TRUE, 0);

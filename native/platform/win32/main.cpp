@@ -72,7 +72,7 @@ COLORREF dangerBg(){ return RGB(0xFB,0xEA,0xE8); }
 COLORREF text(){ return RGB(0x24,0x24,0x24); }
 COLORREF textSecondary(){ return RGB(0x61,0x61,0x61); }
 COLORREF border(){ return RGB(0xE0,0xE0,0xE0); }
-COLORREF bg(){ return RGB(0xF3,0xF3,0xF3); }
+COLORREF bg(){ return RGB(0xF0,0xF1,0xF2); }
 COLORREF white(){ return RGB(0xFF,0xFF,0xFF); }
 COLORREF rowEven(){ return RGB(0xFB,0xFB,0xFB); }
 COLORREF primaryDark(){ return RGB(0x00,0x5A,0x9E); }          // active
@@ -382,24 +382,24 @@ static void startScan() {
 static void layoutChildren(HWND hwnd) {
     RECT rc; GetClientRect(hwnd, &rc);
     int W = rc.right, H = rc.bottom;
-    const int pad = 12;            // 窗口外边距
-    const int gap = 10;            // 面板间间距
-    const int toolbarH = 50, statusH = 22;
-    const int ctlH = 30;           // 工具栏内控件统一高度（去扁平，更饱满）
+    const int pad = 16;            // 窗口外边距（Fluent 大留白）
+    const int gap = 14;            // 面板间间距
+    const int toolbarH = 60, statusH = 24;
+    const int ctlH = 38;           // 工具栏控件高度（Fluent 高按钮）
     int topY = (toolbarH - ctlH) / 2;
 
     // 左：标题（设备数）
     int x = pad;
-    MoveWindow(g->headerCount, x, topY, 240, ctlH, TRUE);
+    MoveWindow(g->headerCount, x, topY, 260, ctlH, TRUE);
 
     // 右：按钮右对齐（同一垂直中心线）；重置为常用按钮放第二位
-    const int btnW[5] = { 76, 76, 84, 80, 64 };   // 停止/自动, 重置, 手动, 复制
+    const int btnW[5] = { 80, 80, 88, 84, 68 };   // 停止/自动, 重置, 手动, 复制
     const int order[5] = { 0, 1, 3, 2, 4 };       // 显示顺序
     bool showStop = g->autoRefresh;
     bool show[5] = { showStop, !showStop, true, true, true };
     ShowWindow(g->cmdButtons[0], show[0] ? SW_SHOW : SW_HIDE);
     ShowWindow(g->cmdButtons[1], show[1] ? SW_SHOW : SW_HIDE);
-    int gapb = 8;                                  // 按钮间距
+    int gapb = 10;                                 // 按钮间距
     int total = 0, ngap = 0;
     for (int q = 0; q < 5; ++q) { int k = order[q]; if (show[k]) { total += btnW[k]; ++ngap; } }
     total += (ngap - 1) * gapb;
@@ -418,14 +418,15 @@ static void layoutChildren(HWND hwnd) {
     int midX  = pad + leftW + gap;
     int rightW = W - pad - midX;
     int half = (cBot - cTop) / 2;               // 右侧上下两面板等高
-    int listH = half - 24;                      // 每个面板 chip(24) + 列表
+    int chipH = 28;                              // chip 告示条高度（更饱满）
+    int listH = half - chipH;
 
     MoveWindow(g->listAll, pad, cTop, leftW, cBot - cTop, TRUE);
 
-    MoveWindow(g->headerAdded, midX, cTop, rightW, 24, TRUE);
-    MoveWindow(g->listAdded, midX, cTop + 24, rightW, listH, TRUE);
-    MoveWindow(g->headerRemoved, midX, cTop + half, rightW, 24, TRUE);
-    MoveWindow(g->listRemoved, midX, cTop + half + 24, rightW, listH, TRUE);
+    MoveWindow(g->headerAdded, midX, cTop, rightW, chipH, TRUE);
+    MoveWindow(g->listAdded, midX, cTop + chipH, rightW, listH, TRUE);
+    MoveWindow(g->headerRemoved, midX, cTop + half, rightW, chipH, TRUE);
+    MoveWindow(g->listRemoved, midX, cTop + half + chipH, rightW, listH, TRUE);
 
     MoveWindow(g->statusA, pad, H - statusH, W / 2 - pad, statusH, TRUE);
     MoveWindow(g->statusB, W / 2, H - statusH, W / 2 - pad, statusH, TRUE);
@@ -458,11 +459,11 @@ static void createControls(HWND hwnd) {
     App& a = *g;
 
     // 字体（XP 回退 Tahoma，现代系统用 Segoe UI 更清晰）
-    a.hFontBtns = CreateFontW(-15, 0, 0, 0, FW_BOLD, 0, 0, 0,
+    a.hFontBtns = CreateFontW(-16, 0, 0, 0, FW_BOLD, 0, 0, 0,
                               DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    a.hFontTitle = CreateFontW(-17, 0, 0, 0, FW_BOLD, 0, 0, 0,
+    a.hFontTitle = CreateFontW(-19, 0, 0, 0, FW_BOLD, 0, 0, 0,
                                DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    a.hFontList = makeMonoFont(-13); // 数据列等宽，字号略大，减少扁平时更便于阅读
+    a.hFontList = makeMonoFont(-14); // 数据列等宽，字号更大，行更高更舒适
 
     a.headerCount = makeStatic(hwnd, ids::kHeaderDeviceCount, L"0 个设备已连接", 0);
     SendMessageW(a.headerCount, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
@@ -484,8 +485,8 @@ static void createControls(HWND hwnd) {
     }
     a.headerAdded = makeStatic(hwnd, ids::kHeaderAdded, L"+ 新增设备  0", SS_LEFT);
     a.headerRemoved = makeStatic(hwnd, ids::kHeaderRemoved, L"- 移除设备  0", SS_LEFT);
-    SendMessageW(a.headerAdded, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
-    SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
+    SendMessageW(a.headerAdded, WM_SETFONT, (WPARAM)a.hFontBtns, TRUE);
+    SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontBtns, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
         int ws[3] = { 50, 50, 240 };
@@ -662,7 +663,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);
             HGDIOBJ oldBr = SelectObject(dis->hDC, br);
-            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 6, 6);
+            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 10, 10);
             SelectObject(dis->hDC, oldPen); DeleteObject(pen);
             SelectObject(dis->hDC, oldBr); DeleteObject(br);
 
@@ -713,12 +714,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         FillRect(hdc, &rc, bgBr);
         DeleteObject(bgBr);
         // 顶部工具条（白）+ 分隔线
-        RECT tb{0, 0, W, 50};
+        RECT tb{0, 0, W, 60};
         FillRect(hdc, &tb, (HBRUSH)GetStockObject(WHITE_BRUSH));
         HPEN pen = CreatePen(PS_SOLID, 1, theme::border());
         HPEN oldPen = (HPEN)SelectObject(hdc, pen);
-        MoveToEx(hdc, 0, 50, nullptr);
-        LineTo(hdc, W, 50);
+        MoveToEx(hdc, 0, 60, nullptr);
+        LineTo(hdc, W, 60);
         SelectObject(hdc, oldPen);
         DeleteObject(pen);
         EndPaint(hwnd, &ps);
