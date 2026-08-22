@@ -3,7 +3,7 @@
 // 复用 core/（USB 枚举、比对、剪贴板文本生成）。
 //
 // 布局：
-//   [顶栏 44px] 设备数 label + [停止/自动刷新][手动刷新][设为基准] ... [复制]
+//   [顶栏 50px] 设备数 label + [停止/自动刷新][重置][手动刷新][复制]
 //   [主区]      左(60%) 全部设备列表 | 右(40%) 上=+新增 / 下=-移除
 //   [底栏 22px] 状态(字段0) + 基准信息(字段1)
 
@@ -312,7 +312,7 @@ static void setBaseline() {
     g->baseline = g->curDev;
     g->addedDev.clear();
     g->removedDev.clear();
-    setStatusA(L"已将当前设备列表设为基准");
+    setStatusA(L"已重置基准为当前设备列表");
     refreshViews();
     setStatusB(L"基准: " + std::to_wstring((int)g->baseline.size()) + L" 个设备 (" + nowTime() + L")");
 }
@@ -384,28 +384,31 @@ static void layoutChildren(HWND hwnd) {
     int W = rc.right, H = rc.bottom;
     const int pad = 12;            // 窗口外边距
     const int gap = 10;            // 面板间间距
-    const int toolbarH = 46, statusH = 22;
-    const int ctlH = 26;           // 工具栏内控件统一高度
+    const int toolbarH = 50, statusH = 22;
+    const int ctlH = 30;           // 工具栏内控件统一高度（去扁平，更饱满）
     int topY = (toolbarH - ctlH) / 2;
 
     // 左：标题（设备数）
     int x = pad;
     MoveWindow(g->headerCount, x, topY, 240, ctlH, TRUE);
 
-    // 右：按钮右对齐（同一垂直中心线）
-    int btnW[5] = { 88, 88, 88, 88, 64 };
+    // 右：按钮右对齐（同一垂直中心线）；重置为常用按钮放第二位
+    const int btnW[5] = { 76, 76, 84, 80, 64 };   // 停止/自动, 重置, 手动, 复制
+    const int order[5] = { 0, 1, 3, 2, 4 };       // 显示顺序
     bool showStop = g->autoRefresh;
     bool show[5] = { showStop, !showStop, true, true, true };
     ShowWindow(g->cmdButtons[0], show[0] ? SW_SHOW : SW_HIDE);
     ShowWindow(g->cmdButtons[1], show[1] ? SW_SHOW : SW_HIDE);
+    int gapb = 8;                                  // 按钮间距
     int total = 0, ngap = 0;
-    for (int k = 0; k < 5; ++k) if (show[k]) { total += btnW[k]; ++ngap; }
-    total += (ngap - 1) * 8;       // 8 = 按钮间距
+    for (int q = 0; q < 5; ++q) { int k = order[q]; if (show[k]) { total += btnW[k]; ++ngap; } }
+    total += (ngap - 1) * gapb;
     x = W - pad - total;
-    for (int k = 0; k < 5; ++k) {
+    for (int q = 0; q < 5; ++q) {
+        int k = order[q];
         if (!show[k]) continue;
         MoveWindow(g->cmdButtons[k], x, topY, btnW[k], ctlH, TRUE);
-        x += btnW[k] + 8;
+        x += btnW[k] + gapb;
     }
 
     // 主内容区：左列表 | 右两面板，顶部/底部对齐、边框对齐
@@ -455,16 +458,16 @@ static void createControls(HWND hwnd) {
     App& a = *g;
 
     // 字体（XP 回退 Tahoma，现代系统用 Segoe UI 更清晰）
-    a.hFontBtns = CreateFontW(-14, 0, 0, 0, FW_BOLD, 0, 0, 0,
+    a.hFontBtns = CreateFontW(-15, 0, 0, 0, FW_BOLD, 0, 0, 0,
                               DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    a.hFontTitle = CreateFontW(-16, 0, 0, 0, FW_BOLD, 0, 0, 0,
+    a.hFontTitle = CreateFontW(-17, 0, 0, 0, FW_BOLD, 0, 0, 0,
                                DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
-    a.hFontList = makeMonoFont(-12); // 数据列等宽（VID/PID 固定 4 位，对齐美观）
+    a.hFontList = makeMonoFont(-13); // 数据列等宽，字号略大，减少扁平时更便于阅读
 
     a.headerCount = makeStatic(hwnd, ids::kHeaderDeviceCount, L"0 个设备已连接", 0);
     SendMessageW(a.headerCount, WM_SETFONT, (WPARAM)a.hFontTitle, TRUE);
 
-    const wchar_t* labels[5] = { L"停止刷新", L"自动刷新", L"手动刷新", L"设为基准", L"复制" };
+    const wchar_t* labels[5] = { L"停止刷新", L"自动刷新", L"手动刷新", L"重置", L"复制" };
     for (int i = 0; i < 5; ++i) {
         HWND b = makeCommand(hwnd, ids::kBtnStopRefresh + i, labels[i]);
         a.cmdButtons[i] = b;
@@ -710,12 +713,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         FillRect(hdc, &rc, bgBr);
         DeleteObject(bgBr);
         // 顶部工具条（白）+ 分隔线
-        RECT tb{0, 0, W, 44};
+        RECT tb{0, 0, W, 50};
         FillRect(hdc, &tb, (HBRUSH)GetStockObject(WHITE_BRUSH));
         HPEN pen = CreatePen(PS_SOLID, 1, theme::border());
         HPEN oldPen = (HPEN)SelectObject(hdc, pen);
-        MoveToEx(hdc, 0, 44, nullptr);
-        LineTo(hdc, W, 44);
+        MoveToEx(hdc, 0, 50, nullptr);
+        LineTo(hdc, W, 50);
         SelectObject(hdc, oldPen);
         DeleteObject(pen);
         EndPaint(hwnd, &ps);

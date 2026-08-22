@@ -27,9 +27,9 @@ static void applyCss() {
         "#vpid-main label.status  { color:#616161; font-size:9pt; }"
         /* ---- 按钮：Fluent 扁平，小圆角，无阴影 ---- */
         "#vpid-main button {"
-        "  border:1px solid #8a8886; border-radius:4px; padding:4px 16px 3px; font-weight:600;"
+        "  border:1px solid #8a8886; border-radius:4px; padding:8px 20px 7px; font-weight:600;"
         "  background-image:none; background-color:#f7f7f7; color:#242424;"
-        "  text-shadow:none; min-height:28px; box-shadow:none; }"
+        "  text-shadow:none; min-height:34px; box-shadow:none; }"
         "#vpid-main button:hover  { background-color:#f0f0f0; border-color:#787674; }"
         "#vpid-main button:active { background-color:#e5e5e5; }"
         "#vpid-main button:disabled { opacity:0.4; }"
@@ -144,13 +144,13 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
     g_object_unref(store); // view 持有引用
     for (int i = 0; i < n; ++i) {
         GtkCellRenderer* r = gtk_cell_renderer_text_new();
-        gtk_cell_renderer_set_padding(r, 6, 4);
+        gtk_cell_renderer_set_padding(r, 8, 6);
         bool isKey = (i <= 1); // VID / PID：固定 4 位 hex，等宽窄列居中
         if (isKey) gtk_cell_renderer_set_alignment(r, 0.5f, 0.5f);
         GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
         if (isKey) {
             gtk_tree_view_column_set_sizing(col, GTK_TREE_VIEW_COLUMN_FIXED);
-            gtk_tree_view_column_set_fixed_width(col, 50);
+            gtk_tree_view_column_set_fixed_width(col, 44);
             gtk_tree_view_column_set_alignment(col, 0.5f);
         } else {
             gtk_tree_view_column_set_expand(GTK_TREE_VIEW_COLUMN(col), TRUE);
@@ -284,7 +284,7 @@ static void setBaseline() {
     g->baseline = g->curDev;
     g->addedDev.clear();
     g->removedDev.clear();
-    setStatusA("已将当前设备列表设为基准");
+    setStatusA("已重置基准为当前设备列表");
     refreshViews();
     setStatusB("基准: " + std::to_string(g->baseline.size()) + " 个设备 (" + nowTime() + ")");
 }
@@ -397,15 +397,15 @@ static void buildUi(App& a) {
     a.btnStop = makeButton("停止刷新", onStopRefresh, "accent-red");
     a.btnAuto = makeButton("自动刷新", onAutoRefresh, "accent-green");
     a.btnManual = makeButton("手动刷新", onManualRefresh, "accent-blue");
-    a.btnBaseline = makeButton("设为基准", onBaseline, "accent-green");
+    a.btnBaseline = makeButton("重置", onBaseline, "accent-green");
     a.btnCopy = makeButton(" 复制 ", onCopy, "accent-blue");
 
-    // 按钮整体右对齐（与 Windows Fluent 工具栏一致）
+    // 按钮整体右对齐；重置为常用按钮，紧跟刷新开关之后
     GtkWidget* btns = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
     gtk_box_pack_start(GTK_BOX(btns), a.btnStop, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(btns), a.btnAuto, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(btns), a.btnManual, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(btns), a.btnBaseline, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(btns), a.btnManual, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(btns), a.btnCopy, FALSE, FALSE, 0);
     gtk_box_pack_end(GTK_BOX(tb), btns, FALSE, FALSE, 0);
 
