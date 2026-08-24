@@ -1,8 +1,8 @@
 name: Release
 
 # main 分支：构建并发布
-# Windows x86  : 原生 Win32 API（无第三方 UI），MSYS2 MINGW32 (i686) 静态链接
-# Linux amd64/arm64 : 原生 GTK3 + libusb，Rocky Linux 8 容器编译（glibc 2.28）
+# Windows XP x86 : 原生 Win32 API（无第三方 UI），MSYS2 MINGW32 (i686) 静态链接
+# Linux amd64   : 原生 GTK3 + libusb，Rocky Linux 8 容器编译（glibc 2.28）
 on:
   push:
     branches: [main]
@@ -79,40 +79,10 @@ jobs:
           path: native/build/vpid_viewer_linux_amd64
           retention-days: 30
 
- build-linux-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build in Rocky Linux 8 arm64 container (glibc 2.28)
-        uses: addnab/docker-run-action@v3
-        with:
-          image: quay.io/rockylinux/rockylinux:8
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
-          run: |
-            # Rocky 8 = glibc 2.28（aarch64），在此编译即可兼容所有 >=2.28 的发行版
-            dnf install -y epel-release
-            dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
-            cd native
-            rm -rf build && mkdir -p build
-            cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-            cmake --build build -j"$(nproc)"
-            objdump -T build/vpid_viewer | grep -m1 GLIBC
-            echo "arch: $(file -b build/vpid_viewer | grep -o 'aarch64')"
-            cp build/vpid_viewer build/vpid_viewer_linux_arm64
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-linux_arm64
-          path: native/build/vpid_viewer_linux_arm64
-          retention-days: 30
-
   release:
     needs:
       - build-windows-xp
       - build-linux-amd64
-      - build-linux-arm64
     runs-on: ubuntu-latest
     permissions:
       contents: write
