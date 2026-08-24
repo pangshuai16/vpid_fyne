@@ -154,7 +154,7 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
         GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
         if (isKey) {
             gtk_tree_view_column_set_sizing(col, GTK_TREE_VIEW_COLUMN_FIXED);
-            gtk_tree_view_column_set_fixed_width(col, 40); // VID / PID 统一 40
+            gtk_tree_view_column_set_fixed_width(col, 46); // VID / PID 统一，完整容纳 4 位 hex
             gtk_tree_view_column_set_alignment(col, 0.5f);
         } else {
             gtk_tree_view_column_set_expand(GTK_TREE_VIEW_COLUMN(col), TRUE);

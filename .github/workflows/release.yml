@@ -1,8 +1,7 @@
 name: Release
 
-# main 分支：构建并发布
-# Windows XP x86 : 原生 Win32 API（无第三方 UI），MSYS2 MINGW32 (i686) 静态链接
-# Linux amd64   : 原生 GTK3 + libusb，Rocky Linux 8 容器编译（glibc 2.28）
+# main 分支：构建并发布，构建矩阵与 build.yml 完全一致：
+#   windows-x86 / linux-amd64 / linux-arm64
 on:
   push:
     branches: [main]
@@ -11,7 +10,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-windows-xp:
+  build-windows-x86:
     runs-on: windows-2022
     steps:
       - name: Checkout code
@@ -26,6 +25,7 @@ jobs:
             mingw-w64-i686-gcc
             mingw-w64-i686-cmake
             mingw-w64-i686-make
+            mingw-w64-i686-binutils
             make
             git
 
@@ -40,54 +40,69 @@ jobs:
           ls -lh build/vpid_viewer.exe
           echo "=== imported DLLs (should be system libs only) ==="
           objdump -p build/vpid_viewer.exe | grep -E 'DLL Name' || true
-          cp build/vpid_viewer.exe build/vpid_viewer_windows_xp.exe
+          cp build/vpid_viewer.exe build/vpid_viewer_windows_x86.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-windows_xp
-          path: native/build/vpid_viewer_windows_xp.exe
+          name: release-windows_x86
+          path: native/build/vpid_viewer_windows_x86.exe
           retention-days: 30
 
-  build-linux-amd64:
+  build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            name: vpid_viewer_linux_amd64
+            platform: linux/amd64
+          - arch: arm64
+            name: vpid_viewer_linux_arm64
+            platform: linux/arm64
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build in Rocky Linux 8 container (glibc 2.28)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build in Rocky Linux 8 container (${{ matrix.arch }}, glibc 2.28)
         uses: addnab/docker-run-action@v3
         with:
           image: quay.io/rockylinux/rockylinux:8
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          options: --platform ${{ matrix.platform }} -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
-            # Rocky 8 = glibc 2.28，在此编译即可兼容所有 >=2.28 的发行版
             dnf install -y epel-release
             dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
             cd native
             rm -rf build && mkdir -p build
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
             cmake --build build -j"$(nproc)"
-            # 记录 glibc 依赖版本，便于核验
-            objdump -T build/vpid_viewer | grep -m1 GLIBC
-            cp build/vpid_viewer build/vpid_viewer_linux_amd64
+            ls -lh build/vpid_viewer
+            objdump -T build/vpid_viewer | grep -m1 GLIBC || true
+            cp build/vpid_viewer build/${{ matrix.name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-linux_amd64
-          path: native/build/vpid_viewer_linux_amd64
+          name: release-${{ matrix.name }}
+          path: native/build/${{ matrix.name }}
           retention-days: 30
 
   release:
     needs:
-      - build-windows-xp
-      - build-linux-amd64
+      - build-windows-x86
+      - build-linux
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
           pattern: release-*

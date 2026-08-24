@@ -1,8 +1,10 @@
 name: Build
 
 # 非 main 分支：只构建，不发布
-# Windows XP x86 : 原生 Win32 API（无第三方 UI），MSYS2 MINGW32 (i686) 静态链接
-# Linux AMD64   : 原生 GTK3 + libusb，Rocky Linux 8 容器编译（glibc 2.28）
+# 与 release 完全相同的三目标构建矩阵，仅跳过发布步骤：
+#   windows-x86   原生 Win32 API，MSYS2 MINGW32 (i686) 静态链接（XP 兼容）
+#   linux-amd64   原生 GTK3 + libusb，Rocky Linux 8（glibc 2.28）
+#   linux-arm64   同上，QEMU 模拟 aarch64 / Rocky Linux 8
 on:
   push:
     branches-ignore: [main]
@@ -11,7 +13,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-windows-xp:
+  build-windows-x86:
     runs-on: windows-2022
     steps:
       - name: Checkout code
@@ -26,6 +28,7 @@ jobs:
             mingw-w64-i686-gcc
             mingw-w64-i686-cmake
             mingw-w64-i686-make
+            mingw-w64-i686-binutils
             make
             git
 
@@ -44,21 +47,37 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vpid_viewer_windows_xp_${{ github.sha }}
+          name: vpid_viewer_windows_x86_${{ github.sha }}
           path: native/build/vpid_viewer.exe
           retention-days: 7
 
   build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            name: vpid_viewer_linux_amd64
+            platform: linux/amd64
+          - arch: arm64
+            name: vpid_viewer_linux_arm64
+            platform: linux/arm64
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build in Rocky Linux 8 container (glibc 2.28)
+      # arm64 需 QEMU 模拟（x86 host 运行 aarch64 容器）
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build in Rocky Linux 8 container (${{ matrix.arch }}, glibc 2.28)
         uses: addnab/docker-run-action@v3
         with:
           image: quay.io/rockylinux/rockylinux:8
-          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          options: --platform ${{ matrix.platform }} -v ${{ github.workspace }}:/workspace -w /workspace
           run: |
             dnf install -y epel-release
             dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
@@ -67,10 +86,12 @@ jobs:
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
             cmake --build build -j"$(nproc)"
             ls -lh build/vpid_viewer
+            objdump -T build/vpid_viewer | grep -m1 GLIBC || true
+            cp build/vpid_viewer build/${{ matrix.name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vpid_viewer_linux_amd64_${{ github.sha }}
-          path: native/build/vpid_viewer
+          name: ${{ matrix.name }}_${{ github.sha }}
+          path: native/build/${{ matrix.name }}
           retention-days: 7

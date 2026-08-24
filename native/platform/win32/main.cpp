@@ -393,13 +393,30 @@ static void layoutChildren(HWND hwnd) {
     MoveWindow(g->headerCount, x, topY, 260, ctlH, TRUE);
 
     // 右：按钮右对齐（同一垂直中心线）；重置为常用按钮放第二位
-    const int btnW[5] = { 80, 80, 88, 84, 68 };   // 停止/自动, 重置, 手动, 复制
     const int order[5] = { 0, 1, 3, 2, 4 };       // 显示顺序
     bool showStop = g->autoRefresh;
     bool show[5] = { showStop, !showStop, true, true, true };
     ShowWindow(g->cmdButtons[0], show[0] ? SW_SHOW : SW_HIDE);
     ShowWindow(g->cmdButtons[1], show[1] ? SW_SHOW : SW_HIDE);
     int gapb = 10;                                 // 按钮间距
+
+    // 实例化按钮文本度量：宽度 = 文本宽 + 双侧留白，确保任何文字完整显示且与边框留有空隙
+    const int btnPadx = 24;                        // 每侧文本内边距
+    int btnW[5] = { 60, 60, 60, 60, 60 };
+    HDC dc = GetDC(g->hwnd);
+    HFONT oldFont = (HFONT)SelectObject(dc, g->hFontBtns);
+    for (int k = 0; k < 5; ++k) {
+        if (!show[k]) continue;
+        wchar_t lab[64];
+        GetWindowTextW(g->cmdButtons[k], lab, 64);
+        SIZE s{};
+        GetTextExtentPoint32W(dc, lab, (int)wcslen(lab), &s);
+        btnW[k] = s.cx + btnPadx * 2;
+        if (btnW[k] < 60) btnW[k] = 60;
+    }
+    SelectObject(dc, oldFont);
+    ReleaseDC(g->hwnd, dc);
+
     int total = 0, ngap = 0;
     for (int q = 0; q < 5; ++q) { int k = order[q]; if (show[k]) { total += btnW[k]; ++ngap; } }
     total += (ngap - 1) * gapb;
@@ -479,7 +496,7 @@ static void createControls(HWND hwnd) {
     // 主列表列（VID/PID 固定 4 位 hex + 等宽，极小列宽 + 居中）
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 40, 40, 230, 400 };
+        int ws[4] = { 46, 46, 230, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
@@ -489,7 +506,7 @@ static void createControls(HWND hwnd) {
     SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontBtns, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 40, 40, 240 };
+        int ws[3] = { 46, 46, 240 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
