@@ -479,7 +479,7 @@ static void createControls(HWND hwnd) {
     // 主列表列（VID/PID 固定 4 位 hex + 等宽，极小列宽 + 居中）
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 42, 42, 230, 400 };
+        int ws[4] = { 38, 46, 230, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
@@ -489,7 +489,7 @@ static void createControls(HWND hwnd) {
     SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontBtns, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 50, 50, 240 };
+        int ws[3] = { 46, 54, 240 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
@@ -658,7 +658,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             COLORREF borderCol = disabled ? theme::border() : btnBorder(dis->CtlID);
 
             RECT rc = dis->rcItem;
-            InflateRect(&rc, -3, -3);
+            InflateRect(&rc, -5, -4);
             HPEN pen = CreatePen(PS_SOLID, 1, borderCol);
             HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);

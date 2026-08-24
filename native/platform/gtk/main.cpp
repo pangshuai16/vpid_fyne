@@ -29,7 +29,7 @@ static void applyCss() {
         "#vpid-main label.status  { color:#6f6f6f; font-size:10pt; }"
         /* ---- 按钮：Fluent 高按钮、大圆角、悬浮轻提升 ---- */
         "#vpid-main button {"
-        "  border:1px solid #8a8886; border-radius:8px; padding:10px 22px 9px; font-weight:600;"
+        "  border:1px solid #8a8886; border-radius:8px; padding:12px 26px 11px; font-weight:600;"
         "  background-image:none; background-color:#ffffff; color:#242424;"
         "  text-shadow:none; min-height:38px; box-shadow:none; }"
         "#vpid-main button:hover  { background-color:#f2f2f2; border-color:#787674;"
@@ -154,7 +154,7 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
         GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
         if (isKey) {
             gtk_tree_view_column_set_sizing(col, GTK_TREE_VIEW_COLUMN_FIXED);
-            gtk_tree_view_column_set_fixed_width(col, 44);
+            gtk_tree_view_column_set_fixed_width(col, (i == 0) ? 40 : 48); // VID 略窄 / PID 略宽
             gtk_tree_view_column_set_alignment(col, 0.5f);
         } else {
             gtk_tree_view_column_set_expand(GTK_TREE_VIEW_COLUMN(col), TRUE);
