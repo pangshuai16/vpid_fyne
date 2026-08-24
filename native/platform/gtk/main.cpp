@@ -15,6 +15,7 @@
 #include "common/constants.h"
 #include "core/device_scanner.h"
 #include "core/device_comparer.h"
+#include "app_icon.h"
 
 namespace vpid {
 
@@ -146,8 +147,9 @@ static GtkWidget* makeList(const gchar* cols[], int n, GtkListStore** outStore) 
     g_object_unref(store); // view 持有引用
     for (int i = 0; i < n; ++i) {
         GtkCellRenderer* r = gtk_cell_renderer_text_new();
-        gtk_cell_renderer_set_padding(r, 12, 10);
         bool isKey = (i <= 1); // VID / PID：固定 4 位 hex，等宽窄列居中
+        int xpad = isKey ? 3 : 12; // 关键列极小内边距，保证 4 字符真实落在 40px 内
+        gtk_cell_renderer_set_padding(r, xpad, 10);
         if (isKey) gtk_cell_renderer_set_alignment(r, 0.5f, 0.5f);
         GtkTreeViewColumn* col = gtk_tree_view_column_new_with_attributes(cols[i], r, "text", i, nullptr);
         if (isKey) {
@@ -362,10 +364,21 @@ static void addClass(GtkWidget* w, const char* cls) {
     gtk_style_context_add_class(gtk_widget_get_style_context(w), cls);
 }
 
+static void setAppIcon(GtkWindow* win) {
+    // 从内嵌 RGBA PNG 加载为 pixbuf，设为窗口图标（标题栏/任务栏/Alt-Tab）
+    GdkPixbufLoader* ld = gdk_pixbuf_loader_new();
+    gdk_pixbuf_loader_write(ld, vpid::kAppIconPng, (gsize)vpid::kAppIconPngLen, nullptr);
+    gdk_pixbuf_loader_close(ld, nullptr);
+    GdkPixbuf* pb = gdk_pixbuf_loader_get_pixbuf(ld);
+    if (pb) gtk_window_set_icon(win, pb);
+    g_object_unref(ld);
+}
+
 static void buildUi(App& a) {
     a.win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_widget_set_name(a.win, "vpid-main");
     gtk_window_set_title(GTK_WINDOW(a.win), kAppName);
+    setAppIcon(GTK_WINDOW(a.win));
     gtk_window_set_default_size(GTK_WINDOW(a.win), kDefaultWindowWidth, kDefaultWindowHeight);
     gtk_window_set_geometry_hints(GTK_WINDOW(a.win), GTK_WIDGET(a.win),
         nullptr, GDK_HINT_MIN_SIZE);

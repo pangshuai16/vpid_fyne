@@ -479,7 +479,7 @@ static void createControls(HWND hwnd) {
     // 主列表列（VID/PID 固定 4 位 hex + 等宽，极小列宽 + 居中）
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 42, 42, 230, 400 };
+        int ws[4] = { 40, 40, 230, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
@@ -489,7 +489,7 @@ static void createControls(HWND hwnd) {
     SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontBtns, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 42, 42, 240 };
+        int ws[3] = { 40, 40, 240 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
@@ -658,7 +658,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             COLORREF borderCol = disabled ? theme::border() : btnBorder(dis->CtlID);
 
             RECT rc = dis->rcItem;
-            InflateRect(&rc, -5, -4);
+            // 圆角填充边界（收小，避免与窗口边缘贴死）
+            InflateRect(&rc, -4, -3);
             HPEN pen = CreatePen(PS_SOLID, 1, borderCol);
             HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);
@@ -667,10 +668,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             SelectObject(dis->hDC, oldPen); DeleteObject(pen);
             SelectObject(dis->hDC, oldBr); DeleteObject(br);
 
+            // 文本再额外内收，保证文字与圆角/描边留有足够间距
+            RECT tr = rc;
+            InflateRect(&tr, -6, -4);
             SetBkMode(dis->hDC, TRANSPARENT);
             SetTextColor(dis->hDC, textCol);
             HFONT old = (HFONT)SelectObject(dis->hDC, a.hFontBtns);
-            DrawTextW(dis->hDC, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            DrawTextW(dis->hDC, buf, -1, &tr, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(dis->hDC, old);
             return TRUE;
         }
@@ -763,6 +767,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = nullptr;
+    // 程序图标（USB，资源 ID = 1）：窗口/任务栏/Alt-Tab 均显示
+    wc.hIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(1));
+    if (!wc.hIcon) wc.hIcon = (HICON)LoadImageW(nullptr, IDI_APPLICATION, IMAGE_ICON, 0, 0, LR_SHARED);
     wc.lpszClassName = L"VPidViewerClass";
     wc.style = CS_HREDRAW | CS_VREDRAW;
     RegisterClassW(&wc);

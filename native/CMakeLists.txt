@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(vpid_viewer LANGUAGES CXX)
+project(vpid_viewer LANGUAGES CXX RC)
 
 # 两套系统各自使用原生 UI，体积最小、兼容性最好：
 #   - Windows  : 原生 Win32 API + Common Controls（无任何第三方 UI 框架）
@@ -27,10 +27,12 @@ set(CORE_SOURCES
 if(WIN32)
   add_executable(vpid_viewer WIN32
     platform/win32/main.cpp
+    platform/resources/app.rc
     ${CORE_SOURCES}
     src/core/windows_scanner.cpp
   )
-  target_include_directories(vpid_viewer PRIVATE src)
+  target_include_directories(vpid_viewer PRIVATE src platform/resources)
+  set_source_files_properties(platform/resources/app.rc PROPERTIES LANGUAGE RC)
   # 仅系统库（MinGW 自带），无需 wx/libusb；-municode 让 CRT 以 wWinMain 为入口
   target_link_libraries(vpid_viewer PRIVATE
     setupapi   # SetupAPI 设备枚举
@@ -52,7 +54,7 @@ else()
     ${CORE_SOURCES}
     src/core/linux_scanner.cpp
   )
-  target_include_directories(vpid_viewer PRIVATE src ${GTK3_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
+  target_include_directories(vpid_viewer PRIVATE src platform/resources ${GTK3_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
   target_compile_options(vpid_viewer PRIVATE ${GTK3_CFLAGS_OTHER} ${LIBUSB_CFLAGS_OTHER})
   target_link_libraries(vpid_viewer PRIVATE ${GTK3_LIBRARIES} ${LIBUSB_LIBRARIES})
 endif()
