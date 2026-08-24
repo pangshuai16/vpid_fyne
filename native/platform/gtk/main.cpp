@@ -18,54 +18,52 @@
 
 namespace vpid {
 
-// 全局 GTK3 CSS：Fluent 2 质感 —— 卡片分层、大圆角、阴影提升、充足留白
+// 全局 GTK3 CSS：Apple HIG 浅色外观 —— 清澈留白、轻盈层次、macOS 语义色
 static void applyCss() {
     static const char* css =
-        "#vpid-main { background-color:#f0f1f2; }"
-        /* ---- 顶栏：白色浮起卡片 ---- */
-        "#vpid-main box.toolbar { background-color:#ffffff; border-radius:12px;"
-        "  padding:12px 6px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }"
-        "#vpid-main label.app-title { font-size:17pt; font-weight:600; color:#242424; }"
-        "#vpid-main label.status  { color:#6f6f6f; font-size:10pt; }"
-        /* ---- 按钮：Fluent 高按钮、大圆角、悬浮轻提升 ---- */
+        "#vpid-main { background-color:#f5f5f7; }"           /* windowBackground */
+        /* ---- 工具栏：融入背景，清澈留白（macOS 工具栏风） ---- */
+        "#vpid-main box.toolbar { background-color:transparent;"
+        "  padding:14px 4px 10px; box-shadow:none; border:none; }"
+        "#vpid-main label.app-title { font-size:18pt; font-weight:700; color:#1d1d1f; }"
+        "#vpid-main label.status  { color:#86868b; font-size:10pt; }"
+        /* ---- 按钮：macOS 轻质感（主色填充白字） ---- */
         "#vpid-main button {"
-        "  border:1px solid #8a8886; border-radius:8px; padding:12px 26px 11px; font-weight:600;"
-        "  background-image:none; background-color:#ffffff; color:#242424;"
-        "  text-shadow:none; min-height:38px; box-shadow:none; }"
-        "#vpid-main button:hover  { background-color:#f2f2f2; border-color:#787674;"
-        "  box-shadow:0 2px 4px rgba(0,0,0,0.12); }"
-        "#vpid-main button:active { background-color:#e6e6e6; box-shadow:none; }"
-        "#vpid-main button:disabled { opacity:0.4; }"
+        "  border:1px solid #b9b9bf; border-radius:6px; padding:11px 24px 10px; font-weight:600;"
+        "  background-image:none; background-color:#ffffff; color:#1d1d1f;"
+        "  text-shadow:none; min-height:34px; box-shadow:none; }"
+        "#vpid-main button:hover  { background-color:#f2f2f4; }"
+        "#vpid-main button:active { background-color:#e8e8ec; }"
+        "#vpid-main button:disabled { opacity:0.35; }"
         "#vpid-main button.accent-blue, #vpid-main button.accent-green, #vpid-main button.accent-red {"
-        "  border:none; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.18); }"
-        "#vpid-main button.accent-blue  { background-color:#0078d4; }"
-        "#vpid-main button.accent-blue:hover  { background-color:#106ebe; box-shadow:0 3px 8px rgba(0,120,212,0.35); }"
-        "#vpid-main button.accent-blue:active { background-color:#005a9e; box-shadow:none; }"
-        "#vpid-main button.accent-green { background-color:#107c10; }"
-        "#vpid-main button.accent-green:hover { background-color:#128212; box-shadow:0 3px 8px rgba(16,124,16,0.3); }"
-        "#vpid-main button.accent-green:active{ background-color:#0e6b0e; box-shadow:none; }"
-        "#vpid-main button.accent-red   { background-color:#c42b1c; }"
-        "#vpid-main button.accent-red:hover   { background-color:#b22416; box-shadow:0 3px 8px rgba(196,43,28,0.3); }"
-        "#vpid-main button.accent-red:active  { background-color:#982422; box-shadow:none; }"
-        /* ---- 信息 chip：胶囊浅底 ---- */
-        "#vpid-main label.chip { padding:6px 16px; border-radius:10px; font-weight:600; font-size:10pt;"
-        "  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04); }"
-        "#vpid-main label.chip-green { background-color:#e6f4e7; color:#107c10; }"
-        "#vpid-main label.chip-red   { background-color:#fbeae8; color:#c42b1c; }"
-        /* ---- 列表：白底 + 更高的行与表头 ---- */
-        "#vpid-main treeview, #vpid-main treeview.view { font-size:10.5pt; color:#242424; font-family:monospace; }"
+        "  border:none; color:#fff; }"
+        "#vpid-main button.accent-blue  { background-color:#007aff; }"
+        "#vpid-main button.accent-blue:hover  { background-color:#0a84ff; }"
+        "#vpid-main button.accent-blue:active { background-color:#0059d6; }"
+        "#vpid-main button.accent-green { background-color:#1e9e4b; }"
+        "#vpid-main button.accent-green:hover { background-color:#22b155; }"
+        "#vpid-main button.accent-green:active{ background-color:#178a3f; }"
+        "#vpid-main button.accent-red   { background-color:#d64541; }"
+        "#vpid-main button.accent-red:hover   { background-color:#e05b56; }"
+        "#vpid-main button.accent-red:active  { background-color:#b03a35; }"
+        /* ---- 信息 chip：Apple 亮语义色浅底 ---- */
+        "#vpid-main label.chip { padding:6px 16px; border-radius:9px; font-weight:600; font-size:10pt; }"
+        "#vpid-main label.chip-green { background-color:#e9f9ef; color:#1e9e4b; }"
+        "#vpid-main label.chip-red   { background-color:#fdecec; color:#d64541; }"
+        /* ---- 列表：白底、细表头、Apple 选中蓝 ---- */
+        "#vpid-main treeview, #vpid-main treeview.view { font-size:10.5pt; color:#1d1d1f; font-family:monospace; }"
         "#vpid-main treeview.view { background-color:#ffffff; }"
         "#vpid-main treeview.view:selected, #vpid-main treeview.view:selected:focus,"
-        "#vpid-main treeview.view:selected:hover { background-color:#0078d4; color:#ffffff; }"
-        "#vpid-main treeview.view:not(:selected):hover { background-color:#f3f7fc; }"
-        "#vpid-main treeview header button { background-color:#f7f7f7; color:#595959; font-weight:600;"
-        "  padding-top:9px; padding-bottom:9px; border:0; border-bottom:1px solid #ececec; box-shadow:none; }"
-        "#vpid-main treeview header button:not(:last-child) { border-right:1px solid #f2f2f2; }"
-        "#vpid-main treeview header button:hover { background-color:#edf0f3; }"
-        /* ---- 面板：白色圆角卡片 + 分层阴影 ---- */
-        "#vpid-main scrolledwindow.card { border:1px solid #e3e3e3; border-radius:12px;"
-        "  background-color:#ffffff; box-shadow:0 3px 12px rgba(0,0,0,0.07); }"
-        "#vpid-main paned > separator { background-color:transparent; min-width:16px; }"
+        "#vpid-main treeview.view:selected:hover { background-color:#007aff; color:#ffffff; }"
+        "#vpid-main treeview.view:not(:selected):hover { background-color:#eff6ff; }"
+        "#vpid-main treeview header button { background-color:#fafafc; color:#616161; font-weight:600;"
+        "  padding-top:9px; padding-bottom:9px; border:0; border-bottom:1px solid #ebebef; box-shadow:none; }"
+        "#vpid-main treeview header button:not(:last-child) { border-right:none; }"
+        "#vpid-main treeview header button:hover { background-color:#f2f2f4; }"
+        /* ---- 面板：白色圆角、细边、极轻层次 ---- */
+        "#vpid-main scrolledwindow.card { border:1px solid #e4e4ea; border-radius:10px;"
+        "  background-color:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.04); }"
+        "#vpid-main paned > separator { background-color:transparent; min-width:14px; }"
         "#vpid-main scrolledwindow undershoot, #vpid-main scrolledwindow overshoot { background:none; }";
     GtkCssProvider* p = gtk_css_provider_new();
     gtk_css_provider_load_from_data(p, css, -1, nullptr);

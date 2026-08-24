@@ -62,20 +62,20 @@ const int kStatusB = 2104;
 static HINSTANCE g_hInst = nullptr;
 
 namespace theme {
-// Fluent Design 色板
-COLORREF primary(){ return RGB(0x00,0x78,0xD4); }             // 主蓝 rest
-COLORREF primaryHover(){ return RGB(0x10,0x6E,0xBE); }        // hover
-COLORREF success(){ return RGB(0x10,0x7C,0x10); }             // 绿
-COLORREF successBg(){ return RGB(0xE6,0xF4,0xE7); }
-COLORREF danger(){ return RGB(0xC4,0x2B,0x1C); }              // 红
-COLORREF dangerBg(){ return RGB(0xFB,0xEA,0xE8); }
-COLORREF text(){ return RGB(0x24,0x24,0x24); }
-COLORREF textSecondary(){ return RGB(0x61,0x61,0x61); }
-COLORREF border(){ return RGB(0xE0,0xE0,0xE0); }
-COLORREF bg(){ return RGB(0xF0,0xF1,0xF2); }
+// Apple HIG 语义色（浅色外观）
+COLORREF primary(){ return RGB(0x00,0x7A,0xFF); }        // systemBlue
+COLORREF primaryHover(){ return RGB(0x0A,0x84,0xFF); }   // systemBlue 高亮
+COLORREF success(){ return RGB(0x34,0xC7,0x59); }        // systemGreen
+COLORREF successBg(){ return RGB(0xE9,0xF9,0xEF); }
+COLORREF danger(){ return RGB(0xFF,0x3B,0x30); }         // systemRed
+COLORREF dangerBg(){ return RGB(0xFD,0xEC,0xEC); }
+COLORREF text(){ return RGB(0x1D,0x1D,0x1F); }
+COLORREF textSecondary(){ return RGB(0x86,0x86,0x8B); }
+COLORREF border(){ return RGB(0xD1,0xD1,0xD6); }         // separator
+COLORREF bg(){ return RGB(0xF5,0xF5,0xF7); }             // window backgroundColor
 COLORREF white(){ return RGB(0xFF,0xFF,0xFF); }
-COLORREF rowEven(){ return RGB(0xFB,0xFB,0xFB); }
-COLORREF primaryDark(){ return RGB(0x00,0x5A,0x9E); }          // active
+COLORREF rowEven(){ return RGB(0xFA,0xFA,0xFC); }        // 极浅斑马纹
+COLORREF primaryDark(){ return RGB(0x00,0x59,0xD6); }    // systemBlue 深
 COLORREF controlFill(){ return RGB(0xF7,0xF7,0xF7); }          // 浅灰按钮 rest
 COLORREF controlBorder(){ return RGB(0x8A,0x88,0x86); }        // 按钮描边
 COLORREF controlHover(){ return RGB(0xF0,0xF0,0xF0); }
@@ -149,18 +149,18 @@ static void sortByPidVidName(std::vector<USBDevice>& v) {
 }
 static COLORREF btnFill(int id) {
     switch (id) {
-        case ids::kBtnStopRefresh: return theme::danger();
+        case ids::kBtnStopRefresh: return RGB(0xD6,0x45,0x41); // 深红（白字可读）
         case ids::kBtnManualRefresh:
         case ids::kBtnCopy:        return theme::primary();
-        default:                   return theme::success();
+        default:                   return RGB(0x1E,0x9E,0x4B); // 深绿（白字可读）
     }
 }
 static COLORREF btnBorder(int id) {
     switch (id) {
-        case ids::kBtnStopRefresh: return RGB(0xA5,0x24,0x1B);
+        case ids::kBtnStopRefresh: return RGB(0xB0,0x3A,0x35);
         case ids::kBtnManualRefresh:
         case ids::kBtnCopy:        return theme::primaryDark();
-        default:                   return RGB(0x0E,0x6B,0x0E);
+        default:                   return RGB(0x17,0x83,0x37);
     }
 }
 
@@ -479,7 +479,7 @@ static void createControls(HWND hwnd) {
     // 主列表列（VID/PID 固定 4 位 hex + 等宽，极小列宽 + 居中）
     {
         const wchar_t* cols[4] = { L"VID", L"PID", L"设备名称", L"路径" };
-        int ws[4] = { 40, 40, 230, 400 };
+        int ws[4] = { 42, 42, 230, 400 };
         a.listAll = makeList(hwnd, 3000);
         initListColumns(a.listAll, cols, ws, 4);
     }
@@ -489,7 +489,7 @@ static void createControls(HWND hwnd) {
     SendMessageW(a.headerRemoved, WM_SETFONT, (WPARAM)a.hFontBtns, TRUE);
     {
         const wchar_t* cols[3] = { L"VID", L"PID", L"设备名称" };
-        int ws[3] = { 40, 40, 240 };
+        int ws[3] = { 42, 42, 240 };
         a.listAdded = makeList(hwnd, 3100);
         initListColumns(a.listAdded, cols, ws, 3);
         a.listRemoved = makeList(hwnd, 3200);
@@ -663,7 +663,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             HGDIOBJ oldPen = SelectObject(dis->hDC, pen);
             HBRUSH br = CreateSolidBrush(fill);
             HGDIOBJ oldBr = SelectObject(dis->hDC, br);
-            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 10, 10);
+            RoundRect(dis->hDC, rc.left, rc.top, rc.right, rc.bottom, 6, 6);
             SelectObject(dis->hDC, oldPen); DeleteObject(pen);
             SelectObject(dis->hDC, oldBr); DeleteObject(br);
 
