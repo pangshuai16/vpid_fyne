@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(vpid_viewer LANGUAGES CXX RC)
+project(vpid_viewer LANGUAGES CXX)
 
 # 两套系统各自使用原生 UI，体积最小、兼容性最好：
 #   - Windows  : 原生 Win32 API + Common Controls（无任何第三方 UI 框架）
@@ -25,6 +25,8 @@ set(CORE_SOURCES
 
 # 平台原生 UI 入口 + 平台扫描器
 if(WIN32)
+  # 仅 Windows 需要 RC 编译（图标资源），避免 Linux 误找 windres
+  enable_language(RC)
   add_executable(vpid_viewer WIN32
     platform/win32/main.cpp
     platform/resources/app.rc

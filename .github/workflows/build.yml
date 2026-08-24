@@ -1,8 +1,8 @@
 name: Build
 
 # 非 main 分支：只构建，不发布
-# Windows XP x86 : 原生 Win32 API（无第三方 UI），MSYS2 MINGW32 (i686) 静态链接
-# Linux AMD64   : 原生 GTK3 + libusb，Rocky Linux 8 容器编译（glibc 2.28）
+# Windows x86  : 原生 Win32 API（无第三方 UI），MSYS2 MINGW32 (i686) 静态链接
+# Linux amd64/arm64 : 原生 GTK3 + libusb，Rocky Linux 8 容器编译（glibc 2.28）
 on:
   push:
     branches-ignore: [main]
@@ -72,5 +72,32 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vpid_viewer_linux_amd64_${{ github.sha }}
+          path: native/build/vpid_viewer
+          retention-days: 7
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build in Rocky Linux 8 arm64 container (glibc 2.28)
+        uses: addnab/docker-run-action@v3
+        with:
+          image: quay.io/rockylinux/rockylinux:8
+          options: -v ${{ github.workspace }}:/workspace -w /workspace
+          run: |
+            dnf install -y epel-release
+            dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
+            cd native
+            rm -rf build && mkdir -p build
+            cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+            cmake --build build -j"$(nproc)"
+            ls -lh build/vpid_viewer
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpid_viewer_linux_arm64_${{ github.sha }}
           path: native/build/vpid_viewer
           retention-days: 7
