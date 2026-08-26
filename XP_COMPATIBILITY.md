@@ -2,22 +2,20 @@
 
 ## 1. 概述
 
-本项目（USB 设备管理器）是一个跨平台 USB 设备查看工具，支持：
-- **Windows**: XP 及以上所有版本
+本项目（USB 设备管理器）是一个跨平台 USB 设备查看工具，基于 C++ 原生实现：
+- **Windows**: XP 及以上所有版本（32 位 x86 全静态链接）
 - **Linux**: glibc 2.28 及以上
-- **macOS**: 10.15 及以上
 
 ### UI 框架选型
 
-| 对比项 | tkinter | PyQt5 |
-|--------|---------|-------|
-| Python 内置 | ✅ 是 | ❌ 需额外安装 |
-| XP 兼容 | ✅ Python 3.8 自带 Tk 8.6 | ❌ 需要社区 Qt 5.15.17 覆盖 |
-| 跨平台 | ✅ Windows/Linux/macOS | ✅ |
-| 打包体积 | ~5-8 MB | ~30-50 MB |
-| 依赖数量 | 0 | PyQt5 + Qt5 运行时 |
+| 对比项 | 原生 Win32 (Windows) | GTK3 (Linux) |
+|--------|---------------------|--------------|
+| 第三方依赖 | ❌ 仅系统库 | ✅ gtk3 + libusb |
+| XP 兼容 | ✅ NT 5.1 API 集 | - |
+| 产物形态 | 单文件 exe，零 DLL | ELF 动态链接 glibc |
+| 打包体积 | ~百 KB 级 | 依赖系统 GTK/libusb |
 
-选择 tkinter 作为 UI 框架，因为它是 Python 标准库，无需额外依赖，完美支持所有目标平台。
+选择原生方案而非脚本/PyQt：无需运行时（Python/Qt 运行时体积大、XP 兼容差），兼容性最好、体积最小。
 
 ---
 
@@ -27,113 +25,83 @@
 
 #### Windows XP 支持
 
-- 使用 Python 3.8.x（最后一个官方支持 XP 的 Python 版本）
-- 使用社区补丁版 Python 3.8.20: [R-YaTian/CPython3.8.20WinXP](https://github.com/R-YaTian/CPython3.8.20WinXP)
-- PyInstaller 4.10 打包
-
-#### Windows 现代版本 (10+)
-
-- Python 3.11
-- PyInstaller 6.11.0 打包
-- 支持 x64 和 arm64
+- 工具链：MSYS2 MINGW32（mingw-w64-i686），产出 32 位 x86 可执行文件
+- 全静态链接：`-static -static-libgcc -static-libstdc++` + `-municode`（入口 `wWinMain`）
+- 仅链接系统库：`setupapi`（设备枚举）、`advapi32`（注册表兜底）、`comctl32`（ListView）、`user32`、`gdi32`
+- 锁定 API 集：
+  ```cmake
+  target_compile_definitions(... _WIN32_WINNT=0x0501 WINVER=0x0501 _WIN32_IE=0x0501)
+  ```
+- 图标资源 `app.ico` 含 16/24/32/48/64 多尺寸，兼容 XP
 
 #### USB 扫描方案 (Windows)
 
-WMI + 注册表双通道扫描：
-- WMI: `Win32_USBHub` / `Win32_USBDevice`
+SetupAPI 设备枚举 + 注册表兜底扫描：
+- SetupAPI: `SetupDiGetClassDevs` / `SetupDiEnumDeviceInfo` / `SetupDiGetDeviceRegistryProperty`
 - 注册表: `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\USB`
 
 ### 2.2 Linux 平台
 
 #### glibc 兼容性
 
-- 使用 Rocky Linux 8 容器构建
-- glibc 2.28，兼容 CentOS 8、Ubuntu 20.04、Debian 11 及以上
-- 系统 Python 3.9
+- 使用 Rocky Linux 8 容器构建（glibc 2.28），兼容 CentOS 8、Ubuntu 20.04、Debian 11 及以上
+- 可通过 `objdump -T` 验证所需的 GLIBC 版本
+
+#### 构建依赖
+
+```bash
+dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
+```
 
 #### USB 扫描方案 (Linux)
 
-- pyusb + libusb
-- libusb-package 提供静态链接 libusb，用户无需安装系统 libusb
-
-### 2.3 macOS 平台
-
-- Python 3.11
-- PyInstaller 6.11.0 打包
-- 支持 x64 (Intel) 和 arm64 (Apple Silicon)
-
-#### USB 扫描方案 (macOS)
-
-- pyusb + libusb (与 Linux 相同)
-- 使用 IOKit 后端
+- libusb-1.0（`libusb_get_device_list` 等），系统安装 libusb 即可
+- UI 使用原生 GTK3
 
 ---
 
 ## 3. 项目依赖
 
-```
-# requirements.txt
-wmi==1.5.1; sys_platform == 'win32'
-pywin32==228; sys_platform == 'win32'
-pyusb==1.2.1
-libusb-package==1.0.26.2; sys_platform != 'win32'
-```
+| 组件 | 说明 |
+|------|------|
+| C++17 | 语言标准 |
+| CMake ≥ 3.16 | 构建系统 |
+| MinGW-w64 i686 | Windows 交叉/原生工具链（MSYS2 MINGW32） |
+| gtk3-devel | Linux UI（GTK3） |
+| libusb1-devel | Linux USB 枚举 |
 
-### 依赖版本说明
-
-| 包 | 版本 | 平台 | 说明 |
-|---|------|------|------|
-| wmi | 1.5.1 | Windows | 最后支持 Python 3.8 的稳定版 |
-| pywin32 | 228 | Windows | 兼容 Python 3.8 + XP 的最后版本 |
-| pyusb | 1.2.1 | 全部 | 跨平台 USB 库 |
-| libusb-package | 1.0.26.2 | Linux/macOS | 静态链接 libusb |
-| PyInstaller | 4.10 | Windows XP | 兼容 Python 3.8 |
-| PyInstaller | 6.11.0 | 其他平台 | 最新稳定版 |
+无 Python、无 PyInstaller、无第三方运行时。
 
 ---
 
-## 4. PyInstaller 打包配置
+## 4. 构建配置
 
-### 4.1 spec 文件关键配置
+### 4.1 CMake 关键配置
 
-```python
-# vpid_viewer.spec
-hiddenimports = [
-    # Windows
-    'wmi', 'winreg',
-    'win32com', 'win32com.client', 'win32com.client.gencache',
-    'pythoncom', 'pywintypes',
-    'win32timezone', 'win32api', 'win32con', 'win32process',
-    # tkinter
-    'tkinter', 'tkinter.ttk', 'tkinter.messagebox',
-    # Linux/macOS
-    'usb', 'usb.backend', 'usb.backend.libusb1', 'usb.backend.libusb0', 'usb.backend.openusb',
-]
-
-excludes = ['PyQt5', 'PyQt6', 'PySide2', 'PySide6']
-
-datas = [('assets', 'assets')]
+```cmake
+if(WIN32)
+  enable_language(RC)                       # Windows 图标资源
+  add_executable(vpid_viewer WIN32 platform/win32/main.cpp platform/resources/app.rc ...)
+  target_link_options(... -municode -static -static-libgcc -static-libstdc++)
+  target_compile_definitions(... _WIN32_WINNT=0x0501 WINVER=0x0501 _WIN32_IE=0x0501)
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+  pkg_check_modules(LIBUSB REQUIRED libusb-1.0)
+  # GTK3 + libusb 链接
+endif()
 ```
 
-### 4.2 runtime_hook.py
-
-用于设置 libusb 路径，确保打包后 libusb-package 能正确工作。
-
-### 4.3 平台特定打包要点
+### 4.2 平台特定构建要点
 
 **Windows XP**:
-- 使用 PyInstaller 4.10
-- Python 3.8.20 (R-YaTian 社区补丁版)
-- 排除 Qt 库
+- MINGW32 (i686) 工具链 + 全静态链接
+- NT 5.1 API 集锁定
+- 产物零 DLL 依赖，可用于裸机 XP
 
 **Linux**:
-- 在 Rocky Linux 8 容器中构建
-- 包含 libusb-package 的静态库
-- 无特殊系统依赖
-
-**macOS**:
-- 标准 PyInstaller 打包
-- .app bundle 格式
+- Rocky Linux 8 容器中构建（glibc 2.28）
+- 动态链接系统 GTK3 / libusb
 
 ---
 
@@ -143,17 +111,15 @@ datas = [('assets', 'assets')]
 
 ```
 build.yml (非 main 分支推送触发)
-├── 构建 Windows x86
-├── 构建 Linux x64
+├── 构建 Windows x86 (MSYS2 MINGW32)
+├── 构建 Linux amd64 (Rocky Linux 8)
+├── 构建 Linux arm64 (Rocky Linux 8 + QEMU)
 └── Upload Artifact (7天)
 
 release.yml (main 分支推送触发)
 ├── build-windows-x86
-├── build-windows-arm64
 ├── build-linux-amd64 (Rocky Linux 8)
 ├── build-linux-arm64 (Rocky Linux 8 + QEMU)
-├── build-macos-amd64
-├── build-macos-arm64
 ├── 下载所有 artifacts (pattern: release-*, merge-multiple: true)
 └── 创建 GitHub Release
 ```
@@ -187,43 +153,38 @@ release:
   uses: addnab/docker-run-action@v3
   with:
     image: quay.io/rockylinux/rockylinux:8
-    options: -v ${{ github.workspace }}:/workspace -w /workspace
+    options: --platform ${{ matrix.platform }} -v ${{ github.workspace }}:/workspace -w /workspace
     run: |
-      dnf install -y python39 python39-pip python39-devel gcc git
-      python3.9 -m pip install --upgrade pip setuptools wheel
-      python3.9 -m pip install -r requirements.txt
-      python3.9 -m pip install pyinstaller==6.11.0
-      python3.9 -m PyInstaller vpid_viewer.spec --clean --noconfirm
-      mv dist/vpid_viewer dist/vpid_viewer_linux_amd64
+      dnf install -y epel-release
+      dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
+      rm -rf build && mkdir -p build
+      cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+      cmake --build build -j"$(nproc)"
+      objdump -T build/vpid_viewer | grep -m1 GLIBC || true
+      cp build/vpid_viewer build/vpid_viewer_linux_amd64
 ```
 
 ---
 
 ## 6. 本地开发环境搭建
 
-### 6.1 全平台开发
+### 6.1 Windows 开发
+
+需要 MSYS2（MINGW32）环境：
 
 ```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 运行应用
-python main.py
-
-# 打包测试 (非 Windows XP)
-pip install pyinstaller==6.11.0
-pyinstaller vpid_viewer.spec --clean --noconfirm
+pacman -S mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-make
+cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 ```
 
-### 6.2 Windows XP 开发测试
+### 6.2 Linux 开发
 
-需在 Windows 10 或更早版本（或虚拟机）上进行：
-1. 安装 R-YaTian/CPython3.8.20WinXP
-2. 安装依赖: `pip install -r requirements.txt`
-3. 安装 PyInstaller 4.10: `pip install pyinstaller==4.10`
-4. 打包: `pyinstaller vpid_viewer.spec --clean --noconfirm`
-
-### 6.3 Linux 开发
+```bash
+sudo dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+```
 
 注意需要 USB 访问权限，参考 README.md。
 
@@ -233,38 +194,30 @@ pyinstaller vpid_viewer.spec --clean --noconfirm
 
 ### Windows XP
 
-- [x] Python 3.8.x (R-YaTian 社区补丁版)
-- [x] tkinter/ttk (Python 内置)
-- [x] wmi 1.5.1
-- [x] pywin32 228
-- [x] PyInstaller 4.10
-- [x] ttk 主题降级 (vista → clam)
-- [x] 不使用 Vista+ API
+- [x] MINGW32 (i686) 32 位工具链
+- [x] 全静态链接（零 DLL 依赖）
+- [x] `_WIN32_WINNT=0x0501` / `WINVER=0x0501` / `_WIN32_IE=0x0501`
+- [x] 仅系统库（setupapi / advapi32 / comctl32 / user32 / gdi32）
+- [x] 多尺寸图标（16-64px）兼容 XP
 
 ### Linux
 
-- [x] glibc 2.28 (Rocky Linux 8 构建)
-- [x] pyusb + libusb (静态链接)
-- [x] x64 和 arm64 支持
-
-### macOS
-
-- [x] Python 3.11
-- [x] pyusb + libusb
-- [x] x64 (Intel) 和 arm64 (Apple Silicon) 支持
+- [x] glibc 2.28（Rocky Linux 8 构建）
+- [x] libusb-1.0 扫描
+- [x] amd64 和 arm64 支持
 
 ---
 
 ## 8. 常见问题
 
-### Q: 为什么 macOS artifacts 在 Release 中看不到？
-A: 确保在 release.yml 的 download-artifact 步骤中设置了 `merge-multiple: true`。
+### Q: 为什么 Windows 构建是 32 位的？
+A: XP 仅有 32 位系统，i686 产物同时兼容 32/64 位 Windows，且全静态链接可在 XP 裸机运行。
 
 ### Q: Linux 上提示没有权限访问 USB？
 A: 参考 README.md 的「Linux 权限注意事项」章节。
 
 ### Q: 打包后的 exe 在 XP 上闪退？
-A: 检查 PyInstaller 版本是否为 4.10，较新版本可能不兼容。
+A: 检查链接标志是否包含 `-static -static-libgcc -static-libstdc++` 且 API 集已锁定 0x0501；避免调用 Vista+ API。
 
 ### Q: 如何验证 glibc 兼容性？
-A: 使用 `objdump -p vpid_viewer_linux_amd64 | grep GLIBC_` 查看所需的 glibc 版本。
+A: 使用 `objdump -T vpid_viewer_linux_amd64 | grep GLIBC_` 查看所需的 glibc 版本，最高版本应 ≤ 2.28。

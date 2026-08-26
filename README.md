@@ -1,6 +1,6 @@
 # USB 设备管理器 (vpid_viewer)
 
-跨平台 USB 设备查看和管理工具，支持 Windows (XP 及以上)、Linux 和 macOS。
+跨平台 USB 设备查看和管理工具，基于 **C++ 原生实现**（无脚本语言运行时、无第三方 UI 框架），支持 Windows (XP 及以上) 和 Linux。
 
 ## 核心逻辑（必须严格遵循）
 
@@ -10,108 +10,88 @@
 
 ## 功能
 
-- 跨平台 USB 设备扫描（Windows / Linux / macOS）
+- 原生 USB 设备扫描（Windows SetupAPI + 注册表兜底 / Linux libusb）
 - 显示 VID / PID / 设备名称 / 路径
 - 基准比对：新增设备（绿色）/ 移除设备（红色）
-- 自动刷新（0.5 秒间隔）
+- 自动刷新（100 ms 间隔）
 - 复制设备信息到剪贴板
-- Windows XP 兼容
-- 多架构支持 (x86 / x64 / arm64)
+- Windows XP 兼容（32 位静态链接，零 DLL 依赖）
+- Linux 多架构支持（x64 / arm64）
 
 ## 支持平台
 
 | 平台 | 架构 | 支持 | 说明 |
 |------|------|------|------|
-| **Windows** | x86 (32位) | ✅ | Windows XP 及以上 |
-| **Windows** | x64 / arm64 | ✅ | Windows 10 及以上 |
-| **Linux** | x64 / arm64 | ✅ | glibc 2.28 及以上 |
-| **macOS** | x64 (Intel) / arm64 (Apple Silicon) | ✅ | macOS 10.15 及以上 |
+| **Windows** | x86 (32位) | ✅ | Windows XP 及以上，全静态链接 |
+| **Linux** | x64 / arm64 | ✅ | glibc 2.28 及以上（Rocky Linux 8 构建） |
 
 ## 技术栈
 
-- **语言**: Python 3.8 (Windows XP) / Python 3.11 (其他平台)
-- **UI**: tkinter / ttk（Python 内置）
+- **语言**: C++17
+- **构建**: CMake (≥3.16)
+- **Windows UI**: 原生 Win32 API + Common Controls（ListView），MinGW-w64 (i686) 静态链接
+- **Linux UI**: 原生 GTK3
 - **USB 扫描**:
-  - Windows: WMI + 注册表 (双通道)
-  - Linux/macOS: pyusb + libusb (静态链接)
-- **打包**: PyInstaller
-- **CI/CD**: GitHub Actions
+  - Windows: SetupAPI（设备枚举）+ 注册表兜底
+  - Linux: libusb-1.0
+- **CI/CD**: GitHub Actions（Windows 2022 + MSYS2 MINGW32 / Rocky Linux 8 容器）
 
 ## 下载与安装
 
 从 [Releases](https://github.com/pangshuai16/vpid_fyne/releases) 页面下载对应平台的可执行文件：
 
-- **Windows**: `vpid_viewer_windows_x86.exe` (XP兼容) 或 `vpid_viewer_windows_arm64.exe`
+- **Windows**: `vpid_viewer_windows_x86.exe`（XP 兼容，单文件免安装）
 - **Linux**: `vpid_viewer_linux_amd64` 或 `vpid_viewer_linux_arm64`
-- **macOS**: `vpid_viewer_macos_amd64.app` 或 `vpid_viewer_macos_arm64.app`
 
-## 从源码运行
-
-```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 运行
-python main.py
-```
-
-## 打包
+## 从源码构建
 
 ```bash
-# 安装 PyInstaller
-pip install pyinstaller==4.10  # Windows XP
-# 或
-pip install pyinstaller==6.11.0  # 其他平台
+# Windows (MinGW-w64 i686 / MSYS2 MINGW32)
+cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 
-# 打包
-pyinstaller vpid_viewer.spec --clean --noconfirm
+# Linux (需 gcc-c++ cmake gtk3-devel libusb1-devel pkgconfig)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 ```
+
+产物输出到 `build/vpid_viewer.exe` (Windows) 或 `build/vpid_viewer` (Linux)。
 
 ## 项目结构
 
 ```
-main.py                    # 应用入口
-vpid_viewer.spec           # PyInstaller 配置
-runtime_hook.py            # 运行时钩子
-requirements.txt           # 项目依赖
+CMakeLists.txt                # 顶层构建（core + 平台 UI 由 CMake 按平台分支选择）
 src/
-  __init__.py
-  constants.py             # 常量配置
-  device_info.py           # USB 设备数据模型
-  usb_scanner/
-    __init__.py            # 跨平台扫描器入口
-    base.py                # 抽象扫描器基类
-    windows.py             # Windows 扫描器
-    libusb_backend.py      # Linux/macOS 扫描器
-  gui/
-    __init__.py
-    main_window.py         # 主窗口
-    device_list.py         # 全部设备列表面板
-    device_detail.py       # 新增/移除设备面板
-assets/
-  app-icon.ico             # Windows 图标
-  app-icon.icns            # macOS 图标
-  app-icon-linux.png       # Linux 图标
-  usb-icon.png             # USB 图标
-tests/
-  __init__.py
-  test_device_info.py
-  test_usb_scanner.py
+  common/
+    constants.h               # 常量配置（含自动刷新间隔）
+  core/                       # 跨平台复用的设备模型 / 扫描抽象 / 比对逻辑
+    device_info.h/.cpp        # USB 设备数据模型
+    device_scanner.h/.cpp     # 扫描器抽象接口
+    device_comparer.h/.cpp    # 基准比对（新增/移除）
+    linux_scanner.h/.cpp      # Linux 扫描器（libusb）
+    windows_scanner.h/.cpp    # Windows 扫描器（SetupAPI + 注册表）
+platform/
+  win32/main.cpp              # Windows 原生 UI（Win32 + Common Controls）
+  gtk/main.cpp                # Linux 原生 UI（GTK3）
+  resources/
+    app.rc / app.ico          # Windows 图标资源（16-64px，兼容 XP）
+    app_icon.h                # Linux 内嵌 128x128 PNG 图标
+assets/                       # 仓库文档 / 发布用图标
 .github/workflows/
-  build.yml                # 分支构建
-  release.yml              # 发布构建
+  build.yml                   # 分支构建（Windows x86 + Linux amd64/arm64）
+  release.yml                 # main 分支发布构建 + GitHub Release
 ```
 
 ## GitHub Actions 工作流
 
 ### build.yml
-- 分支推送时触发
-- 仅构建 Windows x86 和 Linux x64
+- 分支推送时触发（main 除外）
+- 构建 Windows x86 和 Linux amd64/arm64
 - 用于快速验证
 
 ### release.yml
 - main 分支推送时触发
-- 构建全部 6 个平台
+- 构建全部平台矩阵
 - 自动创建 GitHub Release 并上传所有可执行文件
 
 ## Linux 权限注意事项
@@ -129,15 +109,13 @@ echo 'SUBSYSTEM=="usb", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules
 sudo udevadm control --reload-rules
 ```
 
-## macOS 注意事项
-
-首次打开 macOS 应用时可能需要在「系统设置 - 隐私与安全性」中允许运行。
-
 ## 开发指南
 
 ### 添加新平台支持
 
-在 `src/usb_scanner/` 中实现新的扫描器类，继承自 `USBDeviceScannerBase`，然后在 `__init__.py` 中注册。
+1. 在 `src/core/` 中实现新的扫描器类，继承 `Scanner` 抽象接口
+2. 在 `platform/` 下新增对应平台的 UI 入口（参考 `win32/main.cpp` 或 `gtk/main.cpp`）
+3. 在 `CMakeLists.txt` 中按平台分支添加目标与链接库
 
 ### 贡献
 
