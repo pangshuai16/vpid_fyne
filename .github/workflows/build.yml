@@ -36,7 +36,6 @@ jobs:
         shell: msys2 {0}
         run: |
           set -eux
-          cd native
           rm -rf build && mkdir -p build
           cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
           cmake --build build -j"$(nproc)"
@@ -48,7 +47,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vpid_viewer_windows_x86_${{ github.sha }}
-          path: native/build/vpid_viewer.exe
+          path: build/vpid_viewer.exe
           retention-days: 7
 
   build-linux:
@@ -81,7 +80,6 @@ jobs:
           run: |
             dnf install -y epel-release
             dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
-            cd native
             rm -rf build && mkdir -p build
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
             cmake --build build -j"$(nproc)"
@@ -93,5 +91,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}_${{ github.sha }}
-          path: native/build/${{ matrix.name }}
+          path: build/${{ matrix.name }}
           retention-days: 7

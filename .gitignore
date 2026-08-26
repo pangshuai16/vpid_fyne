@@ -1,30 +1,27 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-*.egg
-dist/
+# 构建产物
 build/
-*.spec.log
-*.manifest
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.o
+*.obj
+*.a
+*.lib
+*.so
 
+# 环境与密钥
 .env
 .venv/
 venv/
 
-.pytest_cache/
-.coverage
-htmlcov/
-
-*.exe
-*.dll
-*.dylib
+# IDE / 编辑器
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
+# 系统文件
 .DS_Store
 Thumbs.db
