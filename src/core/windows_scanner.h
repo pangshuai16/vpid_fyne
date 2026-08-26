@@ -3,7 +3,7 @@
 
 namespace vpid {
 
-// Windows：SetupAPI（主）+ 注册表（兜底），对应 Python 版 WindowsScanner
+// Windows：SetupAPI（主）+ 注册表（兜底）
 class WindowsScanner : public Scanner {
 public:
     std::vector<USBDevice> scan() override;

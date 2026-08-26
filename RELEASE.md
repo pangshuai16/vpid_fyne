@@ -52,30 +52,8 @@ git push origin main
 | Linux | x64 | `vpid_viewer_linux_amd64` | Rocky Linux 8 (glibc 2.28) + gcc-c++ |
 | Linux | arm64 | `vpid_viewer_linux_arm64` | Rocky Linux 8 + QEMU + gcc-c++ |
 
-## 关键技术点
+## 相关文档
 
-### Windows XP 兼容性
-
-- MSYS2 MINGW32 (i686) 工具链（32 位 x86）
-- 全静态链接（`-static -static-libgcc -static-libstdc++` + `-municode`），产物零 DLL 依赖
-- 锁定 NT 5.1 API 集（`_WIN32_WINNT=0x0501` / `WINVER=0x0501` / `_WIN32_IE=0x0501`）
-- 仅链接系统库（setupapi / advapi32 / comctl32 / user32 / gdi32）
-
-### Linux glibc 兼容性
-
-使用 Rocky Linux 8 容器构建，确保 glibc 2.28 兼容性，可在 CentOS 8、Ubuntu 20.04 及以上系统运行。构建依赖为 `gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig`。
-
-### 多平台 USB 扫描
-
-- **Windows**: SetupAPI 设备枚举，注册表兜底
-- **Linux**: libusb-1.0
-
-## Release 配置要点
-
-1. **权限**: `permissions: contents: write` 允许创建 Release
-2. **Artifact 下载**: 使用 `pattern: release-*` 和 `merge-multiple: true` 下载并合并所有 artifacts
-3. **文件上传**: `files: artifacts/**/*` 上传所有下载的文件
-
-## 本地构建测试
-
-参考项目根目录 README.md 的「从源码构建」章节。
+- 跨平台兼容性方案与 CI/CD 关键配置（Windows XP / Linux glibc 兼容、Release 配置要点）: [XP_COMPATIBILITY.md](XP_COMPATIBILITY.md)
+- 本地构建测试与开发环境: 见 [README.md](README.md) 的「从源码构建」章节
+- Linux 运行需要 USB 访问权限: 见 [README.md](README.md) 的「Linux 权限注意事项」章节

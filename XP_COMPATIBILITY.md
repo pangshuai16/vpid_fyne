@@ -15,7 +15,7 @@
 | 产物形态 | 单文件 exe，零 DLL | ELF 动态链接 glibc |
 | 打包体积 | ~百 KB 级 | 依赖系统 GTK/libusb |
 
-选择原生方案而非脚本/PyQt：无需运行时（Python/Qt 运行时体积大、XP 兼容差），兼容性最好、体积最小。
+选择原生方案而非脚本/通用 GUI 框架：无运行时依赖，兼容性最好、体积最小。
 
 ---
 
@@ -70,7 +70,7 @@ dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
 | gtk3-devel | Linux UI（GTK3） |
 | libusb1-devel | Linux USB 枚举 |
 
-无 Python、无 PyInstaller、无第三方运行时。
+无脚本语言运行时、无第三方运行时。
 
 ---
 
@@ -166,31 +166,7 @@ release:
 
 ---
 
-## 6. 本地开发环境搭建
-
-### 6.1 Windows 开发
-
-需要 MSYS2（MINGW32）环境：
-
-```bash
-pacman -S mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-make
-cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-```
-
-### 6.2 Linux 开发
-
-```bash
-sudo dnf install -y gcc-c++ make cmake libusb1-devel gtk3-devel pkgconfig
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-```
-
-注意需要 USB 访问权限，参考 README.md。
-
----
-
-## 7. 兼容性检查清单
+## 6. 兼容性检查清单
 
 ### Windows XP
 
@@ -208,7 +184,7 @@ cmake --build build -j$(nproc)
 
 ---
 
-## 8. 常见问题
+## 7. 常见问题
 
 ### Q: 为什么 Windows 构建是 32 位的？
 A: XP 仅有 32 位系统，i686 产物同时兼容 32/64 位 Windows，且全静态链接可在 XP 裸机运行。

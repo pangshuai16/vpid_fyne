@@ -6,7 +6,7 @@
 
 namespace vpid {
 
-// USB 扫描器抽象基类，对应 Python 版 BaseScanner
+// USB 扫描器抽象基类
 class Scanner {
 public:
     virtual ~Scanner() = default;
