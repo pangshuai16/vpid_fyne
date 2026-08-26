@@ -4,7 +4,7 @@
 
 namespace vpid {
 
-// 设备比对工具，对应 Python 版 compare_devices
+// 设备比对工具（新增/移除基准差值）
 class DeviceComparer {
 public:
     // 输出 (added, removed)

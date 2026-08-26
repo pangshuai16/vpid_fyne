@@ -21,7 +21,7 @@ struct DeviceKey {
     }
 };
 
-// USB 设备信息，对应 Python 版 USBDevice
+// USB 设备信息
 class USBDevice {
 public:
     std::string vid, pid, serial, name, manufacturer;

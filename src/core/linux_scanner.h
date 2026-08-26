@@ -7,7 +7,7 @@ struct libusb_device; // 前置声明，避免头文件依赖 libusb
 
 namespace vpid {
 
-// Linux/macOS：基于 libusb-1.0，对应 Python 版 LibUSBScanner
+// Linux：基于 libusb-1.0
 class LinuxScanner : public Scanner {
 public:
     std::vector<USBDevice> scan() override;

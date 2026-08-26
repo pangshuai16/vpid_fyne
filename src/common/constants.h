@@ -3,7 +3,7 @@
 
 namespace vpid {
 
-// 与 Python 版 src/constants.py 对齐（纯常量，无 UI 框架依赖）
+// 纯常量配置，无 UI 框架依赖
 constexpr const char* kAppName    = "USB设备ID查看";
 constexpr const char* kAppVersion = "2.0.0";
 constexpr const char* kAppAuthor  = "USB Manager";

@@ -6,7 +6,7 @@
 
 1. **程序启动**：自动扫描一次 USB 设备，并将扫描结果设为基准列表
 2. **每次扫描**：扫描的 USB 设备列表直接显示在"全部USB设备"中，并与基准列表进行比对——新增的 USB 设备显示在"新增设备"，减少的 USB 设备显示在"移除设备"
-3. **设为基准**：点击【设为基准】按钮时，将当前"全部USB设备"列表设定为新的基准列表（清空变更记录）
+3. **设为基准**：点击【重置】按钮时，将当前"全部USB设备"列表设定为新的基准列表（清空变更记录）
 
 ## 功能
 
@@ -84,15 +84,10 @@ assets/                       # 仓库文档 / 发布用图标
 
 ## GitHub Actions 工作流
 
-### build.yml
-- 分支推送时触发（main 除外）
-- 构建 Windows x86 和 Linux amd64/arm64
-- 用于快速验证
+- **build.yml**：非 main 分支推送时构建验证（Windows x86 + Linux amd64/arm64）
+- **release.yml**：main 分支推送时构建全部平台并自动创建 GitHub Release
 
-### release.yml
-- main 分支推送时触发
-- 构建全部平台矩阵
-- 自动创建 GitHub Release 并上传所有可执行文件
+自动发布的详细操作见 [RELEASE.md](RELEASE.md)，跨平台兼容性方案与 CI/CD 配置见 [XP_COMPATIBILITY.md](XP_COMPATIBILITY.md)。
 
 ## Linux 权限注意事项
 
